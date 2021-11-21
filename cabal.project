@@ -24,6 +24,5 @@ source-repository-package
 
 packages:
   ./client/kitty-cat-client.cabal
-
-packages:
   ./common/kitty-cat-common.cabal
+  ./duoids/kitty-cat-duoids.cabal
