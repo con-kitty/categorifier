@@ -1,8 +1,8 @@
 cabal-version:  2.4
 
-name:           kitty-cat-client
+name:           kitty-cat-extensions-concat
 version:        0.1
-description:    Client library for the kitty-cat plugin
+description:    Extensions to use Conal's ConCat with the plugin.
 homepage:       https://github.com/con-kitty/kitty-cat#readme
 bug-reports:    https://github.com/con-kitty/kitty-cat/issues
 build-type:     Simple
@@ -14,20 +14,20 @@ source-repository head
 
 library
   exposed-modules:
-      Kitty.Plugin.Client
+      Kitty.Plugin.Hierarchy.ConCat
   other-modules:
-      Kitty.Plugin.Client.Internal
-      Paths_kitty_cat_client
+      Paths_kitty_cat_extensions_concat
   autogen-modules:
-      Paths_kitty_cat_client
+      Paths_kitty_cat_extensions_concat
   ghc-options: -Wall
   build-depends:
     , base
-    , concat-classes
-    , constraints
-    , extra
-    , template-haskell
-    , kitty-cat-common
+    , bytestring
+    , ghc
+    , ghc-prim
+    , kitty-cat-duoids
+    , kitty-cat-plugin
+    , transformers
   default-language: Haskell2010
   default-extensions:
       InstanceSigs
