@@ -10,13 +10,13 @@ tested-with:    GHC==8.10.1
 
 source-repository head
   type: git
-  location: https://github.com/con-kitty/kitty-cat-c
+  location: https://github.com/con-kitty/kitty-cat
 
 library
   exposed-modules:
       Kitty.Plugin.Client
-      Kitty.Plugin.Client.Internal
   other-modules:
+      Kitty.Plugin.Client.Internal
       Paths_kitty_cat_client
   autogen-modules:
       Paths_kitty_cat_client
