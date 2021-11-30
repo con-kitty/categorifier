@@ -1,8 +1,8 @@
 cabal-version:  2.4
 
-name:           kitty-cat-client
+name:           kitty-cat-category
 version:        0.1
-description:    Client library for the kitty-cat plugin
+description:    Classes used by kitty-cat plugin
 homepage:       https://github.com/con-kitty/kitty-cat#readme
 bug-reports:    https://github.com/con-kitty/kitty-cat/issues
 build-type:     Simple
@@ -14,20 +14,17 @@ source-repository head
 
 library
   exposed-modules:
-      Kitty.Plugin.Client
+      Kitty.Plugin.Category
   other-modules:
-      Kitty.Plugin.Client.Internal
-      Paths_kitty_cat_client
+      Paths_kitty_cat_category
   autogen-modules:
-      Paths_kitty_cat_client
-  ghc-options: -Wall
+      Paths_kitty_cat_category
+  ghc-options:
+    -O2
+    -Wall
   build-depends:
     , base
     , concat-classes
-    , constraints
-    , extra
-    , template-haskell
-    , kitty-cat-common
   default-language: Haskell2010
   default-extensions:
       InstanceSigs

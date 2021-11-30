@@ -1,8 +1,8 @@
 cabal-version:  2.4
 
-name:           kitty-cat-client
+name:           kitty-cat-plugin-test
 version:        0.1
-description:    Client library for the kitty-cat plugin
+description:    Framework for testing extensions to the plugin.
 homepage:       https://github.com/con-kitty/kitty-cat#readme
 bug-reports:    https://github.com/con-kitty/kitty-cat/issues
 build-type:     Simple
@@ -14,20 +14,38 @@ source-repository head
 
 library
   exposed-modules:
-      Kitty.Plugin.Client
+      Test.Plugin.Data
+      Test.Plugin.HList
+      Test.Plugin.Hask
+      Test.Plugin.Term
+      Test.Plugin.Tests
+      Test.Plugin.TotOrd
+      Test.Plugin.TH
   other-modules:
-      Kitty.Plugin.Client.Internal
-      Paths_kitty_cat_client
+      Paths_kitty_cat_plugin_test
   autogen-modules:
-      Paths_kitty_cat_client
-  ghc-options: -Wall
+      Paths_kitty_cat_plugin_test
+  ghc-options:
+    -O2
+    -Wall
   build-depends:
+    , adjunctions
     , base
+    , categories
     , concat-classes
     , constraints
+    , distributive
     , extra
-    , template-haskell
+    , fin
+    , ghc-prim
+    , hedgehog
+    , kitty-cat-category
+    , kitty-cat-client
     , kitty-cat-common
+    , kitty-cat-plugin
+    , template-haskell
+    , text
+    , vec
   default-language: Haskell2010
   default-extensions:
       InstanceSigs

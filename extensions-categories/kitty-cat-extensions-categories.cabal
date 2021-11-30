@@ -1,8 +1,8 @@
 cabal-version:  2.4
 
-name:           kitty-cat-client
+name:           kitty-cat-extensions-categories
 version:        0.1
-description:    Client library for the kitty-cat plugin
+description:    Extensions to use Kmett's Categories with the plugin.
 homepage:       https://github.com/con-kitty/kitty-cat#readme
 bug-reports:    https://github.com/con-kitty/kitty-cat/issues
 build-type:     Simple
@@ -14,20 +14,20 @@ source-repository head
 
 library
   exposed-modules:
-      Kitty.Plugin.Client
+      Kitty.Plugin.Hierarchy.Categories
   other-modules:
-      Kitty.Plugin.Client.Internal
-      Paths_kitty_cat_client
+      Paths_kitty_cat_extensions_categories
   autogen-modules:
-      Paths_kitty_cat_client
+      Paths_kitty_cat_extensions_categories
   ghc-options: -Wall
   build-depends:
     , base
-    , concat-classes
-    , constraints
-    , extra
-    , template-haskell
-    , kitty-cat-common
+    , bytestring
+    , ghc
+    , ghc-prim
+    , kitty-cat-duoids
+    , kitty-cat-plugin
+    , transformers
   default-language: Haskell2010
   default-extensions:
       InstanceSigs
