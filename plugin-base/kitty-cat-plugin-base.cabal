@@ -21,7 +21,7 @@ common options
     -Wall
 
 library
-  import options
+  import: options
   exposed-modules:
       Kitty.Plugin.Base
   other-modules:

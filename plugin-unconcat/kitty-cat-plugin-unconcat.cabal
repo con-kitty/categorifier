@@ -82,7 +82,7 @@ library unconcat-instances
     , DeriveTraversable
     , DerivingStrategies
 
-test-suite kitty-hierarchy
+test-suite unconcat-hierarchy
   import: options
   type: exitcode-stdio-1.0
   hs-source-dirs: test
@@ -107,7 +107,7 @@ test-suite kitty-hierarchy
     , template-haskell
     , unconcat-instances
 
-test-suite kitty-hierarchy-optimized
+test-suite unconcat-hierarchy-optimized
   import: options
   type: exitcode-stdio-1.0
   hs-source-dirs: test
