@@ -5,12 +5,13 @@ module Test.Plugin.CategorizeException
   )
 where
 
+import Control.Monad ((<=<))
+import Data.Maybe (fromMaybe)
 import GHC.Stack (SrcLoc (..), getCallStack)
 import qualified Hedgehog
 import Kitty.Common.IO.Exception (evaluate, try)
 import qualified Kitty.Plugin.Categorize as Categorize
 import qualified Language.Haskell.TH as TH
-import P
 
 hprop_correctException :: Hedgehog.Property
 hprop_correctException =

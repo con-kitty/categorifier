@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 -- To avoid turning @if then else@ into `ifThenElse`.
@@ -9,14 +10,15 @@ module Main
   )
 where
 
+import Control.Arrow (Arrow (..), ArrowChoice (..))
+import Data.Bool (bool)
 import Data.Functor.Identity (Identity (..))
+import Data.Int (Int64)
+import Data.Word (Word8)
 import Data.Semigroup (Sum (..))
-import Data.String (String)
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
-import P
 import System.Exit (exitFailure, exitSuccess)
-import System.IO (IO)
 import Test.Plugin.Data (One (..), Pair (..))
 import Test.Plugin.HList (HList1 (..))
 import Test.Plugin.Term (Term)

@@ -1,3 +1,5 @@
+{-# LANGUAGE TypeOperators #-}
+
 module Test.Plugin.PartialApplication
   ( hprop_partialApplication,
     hprop_functionApplication,
@@ -8,7 +10,6 @@ where
 import qualified Hedgehog
 import qualified Hedgehog.Gen as Gen
 import qualified Kitty.Plugin.Categorize as Categorize
-import P
 import Test.Plugin.Hask (Hask (..))
 
 testArrow :: Hask (Char, (Char, Char)) Char -> Hedgehog.Property

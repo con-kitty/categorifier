@@ -52,11 +52,163 @@ library
     , DeriveTraversable
     , DerivingStrategies
 
+-- requires tasty
+-- test-suite without-plugin
+--   import: options
+--   type: exitcode-stdio-1.0
+--   hs-source-dirs: test
+--   main-is: Test/Plugin/CategorizeException.hs
+--   build-depends:
+--     , base
+--     , hedgehog
+--     , kitty-cat-common
+--     , kitty-cat-plugin
+--     , template-haskell
+
+library chaos
+  exposed-modules:
+      Test.Plugin.Chaos
+  build-depends:
+    , base
+    , ghc
+  default-language: Haskell2010
+
+-- requires tasty
+-- test-suite pre-chaos
+--   import: options
+--   type: exitcode-stdio-1.0
+--   hs-source-dirs: test
+--   main-is: Test/Plugin/CategorizeException.hs
+--   ghc-options:
+--     -fplugin Test.Plugin.Chaos
+--     -fplugin Kitty.Plugin.Base
+--   build-depends:
+--     , base
+--     , chaos
+--     , hedgehog
+--     , kitty-cat-common
+--     , kitty-cat-plugin
+--     , kitty-cat-plugin-base
+--     , template-haskell
+
+test-suite post-chaos
+  import: options
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is: Test/Plugin/Base/Main.hs
+  ghc-options:
+    -fplugin Kitty.Plugin.Base
+    -fplugin-opt Kitty.Plugin.Base:defer-failures
+    -fplugin Test.Plugin.Chaos
+    -O0
+  build-depends:
+    , adjunctions
+    , base
+    , chaos
+    , either
+    , ghc-prim
+    , hedgehog
+    , kitty-cat-category
+    , kitty-cat-client
+    , kitty-cat-plugin
+    , kitty-cat-plugin-base
+    , kitty-cat-plugin-test
+    , template-haskell
+
+-- requires tasty
+-- test-suite partial-application
+--   import: options
+--   type: exitcode-stdio-1.0
+--   hs-source-dirs: test
+--   main-is: Test/Plugin/PartialApplication.hs
+--   ghc-options:
+--     -fplugin Kitty.Plugin.Base
+--     -fplugin-opt Kitty.Plugin.Base:defer-failures
+--     -fplugin Test.Plugin.Chaos
+--   build-depends:
+--     , adjunctions
+--     , base
+--     , chaos
+--     , either
+--     , ghc-prim
+--     , hedgehog
+--     , kitty-cat-category
+--     , kitty-cat-client
+--     , kitty-cat-common
+--     , kitty-cat-plugin
+--     , kitty-cat-plugin-base
+--     , kitty-cat-plugin-test
+--     , template-haskell
+
+-- expected to fail at compile time
+-- test-suite invalid-options
+--   import: options
+--   type: exitcode-stdio-1.0
+--   hs-source-dirs: test
+--   main-is: Test/Plugin/Base/Main.hs
+--   ghc-options:
+--     -fplugin Kitty.Plugin.Base
+--     -fplugin-opt Kitty.Plugin.Base:defer-failures
+--     -fplugin-opt Kitty.Plugin:hierarchy:moo
+--   build-depends:
+--     , adjunctions
+--     , base
+--     , either
+--     , ghc-prim
+--     , hedgehog
+--     , kitty-cat-category
+--     , kitty-cat-client
+--     , kitty-cat-plugin
+--     , kitty-cat-plugin-base
+--     , kitty-cat-plugin-test
+--     , template-haskell
+
+test-suite shared-module
+  import: options
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is: Test/Plugin/WithInstance/Main.hs
+  other-modules:
+      Test.Plugin.WithInstance
+  ghc-options:
+    -fplugin Kitty.Plugin.Base
+    -O2
+  build-depends:
+    , adjunctions
+    , base
+    , ghc-prim
+    , kitty-cat-category
+    , kitty-cat-client
+    , kitty-cat-plugin
+    , kitty-cat-plugin-base
+
+test-suite hierarchy-agnostic
+  import: options
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is: Test/Plugin/Base/Main.hs
+  ghc-options:
+    -fplugin Kitty.Plugin.Base
+    -fplugin-opt Kitty.Plugin.Base:defer-failures
+    -O0
+  build-depends:
+    , adjunctions
+    , base
+    , either
+    , ghc-prim
+    , hedgehog
+    , kitty-cat-category
+    , kitty-cat-client
+    , kitty-cat-plugin
+    , kitty-cat-plugin-base
+    , kitty-cat-plugin-test
+    , template-haskell
+
 test-suite base-hierarchy
   import: options
-  type:        exitcode-stdio-1.0
+  type: exitcode-stdio-1.0
   hs-source-dirs: test
-  main-is:     Test/Plugin/Base/Main.hs
+  main-is: Test/Plugin/Base/Main.hs
   ghc-options:
     -fplugin Kitty.Plugin.Base
     -fplugin-opt Kitty.Plugin.Base:defer-failures
@@ -76,9 +228,9 @@ test-suite base-hierarchy
 
 test-suite base-hierarchy-optimized
   import: options
-  type:        exitcode-stdio-1.0
+  type: exitcode-stdio-1.0
   hs-source-dirs: test
-  main-is:     Test/Plugin/Base/Main.hs
+  main-is: Test/Plugin/Base/Main.hs
   ghc-options:
     -fplugin Kitty.Plugin.Base
     -fplugin-opt Kitty.Plugin.Base:defer-failures

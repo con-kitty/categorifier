@@ -7,7 +7,6 @@ module Test.Plugin.Chaos
 where
 
 import qualified GhcPlugins as Plugins
-import P
 
 -- | This plugin simply deletes all the `Plugins.CoreToDo`s that exist. It should surface any bugs
 --   that are caused by your plugin relying on effects from other passes that exist incidentally.
