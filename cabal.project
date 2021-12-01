@@ -50,6 +50,7 @@ constraints:
   , ghc >=0.10.1 && <8.11
   , ghc-prim >=0.6.1 && <0.8
   , hedgehog >=1.0.3 && <1.1
+  , linear >=1.21.3 && <1.22
   , semialign >=1.1.0 && <1.2
   , semigroupoids >=5.3.4 && <5.4
   , syb >=0.7.1 && <0.8
@@ -64,15 +65,21 @@ constraints:
 
 packages:
   ./category/kitty-cat-category.cabal
+  ./category-kitty/kitty-cat-category-kitty.cabal
+  ./category-unconcat/kitty-cat-category-unconcat.cabal
   ./client/kitty-cat-client.cabal
   ./common/kitty-cat-common.cabal
   ./duoids/kitty-cat-duoids.cabal
   ./extensions-categories/kitty-cat-extensions-categories.cabal
   ./extensions-concat/kitty-cat-extensions-concat.cabal
+  ./extensions-kitty/kitty-cat-extensions-kitty.cabal
+  ./extensions-unconcat/kitty-cat-extensions-unconcat.cabal
   ./plugin/kitty-cat-plugin.cabal
   -- __TODO__: Replace multiple plugins with dynamic loading
   ./plugin-base/kitty-cat-plugin-base.cabal
   ./plugin-categories/kitty-cat-plugin-categories.cabal
   ./plugin-concat-class/kitty-cat-plugin-concat-class.cabal
   ./plugin-concat-function/kitty-cat-plugin-concat-function.cabal
+  ./plugin-kitty/kitty-cat-plugin-kitty.cabal
   ./plugin-test/kitty-cat-plugin-test.cabal
+  ./plugin-unconcat/kitty-cat-plugin-unconcat.cabal
