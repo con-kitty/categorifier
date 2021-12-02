@@ -55,10 +55,9 @@ import GHC.Word (Word16, Word32, Word64, Word8)
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 import System.Exit (exitFailure, exitSuccess)
+import Test.Plugin.ConCat.Instances (Hask (..), Term)
 import Test.Plugin.Data (One (..), Pair (..))
 import Test.Plugin.HList (HList1 (..))
-import Test.Plugin.Hask (Hask (..))
-import Test.Plugin.Term (Term)
 import Test.Plugin.Tests
   ( TestCases (..),
     TestCategory (..),

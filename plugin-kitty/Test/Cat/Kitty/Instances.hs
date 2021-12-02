@@ -31,8 +31,7 @@ import Kitty.Cat.Category
     TranscendentalCat (..),
     TraversableCat (..),
   )
-import Test.Plugin.Hask (Hask (..))
-import Test.Plugin.Term (Term (..), unaryZero)
+import Test.Plugin.ConCat.Instances (Hask (..), Term (..), unaryZero)
 import Test.Plugin.TotOrd (TotOrd (..))
 
 -- Term

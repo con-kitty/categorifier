@@ -72,6 +72,7 @@ packages:
   ./duoids/kitty-cat-duoids.cabal
   ./extensions-categories/kitty-cat-extensions-categories.cabal
   ./extensions-concat/kitty-cat-extensions-concat.cabal
+  ./extensions-concat-test/kitty-cat-extensions-concat-test.cabal
   ./extensions-kitty/kitty-cat-extensions-kitty.cabal
   ./extensions-unconcat/kitty-cat-extensions-unconcat.cabal
   ./plugin/kitty-cat-plugin.cabal

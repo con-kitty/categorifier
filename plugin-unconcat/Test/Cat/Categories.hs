@@ -9,8 +9,7 @@ where
 
 import Data.Bifunctor (Bifunctor (..))
 import qualified Kitty.UnconCat
-import Test.Plugin.Hask (Hask (..))
-import Test.Plugin.Term (Term (..), binaryZero, unaryZero)
+import Test.Plugin.ConCat.Instances (Hask (..), Term (..), binaryZero, unaryZero)
 
 ------------------------------------------------------------------------------
 

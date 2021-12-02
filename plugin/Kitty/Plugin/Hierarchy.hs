@@ -685,7 +685,7 @@ mkFunctionApps onDict fn tys terms =
 --   particular way. E.g., given a class like
 --
 --   >>> class Foldable t where
---   >>>   foldMap :: forall a m. Monoid m => (a -> m) -> t a -> m
+--   >>>   foldMap :: Monoid m => (a -> m) -> t a -> m
 --
 --   we need to do a few things in the right order:
 -- 1. apply the type parameters in the class declaration (@t@),

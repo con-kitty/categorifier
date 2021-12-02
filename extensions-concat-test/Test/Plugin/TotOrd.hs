@@ -12,6 +12,7 @@ module Test.Plugin.TotOrd
 where
 
 import qualified ConCat.Category as ConCat
+import qualified ConCat.Rep as ConCat
 import Kitty.Plugin.Category (RepCat (..))
 import qualified Kitty.Plugin.Client as Client
 
@@ -59,6 +60,10 @@ instance
   lessThanOrEqual = ConCat.Constrained ConCat.lessThanOrEqual
 
   greaterThanOrEqual = ConCat.Constrained ConCat.greaterThanOrEqual
+
+instance (RepCat k a r, con a, con r) => RepCat (ConCat.Constrained con k) a r where
+  abstC = ConCat.Constrained abstC
+  reprC = ConCat.Constrained reprC
 
 instance Ord b => ConCat.ConstCat TotOrd b where
   const = TotOrd . ConCat.const

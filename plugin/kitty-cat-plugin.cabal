@@ -52,7 +52,6 @@ library
     , barbies
     , base
     , bytestring
-    , concat-classes
     , containers
     , either
     , extra

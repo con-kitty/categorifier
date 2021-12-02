@@ -61,6 +61,7 @@ library unconcat-instances
     , base
     , concat-classes
     , kitty-cat-category-unconcat
+    , kitty-cat-extensions-concat-test
     , kitty-cat-plugin-test
   default-language: Haskell2010
   default-extensions:
@@ -101,6 +102,7 @@ test-suite unconcat-hierarchy
     , kitty-cat-category
     , kitty-cat-category-unconcat
     , kitty-cat-client
+    , kitty-cat-extensions-concat-test
     , kitty-cat-plugin
     , kitty-cat-plugin-unconcat
     , kitty-cat-plugin-test
@@ -127,6 +129,7 @@ test-suite unconcat-hierarchy-optimized
     , kitty-cat-category
     , kitty-cat-category-unconcat
     , kitty-cat-client
+    , kitty-cat-extensions-concat-test
     , kitty-cat-plugin
     , kitty-cat-plugin-unconcat
     , kitty-cat-plugin-test

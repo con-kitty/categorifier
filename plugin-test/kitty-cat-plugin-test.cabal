@@ -19,7 +19,6 @@ library
       Test.Plugin.Hask
       Test.Plugin.Term
       Test.Plugin.Tests
-      Test.Plugin.TotOrd
       Test.Plugin.TH
   other-modules:
       Paths_kitty_cat_plugin_test
@@ -31,9 +30,6 @@ library
   build-depends:
     , adjunctions
     , base
-    , categories
-    , concat-classes
-    , constraints
     , distributive
     , extra
     , fin

@@ -303,11 +303,6 @@ classHierarchy = do
       }
   where
     moduleName = "ConCat.Category"
-    repOp name = do
-      op <- identifier moduleName name
-      rep <- findTyCon "Kitty.Plugin.Client" "Rep"
-      pure $ \onDict cat a ->
-        mkMethodApps onDict op [Plugins.typeKind a, cat, a, Plugins.mkTyConApp rep [a]] [] []
 
 -- | A hierarchy using the functions from Conal's ConCat library. These are the same operations used
 --   by Conal's original implementation.
@@ -339,7 +334,14 @@ functionHierarchy = do
       }
   where
     moduleName = "ConCat.AltCat"
-    repOp name = do
-      op <- identifier moduleName name
-      rep <- findTyCon "Kitty.Plugin.Client" "Rep"
-      pure $ \onDict cat a -> mkFunctionApps onDict op [cat, a, Plugins.mkTyConApp rep [a]] []
+
+repOp ::
+  Monad f =>
+  String ->
+  Lookup
+    ((Plugins.CoreExpr -> f Plugins.CoreExpr) -> Plugins.Type -> Plugins.Type -> f Plugins.CoreExpr)
+repOp name = do
+  op <- identifier "Kitty.Plugin.Category" name
+  rep <- findTyCon "Kitty.Plugin.Client" "Rep"
+  pure $ \onDict cat a ->
+    mkMethodApps onDict op [cat, a, Plugins.mkTyConApp rep [a]] [] []

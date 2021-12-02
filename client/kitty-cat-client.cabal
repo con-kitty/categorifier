@@ -23,7 +23,6 @@ library
   ghc-options: -Wall
   build-depends:
     , base
-    , concat-classes
     , constraints
     , extra
     , template-haskell

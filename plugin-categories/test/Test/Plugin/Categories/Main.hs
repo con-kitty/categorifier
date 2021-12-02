@@ -31,8 +31,7 @@ import qualified Hedgehog.Range as Range
 import System.Exit (exitFailure, exitSuccess)
 import Test.Plugin.Data (One (..), Pair (..))
 import Test.Plugin.HList (HList1 (..))
-import Test.Plugin.Hask (Hask (..))
-import Test.Plugin.Term (Term)
+import Test.Plugin.Categories.Instances (Hask (..), Term)
 import Test.Plugin.Tests
   ( TestCases (..),
     TestCategory (..),

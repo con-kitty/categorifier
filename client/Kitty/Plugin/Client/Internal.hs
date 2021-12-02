@@ -1,15 +1,15 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -- | This is separate from "Kitty.Cat.Client" because we can't define Template Haskell and use it in
 --   the same module. This module provides `deriveHasRep`, but it's private because importing it
 --   would mean you miss the instances.
 module Kitty.Plugin.Client.Internal
-  ( ConCat.HasRep (..),
+  ( HasRep (..),
     deriveHasRep,
   )
 where
 
-import qualified ConCat.Rep as ConCat
 import Data.Bifunctor (bimap)
 import Data.Constraint (Dict (..))
 import Data.Foldable (foldl', toList)
@@ -20,19 +20,29 @@ import Data.Void (Void)
 import qualified Kitty.Common.IO.Exception as Exception
 import qualified Language.Haskell.TH as TH
 
--- So that it is legal to import ConCat.Rep, which we re-export from.
-{-# ANN module "HLint: ignore Avoid restricted module" #-}
+-- | Convert to and from standard representations. Used for transforming case
+-- expression scrutinees and constructor applications. The 'repr' method should
+-- convert to a standard representation (unit, products, sums), or closer to
+-- such a representation, via another type with a 'HasRep' instance. The 'abst'
+-- method should reveal a constructor so that we can perform the
+-- case-of-known-constructor transformation.
+--
+-- It is very important to give @INLINE@ pragmas for 'repr' and 'abst' definitions.
+class HasRep a where
+  type Rep a
+  repr :: a -> Rep a
+  abst :: Rep a -> a
 
 data DeriveCallFailure
   = GadtMissingName TH.Type
   | InvalidName TH.Info
   | MisquotedName
 
--- | Defines a `ConCat.HasRep` instance, needed for pretty much any type that ends up passing
---   through the "Kitty.Cat" plugin.
+-- | Defines a `HasRep` instance, needed for pretty much any type that ends up passing through the
+--  "Kitty.Cat" plugin.
 --
---   Almost any `ConCat.HasRep` instance can be created with this. The one exception is GADTs that
---   have "overlapping" constructor types. That is, a type like
+--   Almost any `HasRep` instance can be created with this. The one exception is GADTs that have
+--  "overlapping" constructor types. That is, a type like
 --
 -- > data AltVec n a where
 -- >   AVNil :: AltVec 'Z a
@@ -52,20 +62,17 @@ data DeriveCallFailure
 --   will fail because @Add@ is must be in both the @SomeExpr Int@ and @SomeExpr Double@ groups,
 --   which is not yet supported.
 --
---   The following documentation should be written on `ConCat.HasRep`, but that's not managed by us,
---   so we'll explain it here for now:
+--   The following documentation should be written on `HasRep`, but that's not managed by us, so we'll explain it here for now:
 --
---   There are some expectations for a `ConCat.HasRep` instance. This function ensures that they
---   hold, but in the case you have to write an instance by hand, these guidelines are important to
+--   There are some expectations for a `HasRep` instance. This function ensures that they hold, but
+--   in the case you have to write an instance by hand, these guidelines are important to
 --   follow. The plugin needs the implementations to be completely inlined easily, so
 --
--- - always add @INLINE@ pragmas for both the `ConCat.abst` and `ConCat.repr` implementations,
--- - write them using /only/ @case@ expressions and data constructors,
--- - alternatives should be combined using `Either` and fields with @(,)@ (no larger tuples, only
---   2-tuples),
--- - `Dict` should be used to reify constraints into the set of fields, and
--- - try to make the nesting as even as possible (i.e., @((a, b), (c, d))@ is better than
---   @(a, (b, (c, d)))@.
+-- - always add @INLINE@ pragmas for both the `abst` and `repr` implementations, write them using
+-- - /only/ @case@ expressions and data constructors, alternatives should be combined using `Either`
+-- - and fields with @(,)@ (no larger tuples, only -- 2-tuples), `Dict` should be used to reify
+-- - constraints into the set of fields, and try to make the nesting as even as possible (i.e.,
+-- - @((a, b), (c, d))@ is better than -- @(a, (b, (c, d)))@.
 deriveHasRep :: TH.Name -> TH.DecsQ
 deriveHasRep name =
   either (Exception.throwIOAsException explainDeriveCallFailure) sequenceA . deriveHasRep'
@@ -140,12 +147,12 @@ deriveHasRep' = \case
     hasRepInstD type0 repTy abstClauses reprClauses =
       TH.instanceD
         (pure [])
-        [t|ConCat.HasRep $type0|]
-        [ TH.tySynInstD $ TH.tySynEqn Nothing [t|ConCat.Rep $type0|] repTy,
-          TH.funD 'ConCat.abst abstClauses,
-          TH.pragInlD 'ConCat.abst TH.Inline TH.FunLike TH.AllPhases,
-          TH.funD 'ConCat.repr reprClauses,
-          TH.pragInlD 'ConCat.repr TH.Inline TH.FunLike TH.AllPhases
+        [t|HasRep $type0|]
+        [ TH.tySynInstD $ TH.tySynEqn Nothing [t|Rep $type0|] repTy,
+          TH.funD 'abst abstClauses,
+          TH.pragInlD 'abst TH.Inline TH.FunLike TH.AllPhases,
+          TH.funD 'repr reprClauses,
+          TH.pragInlD 'repr TH.Inline TH.FunLike TH.AllPhases
         ]
 
     hasRep' :: TH.Name -> TH.Cxt -> [TH.Type] -> (TH.TypeQ, (TH.PatQ, TH.ExpQ), (TH.PatQ, TH.ExpQ))

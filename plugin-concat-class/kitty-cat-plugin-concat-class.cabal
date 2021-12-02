@@ -73,6 +73,7 @@ test-suite concat-class-hierarchy
     , hedgehog
     , kitty-cat-category
     , kitty-cat-client
+    , kitty-cat-extensions-concat-test
     , kitty-cat-plugin
     , kitty-cat-plugin-concat-class
     , kitty-cat-plugin-test
@@ -98,6 +99,7 @@ test-suite concat-class-hierarchy-optimized
     , hedgehog
     , kitty-cat-category
     , kitty-cat-client
+    , kitty-cat-extensions-concat-test
     , kitty-cat-plugin
     , kitty-cat-plugin-concat-class
     , kitty-cat-plugin-test

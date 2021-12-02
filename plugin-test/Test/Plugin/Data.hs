@@ -9,7 +9,6 @@ module Test.Plugin.Data
   )
 where
 
-import qualified Control.Categorical.Functor as Categories
 import Data.Distributive (Distributive (..))
 import Data.Functor.Rep (Representable)
 import GHC.Generics (Generic, Generic1)
@@ -47,9 +46,6 @@ data Pair a = Pair a a
 instance Applicative Pair where
   pure x = Pair x x
   Pair f f' <*> Pair x x' = Pair (f x) (f' x')
-
-instance Categories.Functor Pair (->) (->) where
-  fmap = fmap -- the rhs is from base.
 
 Client.deriveHasRep ''Pair
 

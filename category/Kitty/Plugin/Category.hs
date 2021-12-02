@@ -14,8 +14,21 @@ module Kitty.Plugin.Category
   )
 where
 
-import ConCat.Category (RepCat (..))
 import GHC.TypeLits (Symbol)
+import Kitty.Plugin.Client (HasRep (..))
+
+-- | This lifts `HasRep` into the target category.
+--
+--  __NB__: This is slightly hierarchy-specific. E.g., the base hierarchy doesn't require an
+--          instance of this, and while concat has its own version of this, we need to use ours
+--          because it has to tie into our `HasRep`.
+class (HasRep a, r ~ Rep a) => RepCat k a r where
+  reprC :: a `k` r
+  abstC :: r `k` a
+
+instance (HasRep a, r ~ Rep a) => RepCat (->) a r where
+  reprC = repr
+  abstC = abst
 
 -- | An interface for having something like function calls in your category. The default
 --   implementation is basically a NOP, inlining any function calls, but if your category has some

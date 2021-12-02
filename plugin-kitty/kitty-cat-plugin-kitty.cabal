@@ -61,6 +61,7 @@ library kitty-instances
     , base
     , concat-classes
     , kitty-cat-category-kitty
+    , kitty-cat-extensions-concat-test
     , kitty-cat-plugin-test
   default-language: Haskell2010
   default-extensions:

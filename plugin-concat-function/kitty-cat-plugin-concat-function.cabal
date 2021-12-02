@@ -72,6 +72,7 @@ test-suite concat-function-hierarchy
     , hedgehog
     , kitty-cat-category
     , kitty-cat-client
+    , kitty-cat-extensions-concat-test
     , kitty-cat-plugin
     , kitty-cat-plugin-concat-function
     , kitty-cat-plugin-test
@@ -97,6 +98,7 @@ test-suite concat-function-hierarchy-optimized
     , hedgehog
     , kitty-cat-category
     , kitty-cat-client
+    , kitty-cat-extensions-concat-test
     , kitty-cat-plugin
     , kitty-cat-plugin-concat-function
     , kitty-cat-plugin-test
