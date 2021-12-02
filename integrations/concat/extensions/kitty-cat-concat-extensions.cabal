@@ -1,8 +1,8 @@
 cabal-version:  2.4
 
-name:           kitty-cat-extensions-kitty
+name:           kitty-cat-concat-extensions
 version:        0.1
-description:    Extensions to Conal's ConCat to improve plugin coverage.
+description:    Extensions to use Conal's ConCat with the plugin.
 homepage:       https://github.com/con-kitty/kitty-cat#readme
 bug-reports:    https://github.com/con-kitty/kitty-cat/issues
 build-type:     Simple
@@ -14,11 +14,11 @@ source-repository head
 
 library
   exposed-modules:
-      Kitty.Cat.Hierarchy.Kitty
+      Kitty.Plugin.Hierarchy.ConCat
   other-modules:
-      Paths_kitty_cat_extensions_kitty
+      Paths_kitty_cat_concat_extensions
   autogen-modules:
-      Paths_kitty_cat_extensions_kitty
+      Paths_kitty_cat_concat_extensions
   ghc-options: -Wall
   build-depends:
     , base

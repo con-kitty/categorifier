@@ -1,8 +1,8 @@
 cabal-version:  2.4
 
-name:           kitty-cat-category-unconcat
+name:           kitty-cat-concat-extensions-test
 version:        0.1
-description:    Unconstrained versions of Conal's ConCat classes.
+description:    Utilities for testing ConCat and extensions of it.
 homepage:       https://github.com/con-kitty/kitty-cat#readme
 bug-reports:    https://github.com/con-kitty/kitty-cat/issues
 build-type:     Simple
@@ -12,18 +12,26 @@ source-repository head
   type: git
   location: https://github.com/con-kitty/kitty-cat
 
+common options
+  ghc-options:
+    -- make it possible to inline almost anything
+    -fexpose-all-unfoldings
+    -- ensure unfoldings are available
+    -fno-omit-interface-pragmas
+    -Wall
+
 library
   exposed-modules:
-      Kitty.UnconCat
-  other-modules:
-      Paths_kitty_cat_category_unconcat
-  autogen-modules:
-      Paths_kitty_cat_category_unconcat
-  ghc-options:
-    -O2
-    -Wall
+      Test.Plugin.ConCat.Instances
+      Test.Plugin.TotOrd
   build-depends:
     , base
+    , concat-classes
+    , concat-examples
+    , constraints
+    , kitty-cat-category
+    , kitty-cat-client
+    , kitty-cat-plugin-test
   default-language: Haskell2010
   default-extensions:
       InstanceSigs

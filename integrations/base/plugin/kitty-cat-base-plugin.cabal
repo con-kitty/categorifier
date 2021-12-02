@@ -1,8 +1,8 @@
 cabal-version:  2.4
 
-name:           kitty-cat-plugin-kitty
+name:           kitty-cat-base-plugin
 version:        0.1
-description:    Plugin using our extensions to Conal's ConCat functions.
+description:    Plugin using only the base library classes.
 homepage:       https://github.com/con-kitty/kitty-cat#readme
 bug-reports:    https://github.com/con-kitty/kitty-cat/issues
 build-type:     Simple
@@ -23,16 +23,14 @@ common options
 library
   import: options
   exposed-modules:
-      Kitty.Cat.Plugin.Kitty
+      Kitty.Plugin.Base
   other-modules:
-      Paths_kitty_cat_plugin_kitty
+      Paths_kitty_cat_base_plugin
   autogen-modules:
-      Paths_kitty_cat_plugin_kitty
+      Paths_kitty_cat_base_plugin
   build-depends:
     , base
     , ghc
-    , kitty-cat-extensions-concat
-    , kitty-cat-extensions-kitty
     , kitty-cat-plugin
   default-language: Haskell2010
   default-extensions:
@@ -54,84 +52,47 @@ library
     , DeriveTraversable
     , DerivingStrategies
 
-library kitty-instances
-  exposed-modules:
-      Test.Cat.Kitty.Instances
-  build-depends:
-    , base
-    , concat-classes
-    , kitty-cat-category-kitty
-    , kitty-cat-extensions-concat-test
-    , kitty-cat-plugin-test
-  default-language: Haskell2010
-  default-extensions:
-      InstanceSigs
-    , ScopedTypeVariables
-    , TypeApplications
-    , FlexibleContexts
-    , FlexibleInstances
-    , FunctionalDependencies
-    , LambdaCase
-    , NoStarIsType
-    , TypeOperators
-    , BangPatterns
-    , StandaloneDeriving
-    , DeriveGeneric
-    , DeriveDataTypeable
-    , DeriveFunctor
-    , DeriveFoldable
-    , DeriveTraversable
-    , DerivingStrategies
-
-test-suite kitty-hierarchy
+test-suite base-hierarchy
   import: options
-  type: exitcode-stdio-1.0
+  type:        exitcode-stdio-1.0
   hs-source-dirs: test
-  main-is: Test/Cat/Kitty/Main.hs
+  main-is:     Test/Plugin/Base/Main.hs
   ghc-options:
-    -fplugin Kitty.Cat.Plugin.Kitty
+    -fplugin Kitty.Plugin.Base
+    -fplugin-opt Kitty.Plugin.Base:defer-failures
     -O0
   build-depends:
     , adjunctions
     , base
-    , concat-classes
-    , concat-examples
     , either
     , ghc-prim
     , hedgehog
+    , kitty-cat-base-plugin
     , kitty-cat-category
-    , kitty-cat-category-kitty
     , kitty-cat-client
     , kitty-cat-plugin
-    , kitty-cat-plugin-kitty
     , kitty-cat-plugin-test
-    , kitty-instances
-    , linear
     , template-haskell
 
-test-suite kitty-hierarchy-optimized
+test-suite base-hierarchy-optimized
   import: options
-  type: exitcode-stdio-1.0
+  type:        exitcode-stdio-1.0
   hs-source-dirs: test
-  main-is: Test/Cat/Kitty/Main.hs
+  main-is:     Test/Plugin/Base/Main.hs
   ghc-options:
-    -fplugin Kitty.Cat.Plugin.Kitty
+    -fplugin Kitty.Plugin.Base
+    -fplugin-opt Kitty.Plugin.Base:defer-failures
     -O2
     -fignore-interface-pragmas
   build-depends:
     , adjunctions
     , base
-    , concat-classes
-    , concat-examples
     , either
     , ghc-prim
     , hedgehog
+    , kitty-cat-base-plugin
     , kitty-cat-category
-    , kitty-cat-category-kitty
     , kitty-cat-client
     , kitty-cat-plugin
-    , kitty-cat-plugin-kitty
     , kitty-cat-plugin-test
-    , kitty-instances
-    , linear
     , template-haskell

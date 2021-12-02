@@ -1,8 +1,8 @@
 cabal-version:  2.4
 
-name:           kitty-cat-extensions-concat-test
+name:           kitty-cat-kitty-extensions
 version:        0.1
-description:    Utilities for testing ConCat and extensions of it.
+description:    Extensions to Conal's ConCat to improve plugin coverage.
 homepage:       https://github.com/con-kitty/kitty-cat#readme
 bug-reports:    https://github.com/con-kitty/kitty-cat/issues
 build-type:     Simple
@@ -12,26 +12,22 @@ source-repository head
   type: git
   location: https://github.com/con-kitty/kitty-cat
 
-common options
-  ghc-options:
-    -- make it possible to inline almost anything
-    -fexpose-all-unfoldings
-    -- ensure unfoldings are available
-    -fno-omit-interface-pragmas
-    -Wall
-
 library
   exposed-modules:
-      Test.Plugin.ConCat.Instances
-      Test.Plugin.TotOrd
+      Kitty.Cat.Hierarchy.Kitty
+  other-modules:
+      Paths_kitty_cat_kitty_extensions
+  autogen-modules:
+      Paths_kitty_cat_kitty_extensions
+  ghc-options: -Wall
   build-depends:
     , base
-    , concat-classes
-    , concat-examples
-    , constraints
-    , kitty-cat-category
-    , kitty-cat-client
-    , kitty-cat-plugin-test
+    , bytestring
+    , ghc
+    , ghc-prim
+    , kitty-cat-duoids
+    , kitty-cat-plugin
+    , transformers
   default-language: Haskell2010
   default-extensions:
       InstanceSigs

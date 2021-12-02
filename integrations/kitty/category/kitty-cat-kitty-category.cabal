@@ -1,8 +1,8 @@
 cabal-version:  2.4
 
-name:           kitty-cat-extensions-unconcat
+name:           kitty-cat-kitty-category
 version:        0.1
-description:    Extensions to Conal's ConCat to improve plugin coverage.
+description:    Categorical classes extending Conal's ConCat
 homepage:       https://github.com/con-kitty/kitty-cat#readme
 bug-reports:    https://github.com/con-kitty/kitty-cat/issues
 build-type:     Simple
@@ -14,20 +14,17 @@ source-repository head
 
 library
   exposed-modules:
-      Kitty.Cat.Hierarchy.UnconCat
+      Kitty.Cat.Category
   other-modules:
-      Paths_kitty_cat_extensions_unconcat
+      Paths_kitty_cat_kitty_category
   autogen-modules:
-      Paths_kitty_cat_extensions_unconcat
-  ghc-options: -Wall
+      Paths_kitty_cat_kitty_category
+  ghc-options:
+    -O2
+    -Wall
   build-depends:
     , base
-    , bytestring
-    , ghc
-    , ghc-prim
-    , kitty-cat-duoids
-    , kitty-cat-plugin
-    , transformers
+    , concat-classes
   default-language: Haskell2010
   default-extensions:
       InstanceSigs

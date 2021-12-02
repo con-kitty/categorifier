@@ -69,18 +69,18 @@ packages:
   ./client/kitty-cat-client.cabal
   ./common/kitty-cat-common.cabal
   ./duoids/kitty-cat-duoids.cabal
-  ./integrations/base/plugin/kitty-cat-plugin-base.cabal
-  ./integrations/categories/extensions/kitty-cat-extensions-categories.cabal
-  ./integrations/categories/plugin/kitty-cat-plugin-categories.cabal
-  ./integrations/concat/class-plugin/kitty-cat-plugin-concat-class.cabal
-  ./integrations/concat/extensions/kitty-cat-extensions-concat.cabal
-  ./integrations/concat/extensions-test/kitty-cat-extensions-concat-test.cabal
-  ./integrations/concat/function-plugin/kitty-cat-plugin-concat-function.cabal
-  ./integrations/kitty/category/kitty-cat-category-kitty.cabal
-  ./integrations/kitty/extensions/kitty-cat-extensions-kitty.cabal
-  ./integrations/kitty/plugin/kitty-cat-plugin-kitty.cabal
-  ./integrations/unconcat/category/kitty-cat-category-unconcat.cabal
-  ./integrations/unconcat/extensions/kitty-cat-extensions-unconcat.cabal
-  ./integrations/unconcat/plugin/kitty-cat-plugin-unconcat.cabal
+  ./integrations/base/plugin/kitty-cat-base-plugin.cabal
+  ./integrations/categories/extensions/kitty-cat-categories-extensions.cabal
+  ./integrations/categories/plugin/kitty-cat-categories-plugin.cabal
+  ./integrations/concat/class-plugin/kitty-cat-concat-class-plugin.cabal
+  ./integrations/concat/extensions/kitty-cat-concat-extensions.cabal
+  ./integrations/concat/extensions-test/kitty-cat-concat-extensions-test.cabal
+  ./integrations/concat/function-plugin/kitty-cat-concat-function-plugin.cabal
+  ./integrations/kitty/category/kitty-cat-kitty-category.cabal
+  ./integrations/kitty/extensions/kitty-cat-kitty-extensions.cabal
+  ./integrations/kitty/plugin/kitty-cat-kitty-plugin.cabal
+  ./integrations/unconcat/category/kitty-cat-unconcat-category.cabal
+  ./integrations/unconcat/extensions/kitty-cat-unconcat-extensions.cabal
+  ./integrations/unconcat/plugin/kitty-cat-unconcat-plugin.cabal
   ./plugin/kitty-cat-plugin.cabal
   ./plugin-test/kitty-cat-plugin-test.cabal

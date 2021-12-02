@@ -1,8 +1,8 @@
 cabal-version:  2.4
 
-name:           kitty-cat-extensions-concat
+name:           kitty-cat-categories-extensions
 version:        0.1
-description:    Extensions to use Conal's ConCat with the plugin.
+description:    Extensions to use Kmett's Categories with the plugin.
 homepage:       https://github.com/con-kitty/kitty-cat#readme
 bug-reports:    https://github.com/con-kitty/kitty-cat/issues
 build-type:     Simple
@@ -14,11 +14,11 @@ source-repository head
 
 library
   exposed-modules:
-      Kitty.Plugin.Hierarchy.ConCat
+      Kitty.Plugin.Hierarchy.Categories
   other-modules:
-      Paths_kitty_cat_extensions_concat
+      Paths_kitty_cat_categories_extensions
   autogen-modules:
-      Paths_kitty_cat_extensions_concat
+      Paths_kitty_cat_categories_extensions
   ghc-options: -Wall
   build-depends:
     , base

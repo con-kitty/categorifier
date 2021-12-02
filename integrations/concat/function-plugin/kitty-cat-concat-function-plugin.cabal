@@ -1,8 +1,8 @@
 cabal-version:  2.4
 
-name:           kitty-cat-plugin-unconcat
+name:           kitty-cat-concat-function-plugin
 version:        0.1
-description:    Plugin using our extensions to Conal's ConCat functions.
+description:    Plugin using Conal's ConCat functions.
 homepage:       https://github.com/con-kitty/kitty-cat#readme
 bug-reports:    https://github.com/con-kitty/kitty-cat/issues
 build-type:     Simple
@@ -23,16 +23,15 @@ common options
 library
   import: options
   exposed-modules:
-      Kitty.Cat.Plugin.UnconCat
+      Kitty.Plugin.ConCat.Function
   other-modules:
-      Paths_kitty_cat_plugin_unconcat
+      Paths_kitty_cat_concat_function_plugin
   autogen-modules:
-      Paths_kitty_cat_plugin_unconcat
+      Paths_kitty_cat_concat_function_plugin
   build-depends:
     , base
     , ghc
-    , kitty-cat-extensions-concat
-    , kitty-cat-extensions-unconcat
+    , kitty-cat-concat-extensions
     , kitty-cat-plugin
   default-language: Haskell2010
   default-extensions:
@@ -54,42 +53,14 @@ library
     , DeriveTraversable
     , DerivingStrategies
 
-library unconcat-instances
-  exposed-modules:
-      Test.Cat.Categories
-  build-depends:
-    , base
-    , concat-classes
-    , kitty-cat-category-unconcat
-    , kitty-cat-extensions-concat-test
-    , kitty-cat-plugin-test
-  default-language: Haskell2010
-  default-extensions:
-      InstanceSigs
-    , ScopedTypeVariables
-    , TypeApplications
-    , FlexibleContexts
-    , FlexibleInstances
-    , FunctionalDependencies
-    , LambdaCase
-    , NoStarIsType
-    , TypeOperators
-    , BangPatterns
-    , StandaloneDeriving
-    , DeriveGeneric
-    , DeriveDataTypeable
-    , DeriveFunctor
-    , DeriveFoldable
-    , DeriveTraversable
-    , DerivingStrategies
-
-test-suite unconcat-hierarchy
+test-suite concat-function-hierarchy
   import: options
-  type: exitcode-stdio-1.0
+  type:          exitcode-stdio-1.0
   hs-source-dirs: test
-  main-is: Test/Cat/UnconCat/Main.hs
+  main-is:       Test/Plugin/ConCat/Main.hs
   ghc-options:
-    -fplugin Kitty.Cat.Plugin.UnconCat
+    -fplugin Kitty.Plugin.ConCat.Function
+    -fplugin-opt Kitty.Plugin.ConCat.Function:defer-failures
     -O0
   build-depends:
     , adjunctions
@@ -100,22 +71,21 @@ test-suite unconcat-hierarchy
     , ghc-prim
     , hedgehog
     , kitty-cat-category
-    , kitty-cat-category-unconcat
     , kitty-cat-client
-    , kitty-cat-extensions-concat-test
+    , kitty-cat-concat-extensions-test
+    , kitty-cat-concat-function-plugin
     , kitty-cat-plugin
-    , kitty-cat-plugin-unconcat
     , kitty-cat-plugin-test
     , template-haskell
-    , unconcat-instances
 
-test-suite unconcat-hierarchy-optimized
+test-suite concat-function-hierarchy-optimized
   import: options
-  type: exitcode-stdio-1.0
+  type:          exitcode-stdio-1.0
   hs-source-dirs: test
-  main-is: Test/Cat/UnconCat/Main.hs
+  main-is:       Test/Plugin/ConCat/Main.hs
   ghc-options:
-    -fplugin Kitty.Cat.Plugin.UnconCat
+    -fplugin Kitty.Plugin.ConCat.Function
+    -fplugin-opt Kitty.Plugin.ConCat.Function:defer-failures
     -O2
     -fignore-interface-pragmas
   build-depends:
@@ -127,11 +97,9 @@ test-suite unconcat-hierarchy-optimized
     , ghc-prim
     , hedgehog
     , kitty-cat-category
-    , kitty-cat-category-unconcat
     , kitty-cat-client
-    , kitty-cat-extensions-concat-test
+    , kitty-cat-concat-extensions-test
     , kitty-cat-plugin
-    , kitty-cat-plugin-unconcat
+    , kitty-cat-concat-function-plugin
     , kitty-cat-plugin-test
     , template-haskell
-    , unconcat-instances
