@@ -63,24 +63,24 @@ constraints:
   , vec >=0.3 && <0.5
   , yaya >=0.3.2 && <0.4
 
+-- __TODO__: Replace multiple plugin packages with dynamic loading
 packages:
   ./category/kitty-cat-category.cabal
-  ./category-kitty/kitty-cat-category-kitty.cabal
-  ./category-unconcat/kitty-cat-category-unconcat.cabal
   ./client/kitty-cat-client.cabal
   ./common/kitty-cat-common.cabal
   ./duoids/kitty-cat-duoids.cabal
-  ./extensions-categories/kitty-cat-extensions-categories.cabal
-  ./extensions-concat/kitty-cat-extensions-concat.cabal
-  ./extensions-concat-test/kitty-cat-extensions-concat-test.cabal
-  ./extensions-kitty/kitty-cat-extensions-kitty.cabal
-  ./extensions-unconcat/kitty-cat-extensions-unconcat.cabal
+  ./integrations/base/plugin/kitty-cat-plugin-base.cabal
+  ./integrations/categories/extensions/kitty-cat-extensions-categories.cabal
+  ./integrations/categories/plugin/kitty-cat-plugin-categories.cabal
+  ./integrations/concat/class-plugin/kitty-cat-plugin-concat-class.cabal
+  ./integrations/concat/extensions/kitty-cat-extensions-concat.cabal
+  ./integrations/concat/extensions-test/kitty-cat-extensions-concat-test.cabal
+  ./integrations/concat/function-plugin/kitty-cat-plugin-concat-function.cabal
+  ./integrations/kitty/category/kitty-cat-category-kitty.cabal
+  ./integrations/kitty/extensions/kitty-cat-extensions-kitty.cabal
+  ./integrations/kitty/plugin/kitty-cat-plugin-kitty.cabal
+  ./integrations/unconcat/category/kitty-cat-category-unconcat.cabal
+  ./integrations/unconcat/extensions/kitty-cat-extensions-unconcat.cabal
+  ./integrations/unconcat/plugin/kitty-cat-plugin-unconcat.cabal
   ./plugin/kitty-cat-plugin.cabal
-  -- __TODO__: Replace multiple plugins with dynamic loading
-  ./plugin-base/kitty-cat-plugin-base.cabal
-  ./plugin-categories/kitty-cat-plugin-categories.cabal
-  ./plugin-concat-class/kitty-cat-plugin-concat-class.cabal
-  ./plugin-concat-function/kitty-cat-plugin-concat-function.cabal
-  ./plugin-kitty/kitty-cat-plugin-kitty.cabal
   ./plugin-test/kitty-cat-plugin-test.cabal
-  ./plugin-unconcat/kitty-cat-plugin-unconcat.cabal
