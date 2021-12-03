@@ -18,8 +18,10 @@ import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Except (ExceptT (..), runExceptT, throwE)
 import Control.Monad.Trans.RWS.Strict (RWST (..))
 import Data.Bifunctor (Bifunctor (..))
+import Data.Foldable (toList)
 import Data.List (findIndex)
-import Data.List.NonEmpty.Extra (NonEmpty, nubOrd)
+import Data.List.NonEmpty.Extra (NonEmpty, nonEmpty, nubOrd)
+import qualified Data.List.NonEmpty as NE
 import Data.Monoid (Ap (..))
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -31,13 +33,13 @@ import qualified ForeignCall as Plugins
 import qualified GHC.CString
 import qualified GhcPlugins as Plugins
 import Kitty.Common.IO.Exception (SomeException, handle, throwIOAsException)
-import Kitty.Duoidal (Parallel (..), foldMapD, (=<\<))
+import Kitty.Duoidal (Parallel (..), traverseD, (=<\<))
 import qualified Kitty.Plugin.Categorize
 import Kitty.Plugin.CommandLineOptions (OptionGroup (..))
 import qualified Kitty.Plugin.Core.BuildDictionary as BuildDictionary
 import Kitty.Plugin.Core.Categorize (categorize)
 import qualified Kitty.Plugin.Core.ErrorHandling as Errors
-import Kitty.Plugin.Core.MakerMap (MakerMapFun)
+import Kitty.Plugin.Core.MakerMap (MakerMapFun, baseMakerMapFun, combineMakerMapFuns)
 import Kitty.Plugin.Core.Makers (Makers, haskMakers)
 import qualified Kitty.Plugin.Core.PrimOp as PrimOp
 import Kitty.Plugin.Core.Types
@@ -45,12 +47,13 @@ import Kitty.Plugin.Core.Types
     CategoricalFailure (..),
     CategoryStack,
     CategoryState (..),
+    Lookup,
+    MissingSymbol (..),
+    neverAutoInterpret,
   )
 import Kitty.Plugin.Hierarchy
   ( First (..),
     Hierarchy,
-    Lookup,
-    MissingSymbol (..),
     baseHierarchy,
     concatOps,
     findId,
@@ -86,13 +89,10 @@ conversionFunction = 'Kitty.Plugin.Categorize.expression
 --   affect our rules. The rules can be removed any time after the simplifier, but they /must/ be
 --   removed.
 install ::
-  Lookup AutoInterpreter ->
-  MakerMapFun ->
-  (Makers -> [(Plugins.CLabelString, (PrimOp.Boxer, [Plugins.Type], Plugins.Type))]) ->
   Map OptionGroup [Text] ->
   [Plugins.CoreToDo] ->
   Plugins.CoreM [Plugins.CoreToDo]
-install tryAutoInterpret makerMapFun additionalBoxers opts todos = do
+install opts todos = do
   dflags <- Plugins.getDynFlags
   convert <-
     either (throwIOAsException $ prettyMissingSymbols dflags) pure <=< runExceptT . getParallel $
@@ -101,7 +101,7 @@ install tryAutoInterpret makerMapFun additionalBoxers opts todos = do
       categorizeTodos =
         [ presimplifier convert dflags,
           Plugins.CoreDoPluginPass ("add " <> Plugins.getOccString convert <> " rules") $
-            addCategorizeRules dflags convert opts tryAutoInterpret makerMapFun additionalBoxers
+            addCategorizeRules dflags convert opts
         ]
       removeCategorize =
         Plugins.CoreDoPluginPass ("remove " <> Plugins.getOccString convert <> " rules") $
@@ -194,13 +194,10 @@ addCategorizeRules ::
   Plugins.DynFlags ->
   Plugins.Id ->
   Map OptionGroup [Text] ->
-  Lookup AutoInterpreter ->
-  MakerMapFun ->
-  (Makers -> [(Plugins.CLabelString, (PrimOp.Boxer, [Plugins.Type], Plugins.Type))]) ->
   Plugins.CorePluginPass
-addCategorizeRules dflags convert opts tryAutoInterpret makerMapFun additionalBoxers guts =
+addCategorizeRules dflags convert opts guts =
   either (throwIOAsException $ prettyMissingSymbols dflags) (\r -> pure (mapModGutsRules (r <>) guts))
-    =<< categorizeRules convert opts tryAutoInterpret makerMapFun additionalBoxers guts
+    =<< categorizeRules convert opts guts
 
 -- | Given the arguments for a `Plugins.BuiltinRule`, this builds a list of rules that try to handle
 --   partial application of the original rule. One caveat is that the provided `Plugins.RuleFun` has
@@ -316,16 +313,25 @@ nameFromText =
     . bimap (Text.unpack . Text.dropWhileEnd (== '.')) Text.unpack
     . Text.breakOnEnd "."
 
+additionalBoxersTy :: Lookup Plugins.Type
+additionalBoxersTy = Plugins.exprType . Plugins.Var <$> idFromTHName 'PrimOp.noAdditionalBoxers
+
+autoInterpreterTy :: Lookup Plugins.Type
+autoInterpreterTy = Plugins.exprType . Plugins.Var <$> idFromTHName 'neverAutoInterpret
+
+hierarchyTy :: Lookup Plugins.Type
+hierarchyTy = Plugins.exprType . Plugins.Var <$> idFromTHName 'baseHierarchy
+
+makerMapTy :: Lookup Plugins.Type
+makerMapTy = Plugins.exprType . Plugins.Var <$> idFromTHName 'baseMakerMapFun
+
 -- | Wiring our function into a `Plugins.BuiltInRule` for the plugin system.
 categorizeRules ::
   Plugins.Id ->
   Map OptionGroup [Text] ->
-  Lookup AutoInterpreter ->
-  MakerMapFun ->
-  (Makers -> [(Plugins.CLabelString, (PrimOp.Boxer, [Plugins.Type], Plugins.Type))]) ->
   Plugins.ModGuts ->
   Plugins.CoreM (Either (NonEmpty MissingSymbol) [Plugins.CoreRule])
-categorizeRules convert opts tryAutoInterpret makerMapFun additionalBoxers guts =
+categorizeRules convert opts guts =
   runExceptT $ do
     -- __TODO__: This @do@ block currently has monadic semantics, but it should have duoidal
     --           ones. It's a bit complicated to get it to applicative with manual duoidal handling
@@ -334,28 +340,66 @@ categorizeRules convert opts tryAutoInterpret makerMapFun additionalBoxers guts 
     apply <- getParallel $ idFromTHName '($)
     throw <- getParallel $ idFromTHName 'Prelude.error
     str <- getParallel $ idFromTHName 'GHC.CString.unpackCStringUtf8#
-    hierarchyTy <- getParallel $ Plugins.exprType . Plugins.Var <$> idFromTHName 'baseHierarchy
+    additionalBoxersTy' <- getParallel additionalBoxersTy
+    autoInterpreterTy' <- getParallel autoInterpreterTy
+    hierarchyTy' <- getParallel hierarchyTy
+    makerMapTy' <- getParallel makerMapTy
     hask <- getParallel concatOps
-    let hierarchyOptions =
-          getParallel . maybe (pure <$> nameFromTHName 'baseHierarchy) (traverse nameFromText) $
-            Map.lookup HierarchyOptions opts
+    let loadOptions def =
+          getParallel
+            . maybe (pure <$> nameFromTHName def) (traverse nameFromText)
+            . (nonEmpty <=< flip Map.lookup opts)
+        additionalBoxersOptions = loadOptions 'PrimOp.noAdditionalBoxers AdditionalBoxersOptions
+        autoInterpreterOptions = loadOptions 'neverAutoInterpret AutoInterpreterOptions
+        hierarchyOptions = loadOptions 'baseHierarchy HierarchyOptions
+        makerMapOptions = loadOptions 'baseMakerMapFun MakerMapOptions
     hscEnv <- lift Plugins.getHscEnv
-    let handleOptions ::
-          [Plugins.Name] -> ExceptT (NonEmpty MissingSymbol) Plugins.CoreM (Hierarchy CategoryStack)
-        handleOptions =
-          fmap getFirst
-            . foldMapD
+    let handleOptions ty =
+          traverseD
+            ( \opt ->
+                maybe (throwE . pure $ IncorrectType opt ty) getParallel
+                  <=< Plugins.liftIO $ getDynamicValueSafely hscEnv opt ty
+            )
+        handleAdditionalBoxers ::
+          NonEmpty Plugins.Name ->
+          ExceptT
+            (NonEmpty MissingSymbol)
+            Plugins.CoreM
+            (Makers -> [(Plugins.CLabelString, (PrimOp.Boxer, [Plugins.Type], Plugins.Type))])
+        handleAdditionalBoxers =
+          fmap (foldr1 (\f g a -> f a <> g a))
+            . traverseD
               ( \opt ->
-                  maybe (throwE . pure $ IncorrectType opt hierarchyTy) (fmap First . getParallel)
-                    <=< Plugins.liftIO $ getDynamicValueSafely hscEnv opt hierarchyTy
+                  maybe (throwE . pure $ IncorrectType opt additionalBoxersTy') pure
+                    <=< Plugins.liftIO $ getDynamicValueSafely hscEnv opt additionalBoxersTy'
               )
-    let hierarchy = handleOptions =<\< hierarchyOptions
+        handleAutoInterpreter ::
+          NonEmpty Plugins.Name -> ExceptT (NonEmpty MissingSymbol) Plugins.CoreM AutoInterpreter
+        handleAutoInterpreter = fmap NE.last . handleOptions autoInterpreterTy'
+        handleHierarchy ::
+          NonEmpty Plugins.Name -> ExceptT (NonEmpty MissingSymbol) Plugins.CoreM (Hierarchy CategoryStack)
+        handleHierarchy = fmap (getFirst . foldMap First) . handleOptions hierarchyTy'
+        handleMakerMap ::
+          NonEmpty Plugins.Name -> ExceptT (NonEmpty MissingSymbol) Plugins.CoreM MakerMapFun
+        handleMakerMap =
+          fmap (combineMakerMapFuns . toList)
+            . traverseD
+              ( \opt ->
+                  maybe (throwE . pure $ IncorrectType opt makerMapTy') pure
+                    <=< Plugins.liftIO $ getDynamicValueSafely hscEnv opt makerMapTy'
+              )
+    let additionalBoxers' = handleAdditionalBoxers =<\< additionalBoxersOptions
+        autoInterpreter = handleAutoInterpreter =<\< autoInterpreterOptions
+        hierarchy = handleHierarchy =<\< hierarchyOptions
+        makerMap = handleMakerMap =<\< makerMapOptions
+    additionalBoxers <- additionalBoxers'
+    tryAutoInterpret <- autoInterpreter
     h <- hierarchy
     bh <- getParallel $ combineHierarchies [baseHierarchy, Parallel hierarchy]
+    makerMapFun <- makerMap
     baseIdentifiers <- getParallel getBaseIdentifiers
     uniqS <- lift Plugins.getUniqueSupplyM
     hierarchyOptions' <- hierarchyOptions
-    tai <- getParallel tryAutoInterpret
     pure $
       partialAppRules apply (Plugins.varName convert) 5 $
         \dflags inScope ident exprs ->
@@ -382,7 +426,7 @@ categorizeRules convert opts tryAutoInterpret makerMapFun additionalBoxers guts 
                             baseIdentifiers
                             baseArrowMakers
                             (haskMakers dflags inScope guts hscEnv hask h cat)
-                            tai
+                            tryAutoInterpret
                             makerMapFun
                             additionalBoxers
                       )
@@ -395,7 +439,7 @@ categorizeRules convert opts tryAutoInterpret makerMapFun additionalBoxers guts 
 --   errors or anything, so we need to process everything before we return. This does the "safe"
 --   part of that, so all that's left is to perform the `IO` as late as possible.
 runStack ::
-  [Plugins.Name] ->
+  NonEmpty Plugins.Name ->
   Maybe Plugins.CoreExpr ->
   Plugins.DynFlags ->
   Plugins.UniqSupply ->
@@ -438,7 +482,7 @@ runStack hierarchyOptions defer dflags uniqS calls f =
 --   haven't failed in `IO`).
 applyCategorize ::
   Plugins.Id ->
-  [Plugins.Name] ->
+  NonEmpty Plugins.Name ->
   Maybe (Plugins.Type -> Plugins.Type -> Plugins.Type -> Plugins.CoreExpr -> Plugins.CoreExpr) ->
   Plugins.DynFlags ->
   Plugins.UniqSupply ->

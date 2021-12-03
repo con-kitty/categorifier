@@ -13,8 +13,11 @@ module Kitty.Plugin.Core.Types
     DictCacheKey,
     DictCacheEntry (..),
     CategoricalFailure (..),
+    Lookup,
+    MissingSymbol (..),
     WithIdInfo (..),
     DictionaryFailure (..),
+    neverAutoInterpret,
     writerT,
   )
 where
@@ -22,10 +25,12 @@ where
 import qualified Bag
 import Control.Monad.Trans.Except (ExceptT (..))
 import Control.Monad.Trans.RWS.Strict (RWST (..))
+import CoreMonad (CoreM)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import ErrUtils (ErrorMessages, WarningMessages)
 import qualified GhcPlugins as Plugins
+import Kitty.Duoidal (Parallel)
 
 -- | Need this instance to use a `Bag.Bag` as the output of @RWST@.
 instance Semigroup (Bag.Bag a) where
@@ -52,6 +57,20 @@ data CategoryState = CategoryState
     csDictCache :: DictCache
   }
 
+data MissingSymbol
+  = IncorrectType Plugins.Name Plugins.Type
+  | MissingDataCon Plugins.ModuleName String
+  | MissingId Plugins.ModuleName String
+  | MissingName Plugins.ModuleName String
+  | MissingTyCon Plugins.ModuleName String
+
+-- | This type lets us perform everything in `CoreM` while tracking failures properly. It uses
+--  `Parallel` explicitly rather than relying on the `Kitty.Plugin.Duoid` operations because we want
+--   to take advantage of @do@ notation for building up our records.
+type Lookup = Parallel (ExceptT (NonEmpty MissingSymbol) CoreM)
+
+-- | A mechanism to bypass the plugin, providing a mapping @(a -> b) -> cat a b@ for any special
+--   cases.
 type AutoInterpreter =
   (Plugins.Type -> DictionaryStack Plugins.CoreExpr) ->
   Plugins.Type ->
@@ -59,6 +78,10 @@ type AutoInterpreter =
   Plugins.Id ->
   [Plugins.CoreExpr] ->
   CategoryStack (Maybe Plugins.CoreExpr)
+
+-- | What to use for the `AutoInterpreter` if you have no need to bypass the plugin.
+neverAutoInterpret :: Lookup AutoInterpreter
+neverAutoInterpret = pure $ \_ _ _ _ _ -> pure Nothing
 
 type DictCache = Map DictCacheKey DictCacheEntry
 

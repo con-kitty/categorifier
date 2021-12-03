@@ -78,7 +78,8 @@ import qualified Unsafe.Coerce
 -- returns @Nothing@, the name will be inlined.
 type MakerMap = Map TH.Name ([Plugins.CoreExpr] -> Maybe (CategoryStack Plugins.CoreExpr))
 
--- | A function for building `MakerMap`.
+-- | Extending support in the source language ... if you have operations that should map more
+--   directly than simply being inlined.
 type MakerMapFun =
   Plugins.DynFlags ->
   Makers ->

@@ -9,15 +9,14 @@ module Kitty.Cat.Hierarchy.Kitty
 where
 
 import qualified GhcPlugins as Plugins
+import Kitty.Plugin.Core.Types (CategoryStack, Lookup)
 import Kitty.Plugin.Hierarchy
   ( Hierarchy (..),
-    Lookup,
     emptyHierarchy,
     identifier,
     mkMethodApps,
     mkMethodApps',
   )
-import Kitty.Plugin.Core.Types (CategoryStack)
 
 -- | Some locally-defined classes, mostly to add missing pieces to ConCat.
 hierarchy :: Lookup (Hierarchy CategoryStack)

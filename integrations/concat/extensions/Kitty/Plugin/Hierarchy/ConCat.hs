@@ -11,10 +11,9 @@ module Kitty.Plugin.Hierarchy.ConCat
 where
 
 import qualified GhcPlugins as Plugins
-import Kitty.Plugin.Core.Types (CategoryStack)
+import Kitty.Plugin.Core.Types (CategoryStack, Lookup)
 import Kitty.Plugin.Hierarchy
   ( Hierarchy (..),
-    Lookup,
     findTyCon,
     identifier,
     mkFunctionApps,

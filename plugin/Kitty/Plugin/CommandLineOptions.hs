@@ -22,18 +22,24 @@ import qualified GhcPlugins
 
 -- | An enumeration of the various command-line option groups the plugin supports.
 data OptionGroup
-  = BenchmarkOption
+  = AdditionalBoxersOptions
+  | AutoInterpreterOptions
+  | BenchmarkOption
   | DebugOption
   | DeferFailuresOption
   | HierarchyOptions
+  | MakerMapOptions
   deriving (Eq, Ord)
 
 groupFromText :: Text -> Maybe OptionGroup
 groupFromText = \case
+  "additional-boxers" -> pure AdditionalBoxersOptions
+  "autointerpreter" -> pure AutoInterpreterOptions
   "benchmark" -> pure BenchmarkOption
   "debug" -> pure DebugOption
   "defer-failures" -> pure DeferFailuresOption
   "hierarchy" -> pure HierarchyOptions
+  "maker-map" -> pure MakerMapOptions
   _ -> Nothing
 
 -- | We expect all options to be in the format `<group>:<value>`, and we (often) allow duplicate

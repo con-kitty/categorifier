@@ -8,15 +8,14 @@ module Kitty.Cat.Hierarchy.UnconCat
   )
 where
 
+import Kitty.Plugin.Core.Types (CategoryStack, Lookup)
 import Kitty.Plugin.Hierarchy
   ( Hierarchy (..),
-    Lookup,
     emptyHierarchy,
     identifier,
     mkFunctionApps,
     mkMethodApps,
   )
-import Kitty.Plugin.Core.Types (CategoryStack)
 
 hierarchy :: Lookup (Hierarchy CategoryStack)
 hierarchy = do

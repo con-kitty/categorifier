@@ -13,8 +13,6 @@ module Kitty.Plugin.Hierarchy
     getLast,
     HaskOps (..),
     Hierarchy (..),
-    Lookup,
-    MissingSymbol (..),
 
     -- * concrete hierarchies
     baseHierarchy,
@@ -63,7 +61,6 @@ import Control.Monad.Trans.Except (ExceptT (..))
 import CoreMonad (CoreM, getHscEnv, liftIO)
 import Data.Bits (FiniteBits (..))
 import Data.Functor.Identity (Identity (..))
-import Data.List.NonEmpty (NonEmpty)
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Dual (..))
 import DynamicLoading (lookupRdrNameInModuleForPlugins)
@@ -72,7 +69,7 @@ import GhcPlugins (CoreExpr, Type)
 import qualified GhcPlugins as Plugins
 import HscTypes (lookupDataCon, lookupId, lookupTyCon)
 import Kitty.Duoidal (Parallel (..))
-import Kitty.Plugin.Core.Types (CategoryStack)
+import Kitty.Plugin.Core.Types (CategoryStack, Lookup, MissingSymbol (..))
 import Prelude hiding (mod)
 import qualified PrimOp
 import qualified Unique
@@ -87,11 +84,6 @@ properFunTy =
 --   provided types.
 funTy :: Type -> Type -> Type
 funTy a b = Plugins.mkTyConApp Plugins.funTyCon [Plugins.typeKind a, Plugins.typeKind b, a, b]
-
--- | This type lets us perform everything in `CoreM` while tracking failures properly. It uses
---  `Parallel` explicitly rather than relying on the `Kitty.Plugin.Duoid` operations because we want
---   to take advantage of @do@ notation for building up our records.
-type Lookup = Parallel (ExceptT (NonEmpty MissingSymbol) CoreM)
 
 -- | These are operations that we need to use in __Hask__, rather than in the target category.
 data HaskOps f = HaskOps
@@ -616,13 +608,6 @@ emptyHierarchy =
       traverseV = Nothing,
       uncurryV = Nothing
     }
-
-data MissingSymbol
-  = IncorrectType Plugins.Name Plugins.Type
-  | MissingDataCon ModuleName String
-  | MissingId ModuleName String
-  | MissingName ModuleName String
-  | MissingTyCon ModuleName String
 
 lookupName :: ModuleName -> (String -> Plugins.OccName) -> String -> CoreM (Maybe Plugins.Name)
 lookupName modu mkOcc str = do
