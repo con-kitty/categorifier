@@ -977,7 +977,13 @@ isHeadVarId e =
     (Plugins.Var ident, [Plugins.Type _cat, _category, Plugins.Type _a]) ->
       case splitNameString $ Plugins.getName ident of
         (Just modu, "id") ->
-          modu `elem` ["Control.Category", "Haskerwaul.Semigroupoid", "Kitty.UnconCat"]
+          modu
+            `elem`
+              [ "ConCat.Category",
+                "Control.Category",
+                "Haskerwaul.Semigroupoid",
+                "Kitty.Plugin.UnconCat"
+              ]
         (_, _) -> False
     (_, _) -> False
 

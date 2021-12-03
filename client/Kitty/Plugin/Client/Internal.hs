@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
--- | This is separate from "Kitty.Cat.Client" because we can't define Template Haskell and use it in
+-- | This is separate from "Kitty.Plugin.Client" because we can't define Template Haskell and use it in
 --   the same module. This module provides `deriveHasRep`, but it's private because importing it
 --   would mean you miss the instances.
 module Kitty.Plugin.Client.Internal
@@ -39,7 +39,7 @@ data DeriveCallFailure
   | MisquotedName
 
 -- | Defines a `HasRep` instance, needed for pretty much any type that ends up passing through the
---  "Kitty.Cat" plugin.
+--  "Kitty.Plugin" plugin.
 --
 --   Almost any `HasRep` instance can be created with this. The one exception is GADTs that have
 --  "overlapping" constructor types. That is, a type like

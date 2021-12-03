@@ -1,42 +1,41 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
--- To avoid turning @if then else@ into `ifThenElse`.
-{-# LANGUAGE NoRebindableSyntax #-}
 
 module Main
   ( main,
   )
 where
 
+import Control.Arrow (Arrow (..), ArrowChoice (..))
+import Data.Bool (bool)
 import Data.Functor.Identity (Identity (..))
 import Data.Semigroup (Sum (..))
-import Data.String (String)
+import GHC.Int (Int16, Int32, Int64, Int8)
+import GHC.Word (Word16, Word32, Word64, Word8)
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
-import P
-import System.Exit (exitFailure, exitSuccess)
-import System.IO (IO)
-import Test.Data (One (..), Pair (..))
-import Test.HList (HList1 (..))
-import Test.Term (Term)
-import Test.Tests
+import Kitty.Plugin.Test.UnconCat.Instances (Hask (..), Term)
+import Kitty.Plugin.Test.Data (One (..), Pair (..))
+import Kitty.Plugin.Test.HList (HList1 (..))
+import Kitty.Plugin.Test.Tests
   ( TestCases (..),
     TestCategory (..),
     TestStrategy (..),
     defaultTestTerms,
+    genFloating,
     mkTestTerms,
   )
+import System.Exit (exitFailure, exitSuccess)
 
--- For @NoRebindableSyntax@
-{-# ANN module ("HLint: ignore Avoid restricted extensions" :: String) #-}
-
--- The first stage of testing is just that the transformation happens at all (and doesn't fail at
--- build time). That only requires that the call to `Kitty.Plugin.Categorize.expression` happens in
--- a module imported somewhere in this binary. Referring to them in `main` is mostly just to not
--- have linters complain that we have an unused import.
-
-mkTestTerms defaultTestTerms [TestCategory ''Term [t|Term|] "term" CheckCompileOnly]
+mkTestTerms
+  defaultTestTerms
+  --             name     type         prefix       strategy
+  [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
+    TestCategory ''(->) [t|(->)|] "plainArrow" (ComputeFromInput [|id|]),
+    TestCategory ''Hask [t|Hask|] "hask" (ComputeFromInput [|runHask|])
+  ]
   -- core
   . HCons1 (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))
   . HCons1 (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))
@@ -71,12 +70,13 @@ mkTestTerms defaultTestTerms [TestCategory ''Term [t|Term|] "term" CheckCompileO
             ]
         )
     )
-  . HCons1 (TestCases (const []))
+  . HCons1 (TestCases (const [])) -- no support for fixed-points in ConCat hierarchy
   . HCons1
     ( TestCases
         ( const
             [ ( [t|Word8|],
-                pure ([|Gen.choice [const <$> Gen.enumBounded, pure id]|], [|const "<function>"|])
+                pure
+                  ([|Gen.choice [const <$> Gen.enumBounded, pure id]|], [|const "<function>"|])
               )
             ]
         )
@@ -94,7 +94,9 @@ mkTestTerms defaultTestTerms [TestCategory ''Term [t|Term|] "term" CheckCompileO
   -- plugin
   . HCons1
     ( TestCases
-        (const [([t|Word8|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+        ( const
+            [([t|Word8|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
     )
   . HCons1
     ( TestCases
@@ -125,7 +127,9 @@ mkTestTerms defaultTestTerms [TestCategory ''Term [t|Term|] "term" CheckCompileO
         ( const
             [ ( ([t|Word8|], [t|Word8|], [t|Word8|]),
                 pure
-                  ( [|(,) <$> Gen.enumBounded <*> ((,) <$> Gen.enumBounded <*> Gen.enumBounded)|],
+                  ( [|
+                      (,) <$> Gen.enumBounded <*> ((,) <$> Gen.enumBounded <*> Gen.enumBounded)
+                      |],
                     [|show|]
                   )
               )
@@ -153,13 +157,16 @@ mkTestTerms defaultTestTerms [TestCategory ''Term [t|Term|] "term" CheckCompileO
             ]
         )
     )
-  . HCons1 (TestCases (const [(([t|Int64|], [t|Word8|]), pure ([|Gen.enumBounded|], [|show|]))]))
+  . HCons1
+    (TestCases (const [(([t|Int64|], [t|Word8|]), pure ([|Gen.enumBounded|], [|show|]))]))
   . HCons1
     ( TestCases
         ( const
             [ ( ([t|Int64|], [t|Word8|]),
                 pure
-                  ([|Gen.choice [Left <$> Gen.enumBounded, Right <$> Gen.enumBounded]|], [|show|])
+                  ( [|Gen.choice [Left <$> Gen.enumBounded, Right <$> Gen.enumBounded]|],
+                    [|show|]
+                  )
               )
             ]
         )
@@ -170,7 +177,9 @@ mkTestTerms defaultTestTerms [TestCategory ''Term [t|Term|] "term" CheckCompileO
         ( const
             [ ( ([t|Int64|], [t|Word8|]),
                 pure
-                  ([|Gen.choice [Left <$> Gen.enumBounded, Right <$> Gen.enumBounded]|], [|show|])
+                  ( [|Gen.choice [Left <$> Gen.enumBounded, Right <$> Gen.enumBounded]|],
+                    [|show|]
+                  )
               )
             ]
         )
@@ -180,8 +189,57 @@ mkTestTerms defaultTestTerms [TestCategory ''Term [t|Term|] "term" CheckCompileO
   . HCons1
     ( TestCases
         ( const
-            [ ( [t|Double|],
-                pure ([|(,,) <$> Gen.enumBounded <*> genFloating <*> genFloating|], [|show|])
+            [ ( [t|Bool|],
+                pure
+                  ( [|(,,) <$> Gen.bool <*> Gen.bool <*> Gen.bool|],
+                    [|show|]
+                  )
+              ),
+              ( [t|Word8|],
+                pure
+                  ( [|(,,) <$> Gen.enumBounded <*> Gen.enumBounded <*> Gen.bool|],
+                    [|show|]
+                  )
+              ),
+              ( [t|Word16|],
+                pure
+                  ( [|(,,) <$> Gen.enumBounded <*> Gen.enumBounded <*> Gen.bool|],
+                    [|show|]
+                  )
+              ),
+              ( [t|Word32|],
+                pure
+                  ( [|(,,) <$> Gen.enumBounded <*> Gen.enumBounded <*> Gen.bool|],
+                    [|show|]
+                  )
+              ),
+              ( [t|Word64|],
+                pure
+                  ( [|
+                      (,,) <$> Gen.integral Range.linearBounded
+                        <*> Gen.integral Range.linearBounded
+                        <*> Gen.bool
+                      |],
+                    [|show|]
+                  )
+              ),
+              ( [t|Int8|],
+                pure ([|(,,) <$> Gen.enumBounded <*> Gen.enumBounded <*> Gen.bool|], [|show|])
+              ),
+              ( [t|Int16|],
+                pure ([|(,,) <$> Gen.enumBounded <*> Gen.enumBounded <*> Gen.bool|], [|show|])
+              ),
+              ( [t|Int32|],
+                pure ([|(,,) <$> Gen.enumBounded <*> Gen.enumBounded <*> Gen.bool|], [|show|])
+              ),
+              ( [t|Int64|],
+                pure ([|(,,) <$> Gen.enumBounded <*> Gen.enumBounded <*> Gen.bool|], [|show|])
+              ),
+              ( [t|Float|],
+                pure ([|(,,) <$> genFloating <*> genFloating <*> Gen.bool|], [|show|])
+              ),
+              ( [t|Double|],
+                pure ([|(,,) <$> genFloating <*> genFloating <*> Gen.bool|], [|show|])
               )
             ]
         )
@@ -262,7 +320,9 @@ mkTestTerms defaultTestTerms [TestCategory ''Term [t|Term|] "term" CheckCompileO
         ( const
             [ ( [t|Word8|],
                 pure
-                  ([|(,) <$> Gen.enumBounded <*> Gen.integral (Range.linear 1 maxBound)|], [|show|])
+                  ( [|(,) <$> Gen.enumBounded <*> Gen.integral (Range.linear 1 maxBound)|],
+                    [|show|]
+                  )
               )
             ]
         )
@@ -272,7 +332,9 @@ mkTestTerms defaultTestTerms [TestCategory ''Term [t|Term|] "term" CheckCompileO
         ( const
             [ ( [t|Word8|],
                 pure
-                  ([|(,) <$> Gen.enumBounded <*> Gen.integral (Range.linear 1 maxBound)|], [|show|])
+                  ( [|(,) <$> Gen.enumBounded <*> Gen.integral (Range.linear 1 maxBound)|],
+                    [|show|]
+                  )
               )
             ]
         )
@@ -287,7 +349,7 @@ mkTestTerms defaultTestTerms [TestCategory ''Term [t|Term|] "term" CheckCompileO
   . HCons1 (TestCases (const [])) -- no support for `abs` in ConCat
   . HCons1 (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HCons1 (TestCases (const [])) -- no support for `signum` in ConCat
-  . HCons1 (TestCases (const [])) -- ConCat only supports `^` for `Int`
+  . HCons1 (TestCases (const [])) -- ConCat only supports `Int` for `^`
   . HCons1 (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HCons1
     ( TestCases
@@ -319,7 +381,15 @@ mkTestTerms defaultTestTerms [TestCategory ''Term [t|Term|] "term" CheckCompileO
   . HCons1 (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HCons1
     ( TestCases
-        (const [([t|Word8|], pure ([|Gen.string Range.linearBounded Gen.unicodeAll|], [|show|]))])
+        ( \arrow ->
+            if arrow `elem` [''(->), ''Hask]
+              then [] -- we expect bottomC to raise an exception in these categories
+              else
+                [ ( [t|Word8|],
+                    pure ([|Gen.string Range.linearBounded Gen.unicodeAll|], [|show|])
+                  )
+                ]
+        )
     )
   . HCons1 (TestCases (const [(([t|Int64|], [t|Word8|]), pure ([|Gen.enumBounded|], [|show|]))]))
   . HCons1 (TestCases (const [(([t|Int64|], [t|Word8|]), pure ([|Gen.enumBounded|], [|show|]))]))
@@ -405,7 +475,10 @@ mkTestTerms defaultTestTerms [TestCategory ''Term [t|Term|] "term" CheckCompileO
   . HCons1
     ( TestCases
         ( const
-            [([t|Word8|], pure ([|Gen.list (Range.exponential 1 1024) Gen.enumBounded|], [|show|]))]
+            [ ( [t|Word8|],
+                pure ([|Gen.list (Range.exponential 1 1024) Gen.enumBounded|], [|show|])
+              )
+            ]
         )
     )
   . HCons1 (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))
@@ -456,11 +529,11 @@ mkTestTerms defaultTestTerms [TestCategory ''Term [t|Term|] "term" CheckCompileO
             ]
         )
     )
-  . HCons1 (TestCases (const [])) -- only Hask and C.Cat have TraversableCat instances
-  . HCons1 (TestCases (const [])) -- only Hask and C.Cat have TraversableCat instances
+  . HCons1 (TestCases (const [])) -- no support for `sequenceA` in ConCat
+  . HCons1 (TestCases (const [])) -- no support for `traverse` in ConCat
   . HCons1 (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
-  . HCons1 (TestCases (const []))
-  . HCons1 (TestCases (const []))
+  . HCons1 (TestCases (const [])) -- can only work with specialization
+  . HCons1 (TestCases (const [])) -- can only work with specialization
   $ HNil1
 
 main :: IO ()

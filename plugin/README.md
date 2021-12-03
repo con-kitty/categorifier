@@ -9,9 +9,9 @@ directly, as well as ones that are depended on (transitively) by the ones that u
 
 ### targets you want to use `categorize` in
 
-- enable the plugin with `-fplugin=Kitty.Cat`,
+- enable the plugin with `-fplugin=Kitty.Plugin`,
 - ensure inlining is available with `-fno-ignore-interface-pragmas` (implied by `-O` or `-O2`), and
-- import `Kitty.Cat.Convert` to make `categorize` available (you must import the _entire_ module,
+- import `Kitty.Plugin.Convert` to make `categorize` available (you must import the _entire_ module,
   but it may be qualified).
 
 ### targets you depend on
@@ -27,7 +27,7 @@ directly, as well as ones that are depended on (transitively) by the ones that u
 
 - define instances for your target category using your preferred type class hierarchy (the default
   is `ConCat.Category`)
-- define `Kitty.Cat.HasRep` instances for any types that you use in a converted function (the plugin
+- define `Kitty.Plugin.HasRep` instances for any types that you use in a converted function (the plugin
   will tell you if you are missing any when you try to convert)
 
 ### fine-tuning inlining sizes
@@ -52,7 +52,7 @@ which case, you can bump `-fsimpl-tick-factor`) and things will take a lot longe
 
 ### defining `HasRep` instances
 
-**TODO**: Once we have `HasRep` defined within `Kitty.Cat` (as opposed to in concat), this
+**TODO**: Once we have `HasRep` defined within `Kitty.Plugin` (as opposed to in concat), this
           documentation should move to that module.
 
 `HasRep` is meant to map arbitrary Haskell types to a set of fundamental categorical structures. It
@@ -155,15 +155,15 @@ This is ostensibly a more correct approach, given the way GHC is structured, but
 
 There are a bunch of modules, this calls out the most important ones when diving in.
 
-- [Kitty.Cat](./src/Kitty/Cat.hs) - this is the entrypoint of the plugin, everything that hooks into
+- [Kitty.Plugin](./src/Kitty/Plugin.hs) - this is the entrypoint of the plugin, everything that hooks into
   GHC starts from here;
-- [Kitty.Cat.Core.Categorize](./src/Kitty/Cat/Core/Categorize.hs) - the high-level logic of the
+- [Kitty.Plugin.Core.Categorize](./src/Kitty/Plugin/Core/Categorize.hs) - the high-level logic of the
   categorical transformation as described in Conal's paper, it tries to define as clearly as
   possible the mapping from **Hask** to abstract categories;
-- [Kitty.Cat.Core.Hierarchy](./src/Kitty/Cat/Core/Hierarchy.hs) - the mappings from abstract
+- [Kitty.Plugin.Core.Hierarchy](./src/Kitty/Plugin/Core/Hierarchy.hs) - the mappings from abstract
   categories to specific type class hierarchies.
-- [Test.Cat.Hask](./test/Test/Cat/Core/Hask.hs), [Test.Cat.Term](./test/Test/Cat/Core/Term.hs),
-  [Test.Cat.TotOrd](./test/Test/Cat/Core/TotOrd.hs) - various categories defined (often
+- [Test.Hask](./test/Test/Cat/Core/Hask.hs), [Test.Term](./test/Test/Cat/Core/Term.hs),
+  [Test.TotOrd](./test/Test/Cat/Core/TotOrd.hs) - various categories defined (often
   against multiple type class hierarchies) for testing the plugin.
 
 ### Debugging
@@ -185,12 +185,12 @@ expected to churn a bit, as new approaches are added and old ones are obsolesced
 
 #### dealing with failed tests
 
-We use a flag, `Kitty.Cat:defer-failures`, to keep conversion failures from crashing GHC. However,
+We use a flag, `Kitty.Plugin:defer-failures`, to keep conversion failures from crashing GHC. However,
 for the time being, all deferred failures are identical ([SW-]()) -- they don't carry any
 information about what failed. This makes them harder to debug. What you should do is constrain your
 testing to _exactly_ the failed test. That means
 
-1. comment out the line in plugins.bzl that mentions `Kitty.Cat:defer-failures`,
+1. comment out the line in plugins.bzl that mentions `Kitty.Plugin:defer-failures`,
 2. in TH.hs, comment out all the `testTerms` other than the failing one,
 3. in the Main.hs for the appropriate hierarchy, comment out the other `*TopLevel` entries in the
    list, then

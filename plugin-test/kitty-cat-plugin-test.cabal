@@ -22,12 +22,12 @@ common options
 
 library
   exposed-modules:
-      Test.Plugin.Data
-      Test.Plugin.HList
-      Test.Plugin.Hask
-      Test.Plugin.Term
-      Test.Plugin.Tests
-      Test.Plugin.TH
+      Kitty.Plugin.Test.Data
+      Kitty.Plugin.Test.HList
+      Kitty.Plugin.Test.Hask
+      Kitty.Plugin.Test.Term
+      Kitty.Plugin.Test.Tests
+      Kitty.Plugin.Test.TH
   other-modules:
       Paths_kitty_cat_plugin_test
   autogen-modules:
@@ -75,7 +75,7 @@ test-suite default-plugin
   import: options
   type: exitcode-stdio-1.0
   hs-source-dirs: test
-  main-is: Test/Plugin/Base/Main.hs
+  main-is: Base/Main.hs
   ghc-options:
     -fplugin Kitty.Plugin
     -fplugin-opt Kitty.Plugin:defer-failures
@@ -96,7 +96,7 @@ test-suite base-hierarchy
   import: options
   type: exitcode-stdio-1.0
   hs-source-dirs: test
-  main-is: Test/Plugin/Base/Main.hs
+  main-is: Base/Main.hs
   ghc-options:
     -fplugin Kitty.Plugin
     -fplugin-opt Kitty.Plugin:defer-failures
@@ -118,7 +118,7 @@ test-suite base-hierarchy-optimized
   import: options
   type: exitcode-stdio-1.0
   hs-source-dirs: test
-  main-is: Test/Plugin/Base/Main.hs
+  main-is: Base/Main.hs
   ghc-options:
     -fplugin Kitty.Plugin
     -fplugin-opt Kitty.Plugin:defer-failures

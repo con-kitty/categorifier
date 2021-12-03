@@ -22,7 +22,7 @@ common options
 
 library
   exposed-modules:
-      Test.Cat.Kitty.Instances
+      Kitty.Plugin.Test.Kitty.Instances
   build-depends:
     , base
     , concat-classes
@@ -53,11 +53,11 @@ test-suite kitty-hierarchy
   import: options
   type: exitcode-stdio-1.0
   hs-source-dirs: test
-  main-is: Test/Cat/Kitty/Main.hs
+  main-is: Kitty/Main.hs
   ghc-options:
     -fplugin Kitty.Plugin
     -fplugin-opt Kitty.Plugin:hierarchy:Kitty.Plugin.Hierarchy.ConCat.functionHierarchy
-    -fplugin-opt Kitty.Plugin:hierarchy:Kitty.Cat.Hierarchy.Kitty.hierarchy
+    -fplugin-opt Kitty.Plugin:hierarchy:Kitty.Plugin.Hierarchy.Kitty.hierarchy
     -O0
   build-depends:
     , adjunctions
@@ -82,11 +82,11 @@ test-suite kitty-hierarchy-optimized
   import: options
   type: exitcode-stdio-1.0
   hs-source-dirs: test
-  main-is: Test/Cat/Kitty/Main.hs
+  main-is: Kitty/Main.hs
   ghc-options:
     -fplugin Kitty.Plugin
     -fplugin-opt Kitty.Plugin:hierarchy:Kitty.Plugin.Hierarchy.ConCat.functionHierarchy
-    -fplugin-opt Kitty.Plugin:hierarchy:Kitty.Cat.Hierarchy.Kitty.hierarchy
+    -fplugin-opt Kitty.Plugin:hierarchy:Kitty.Plugin.Hierarchy.Kitty.hierarchy
     -O2
     -fignore-interface-pragmas
   build-depends:

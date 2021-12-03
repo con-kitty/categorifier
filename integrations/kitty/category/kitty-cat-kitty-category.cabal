@@ -14,7 +14,7 @@ source-repository head
 
 library
   exposed-modules:
-      Kitty.Cat.Category
+      Kitty.Plugin.Kitty
   other-modules:
       Paths_kitty_cat_kitty_category
   autogen-modules:

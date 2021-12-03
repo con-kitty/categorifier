@@ -22,8 +22,8 @@ common options
 
 library
   exposed-modules:
-      Test.Plugin.ConCat.Instances
-      Test.Plugin.TotOrd
+      Kitty.Plugin.Test.ConCat.Instances
+      Kitty.Plugin.Test.TotOrd
   build-depends:
     , base
     , concat-classes
@@ -56,7 +56,7 @@ test-suite concat-class-hierarchy
   import: options
   type: exitcode-stdio-1.0
   hs-source-dirs: test
-  main-is: Test/Plugin/ConCat/Main.hs
+  main-is: ConCat/Main.hs
   ghc-options:
     -fplugin Kitty.Plugin
     -fplugin-opt Kitty.Plugin:defer-failures
@@ -82,7 +82,7 @@ test-suite concat-class-hierarchy-optimized
   import: options
   type: exitcode-stdio-1.0
   hs-source-dirs: test
-  main-is: Test/Plugin/ConCat/Main.hs
+  main-is: ConCat/Main.hs
   ghc-options:
     -fplugin Kitty.Plugin
     -fplugin-opt Kitty.Plugin:defer-failures
@@ -107,9 +107,9 @@ test-suite concat-class-hierarchy-optimized
 
 test-suite concat-function-hierarchy
   import: options
-  type:          exitcode-stdio-1.0
+  type: exitcode-stdio-1.0
   hs-source-dirs: test
-  main-is:       Test/Plugin/ConCat/Main.hs
+  main-is: ConCat/Main.hs
   ghc-options:
     -fplugin Kitty.Plugin
     -fplugin-opt Kitty.Plugin:defer-failures
@@ -133,9 +133,9 @@ test-suite concat-function-hierarchy
 
 test-suite concat-function-hierarchy-optimized
   import: options
-  type:          exitcode-stdio-1.0
+  type: exitcode-stdio-1.0
   hs-source-dirs: test
-  main-is:       Test/Plugin/ConCat/Main.hs
+  main-is: ConCat/Main.hs
   ghc-options:
     -fplugin Kitty.Plugin
     -fplugin-opt Kitty.Plugin:defer-failures

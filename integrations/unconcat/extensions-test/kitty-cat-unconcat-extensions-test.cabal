@@ -22,7 +22,7 @@ common options
 
 library
   exposed-modules:
-      Test.Cat.Categories
+      Kitty.Plugin.Test.UnconCat.Instances
   build-depends:
     , base
     , concat-classes
@@ -53,10 +53,10 @@ test-suite unconcat-hierarchy
   import: options
   type: exitcode-stdio-1.0
   hs-source-dirs: test
-  main-is: Test/Cat/UnconCat/Main.hs
+  main-is: UnconCat/Main.hs
   ghc-options:
     -fplugin Kitty.Plugin
-    -fplugin-opt Kitty.Plugin:hierarchy:Kitty.Cat.Hierarchy.UnconCat.hierarchy
+    -fplugin-opt Kitty.Plugin:hierarchy:Kitty.Plugin.Hierarchy.UnconCat.hierarchy
     -fplugin-opt Kitty.Plugin:hierarchy:Kitty.Plugin.Hierarchy.ConCat.functionHierarchy
     -O0
   build-depends:
@@ -82,10 +82,10 @@ test-suite unconcat-hierarchy-optimized
   import: options
   type: exitcode-stdio-1.0
   hs-source-dirs: test
-  main-is: Test/Cat/UnconCat/Main.hs
+  main-is: UnconCat/Main.hs
   ghc-options:
     -fplugin Kitty.Plugin
-    -fplugin-opt Kitty.Plugin:hierarchy:Kitty.Cat.Hierarchy.UnconCat.hierarchy
+    -fplugin-opt Kitty.Plugin:hierarchy:Kitty.Plugin.Hierarchy.UnconCat.hierarchy
     -fplugin-opt Kitty.Plugin:hierarchy:Kitty.Plugin.Hierarchy.ConCat.functionHierarchy
     -O2
     -fignore-interface-pragmas

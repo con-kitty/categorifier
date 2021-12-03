@@ -22,7 +22,7 @@ common options
 
 library
   exposed-modules:
-      Test.Plugin.Categories.Instances
+      Kitty.Plugin.Test.Categories.Instances
   build-depends:
     , base
     , categories
@@ -49,9 +49,9 @@ library
 
 test-suite categories-hierarchy
   import: options
-  type:        exitcode-stdio-1.0
+  type: exitcode-stdio-1.0
   hs-source-dirs: test
-  main-is:     Test/Plugin/Categories/Main.hs
+  main-is: Categories/Main.hs
   ghc-options:
     -fplugin Kitty.Plugin
     -fplugin-opt Kitty.Plugin:hierarchy:Kitty.Plugin.Hierarchy.Categories.hierarchy
@@ -73,9 +73,9 @@ test-suite categories-hierarchy
 
 test-suite categories-hierarchy-optimized
   import: options
-  type:          exitcode-stdio-1.0
+  type: exitcode-stdio-1.0
   hs-source-dirs: test
-  main-is:       Test/Plugin/Categories/Main.hs
+  main-is: Categories/Main.hs
   ghc-options:
     -fplugin Kitty.Plugin
     -fplugin-opt Kitty.Plugin:hierarchy:Kitty.Plugin.Hierarchy.Categories.hierarchy

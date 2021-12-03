@@ -17,7 +17,7 @@ source-repository head
 
 library
   exposed-modules:
-      Kitty.UnconCat
+      Kitty.Plugin.UnconCat
   other-modules:
       Paths_kitty_cat_unconcat_category
   autogen-modules:
