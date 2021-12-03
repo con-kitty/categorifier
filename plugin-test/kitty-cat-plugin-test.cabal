@@ -12,6 +12,14 @@ source-repository head
   type: git
   location: https://github.com/con-kitty/kitty-cat
 
+common options
+  ghc-options:
+    -- make it possible to inline almost anything
+    -fexpose-all-unfoldings
+    -- ensure unfoldings are available
+    -fno-omit-interface-pragmas
+    -Wall
+
 library
   exposed-modules:
       Test.Plugin.Data
@@ -61,3 +69,70 @@ library
     , DeriveFoldable
     , DeriveTraversable
     , DerivingStrategies
+
+-- run without any explicit extensions (uses only bits from base
+test-suite default-plugin
+  import: options
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is: Test/Plugin/Base/Main.hs
+  ghc-options:
+    -fplugin Kitty.Plugin
+    -fplugin-opt Kitty.Plugin:defer-failures
+    -O0
+  build-depends:
+    , adjunctions
+    , base
+    , either
+    , ghc-prim
+    , hedgehog
+    , kitty-cat-category
+    , kitty-cat-client
+    , kitty-cat-plugin
+    , kitty-cat-plugin-test
+    , template-haskell
+
+test-suite base-hierarchy
+  import: options
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is: Test/Plugin/Base/Main.hs
+  ghc-options:
+    -fplugin Kitty.Plugin
+    -fplugin-opt Kitty.Plugin:defer-failures
+    -fplugin-opt Kitty.Plugin:hierarchy:Kitty.Plugin.Hierarchy.baseHierarchy
+    -O0
+  build-depends:
+    , adjunctions
+    , base
+    , either
+    , ghc-prim
+    , hedgehog
+    , kitty-cat-category
+    , kitty-cat-client
+    , kitty-cat-plugin
+    , kitty-cat-plugin-test
+    , template-haskell
+
+test-suite base-hierarchy-optimized
+  import: options
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is: Test/Plugin/Base/Main.hs
+  ghc-options:
+    -fplugin Kitty.Plugin
+    -fplugin-opt Kitty.Plugin:defer-failures
+    -fplugin-opt Kitty.Plugin:hierarchy:Kitty.Plugin.Hierarchy.baseHierarchy
+    -O2
+    -fignore-interface-pragmas
+  build-depends:
+    , adjunctions
+    , base
+    , either
+    , ghc-prim
+    , hedgehog
+    , kitty-cat-category
+    , kitty-cat-client
+    , kitty-cat-plugin
+    , kitty-cat-plugin-test
+    , template-haskell

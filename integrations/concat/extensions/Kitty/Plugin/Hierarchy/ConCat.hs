@@ -11,6 +11,7 @@ module Kitty.Plugin.Hierarchy.ConCat
 where
 
 import qualified GhcPlugins as Plugins
+import Kitty.Plugin.Core.Types (CategoryStack)
 import Kitty.Plugin.Hierarchy
   ( Hierarchy (..),
     Lookup,
@@ -272,7 +273,7 @@ hierarchy' moduleName = do
 -- | A hierarchy using the type classes provided by Conal Eliot's @concat@ library.
 --
 --  __NB__: This uses "ConCat.Category" directly, and ignores the existence of "ConCat.AltCat".
-classHierarchy :: Monad f => Lookup (Hierarchy f)
+classHierarchy :: Lookup (Hierarchy CategoryStack)
 classHierarchy = do
   hierarchy <- hierarchy' moduleName
   abstCV <- pure <$> repOp "abstC"
@@ -306,7 +307,7 @@ classHierarchy = do
 
 -- | A hierarchy using the functions from Conal's ConCat library. These are the same operations used
 --   by Conal's original implementation.
-functionHierarchy :: Monad f => Lookup (Hierarchy f)
+functionHierarchy :: Lookup (Hierarchy CategoryStack)
 functionHierarchy = do
   hierarchy <- hierarchy' moduleName
   abstCV <- pure <$> repOp "abstC"

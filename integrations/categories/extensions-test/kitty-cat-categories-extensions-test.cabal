@@ -1,8 +1,8 @@
 cabal-version:  2.4
 
-name:           kitty-cat-concat-class-plugin
+name:           kitty-cat-categories-extensions-test
 version:        0.1
-description:    Plugin using Conal's ConCat classes.
+description:    Plugin using Kmett's Categories classes.
 homepage:       https://github.com/con-kitty/kitty-cat#readme
 bug-reports:    https://github.com/con-kitty/kitty-cat/issues
 build-type:     Simple
@@ -21,19 +21,12 @@ common options
     -Wall
 
 library
-  import: options
   exposed-modules:
-      Kitty.Plugin.ConCat.Class
-  other-modules:
-      Paths_kitty_cat_concat_class_plugin
-  autogen-modules:
-      Paths_kitty_cat_concat_class_plugin
-  ghc-options: -Wall
+      Test.Plugin.Categories.Instances
   build-depends:
     , base
-    , ghc
-    , kitty-cat-concat-extensions
-    , kitty-cat-plugin
+    , categories
+    , kitty-cat-plugin-test
   default-language: Haskell2010
   default-extensions:
       InstanceSigs
@@ -54,53 +47,51 @@ library
     , DeriveTraversable
     , DerivingStrategies
 
-test-suite concat-class-hierarchy
+test-suite categories-hierarchy
   import: options
-  type: exitcode-stdio-1.0
+  type:        exitcode-stdio-1.0
   hs-source-dirs: test
-  main-is: Test/Plugin/ConCat/Main.hs
+  main-is:     Test/Plugin/Categories/Main.hs
   ghc-options:
-    -fplugin Kitty.Plugin.ConCat.Class
-    -fplugin-opt Kitty.Plugin.ConCat.Class:defer-failures
+    -fplugin Kitty.Plugin
+    -fplugin-opt Kitty.Plugin:hierarchy:Kitty.Plugin.Hierarchy.Categories.hierarchy
     -O0
   build-depends:
     , adjunctions
     , base
-    , concat-classes
-    , concat-examples
+    , categories
     , either
     , ghc-prim
     , hedgehog
+    , kitty-cat-categories-extensions
+    , kitty-cat-categories-extensions-test
     , kitty-cat-category
     , kitty-cat-client
-    , kitty-cat-concat-extensions-test
-    , kitty-cat-concat-class-plugin
     , kitty-cat-plugin
     , kitty-cat-plugin-test
     , template-haskell
 
-test-suite concat-class-hierarchy-optimized
+test-suite categories-hierarchy-optimized
   import: options
   type:          exitcode-stdio-1.0
   hs-source-dirs: test
-  main-is:       Test/Plugin/ConCat/Main.hs
+  main-is:       Test/Plugin/Categories/Main.hs
   ghc-options:
-    -fplugin Kitty.Plugin.ConCat.Class
-    -fplugin-opt Kitty.Plugin.ConCat.Class:defer-failures
+    -fplugin Kitty.Plugin
+    -fplugin-opt Kitty.Plugin:hierarchy:Kitty.Plugin.Hierarchy.Categories.hierarchy
     -O2
     -fignore-interface-pragmas
   build-depends:
     , adjunctions
     , base
-    , concat-classes
-    , concat-examples
+    , categories
     , either
     , ghc-prim
     , hedgehog
+    , kitty-cat-categories-extensions
+    , kitty-cat-categories-extensions-test
     , kitty-cat-category
     , kitty-cat-client
-    , kitty-cat-concat-extensions-test
     , kitty-cat-plugin
-    , kitty-cat-concat-class-plugin
     , kitty-cat-plugin-test
     , template-haskell

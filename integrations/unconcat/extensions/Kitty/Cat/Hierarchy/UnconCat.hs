@@ -4,7 +4,7 @@
 -- | Defines various mappings between categorical representations and the plugin, allowing us to
 --   support transformations against different type class hierarchies.
 module Kitty.Cat.Hierarchy.UnconCat
-  ( unconcatHierarchy,
+  ( hierarchy,
   )
 where
 
@@ -16,9 +16,10 @@ import Kitty.Plugin.Hierarchy
     mkFunctionApps,
     mkMethodApps,
   )
+import Kitty.Plugin.Core.Types (CategoryStack)
 
-unconcatHierarchy :: Monad f => Lookup (Hierarchy f)
-unconcatHierarchy = do
+hierarchy :: Lookup (Hierarchy CategoryStack)
+hierarchy = do
   kapplyV <-
     pure <$> do
       fn <- identifier' "apply"

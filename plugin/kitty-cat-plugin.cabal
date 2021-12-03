@@ -15,6 +15,7 @@ source-repository head
 library
   exposed-modules:
       Kitty.MakePlugin
+      Kitty.Plugin
       -- __NB__: Only public for runtime lookup
       Kitty.Plugin.Core.Base
       Kitty.Plugin.Categorize

@@ -4,7 +4,7 @@
 -- | Defines various mappings between categorical representations and the plugin, allowing us to
 --   support transformations against different type class hierarchies.
 module Kitty.Cat.Hierarchy.Kitty
-  ( kittyHierarchy,
+  ( hierarchy,
   )
 where
 
@@ -17,10 +17,11 @@ import Kitty.Plugin.Hierarchy
     mkMethodApps,
     mkMethodApps',
   )
+import Kitty.Plugin.Core.Types (CategoryStack)
 
 -- | Some locally-defined classes, mostly to add missing pieces to ConCat.
-kittyHierarchy :: Monad f => Lookup (Hierarchy f)
-kittyHierarchy = do
+hierarchy :: Lookup (Hierarchy CategoryStack)
+hierarchy = do
   kabsV <-
     pure <$> do
       fn <- identifier' "absK"

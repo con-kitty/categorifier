@@ -27,8 +27,8 @@ import qualified Kitty.Plugin.Core
 import Kitty.Plugin.Core.MakerMap (MakerMapFun)
 import Kitty.Plugin.Core.Makers (Makers)
 import qualified Kitty.Plugin.Core.PrimOp as PrimOp
-import Kitty.Plugin.Core.Types (AutoInterpreter, CategoryStack)
-import Kitty.Plugin.Hierarchy (Hierarchy, Lookup)
+import Kitty.Plugin.Core.Types (AutoInterpreter)
+import Kitty.Plugin.Hierarchy (Lookup)
 import PyF (fmt)
 
 -- | What to use for the `AutoInterpreter` if you have no need to bypass the plugin.
@@ -51,16 +51,15 @@ makePlugin ::
   MakerMapFun ->
   -- | Extending support for C operations.
   (Makers -> [(Plugins.CLabelString, (PrimOp.Boxer, [GhcPlugins.Type], GhcPlugins.Type))]) ->
-  Lookup (Hierarchy CategoryStack) ->
   GhcPlugins.Plugin
-makePlugin tryAutoInterpret makerMapFun additionalBoxers hierarchy =
+makePlugin tryAutoInterpret makerMapFun additionalBoxers =
   GhcPlugins.defaultPlugin
     { GhcPlugins.installCoreToDos =
         \opts ->
           join
             . GhcPlugins.liftIO
             . liftA2
-              (Kitty.Plugin.Core.install tryAutoInterpret makerMapFun additionalBoxers hierarchy)
+              (Kitty.Plugin.Core.install tryAutoInterpret makerMapFun additionalBoxers)
               (partitionOptions' opts)
             . pure,
       GhcPlugins.pluginRecompile = GhcPlugins.purePlugin

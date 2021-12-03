@@ -1,6 +1,8 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections #-}
+-- -Wno-orphans is so we can add missing instances to `Bag.Bag`
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module Kitty.Plugin.Core.Types
   ( AutoInterpreter,
@@ -17,12 +19,21 @@ module Kitty.Plugin.Core.Types
   )
 where
 
+import qualified Bag
 import Control.Monad.Trans.Except (ExceptT (..))
 import Control.Monad.Trans.RWS.Strict (RWST (..))
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import ErrUtils (ErrorMessages, WarningMessages)
 import qualified GhcPlugins as Plugins
+
+-- | Need this instance to use a `Bag.Bag` as the output of @RWST@.
+instance Semigroup (Bag.Bag a) where
+  (<>) = Bag.unionBags
+
+-- | Need this instance to use a `Bag.Bag` as the output of @RWST@.
+instance Monoid (Bag.Bag a) where
+  mempty = Bag.emptyBag
 
 type CategoryStack =
   ExceptT

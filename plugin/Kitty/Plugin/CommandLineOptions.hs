@@ -25,6 +25,7 @@ data OptionGroup
   = BenchmarkOption
   | DebugOption
   | DeferFailuresOption
+  | HierarchyOptions
   deriving (Eq, Ord)
 
 groupFromText :: Text -> Maybe OptionGroup
@@ -32,6 +33,7 @@ groupFromText = \case
   "benchmark" -> pure BenchmarkOption
   "debug" -> pure DebugOption
   "defer-failures" -> pure DeferFailuresOption
+  "hierarchy" -> pure HierarchyOptions
   _ -> Nothing
 
 -- | We expect all options to be in the format `<group>:<value>`, and we (often) allow duplicate
@@ -39,6 +41,11 @@ groupFromText = \case
 --  (with the order within the group maintained).
 --
 --   This fails (returning the failing group names) if any of the option groups are unrecognized.
+--
+--  __NB__: GHC hands us the options in reverse order
+--         (https://gitlab.haskell.org/ghc/ghc/-/issues/17884), so we fix the order here. At some
+--          point, GHC will hopefully fix this, which means we'll need to cunditionalize the
+--          reversal for a time.
 partitionOptions ::
   [GhcPlugins.CommandLineOption] -> Validation (NonEmpty Text) (Map OptionGroup [Text])
 partitionOptions =
@@ -48,6 +55,7 @@ partitionOptions =
           firstM findKey . maybe (Text.pack opt, []) (bimap Text.pack (pure . Text.pack)) $
             splitAroundElem separator opt
       )
+    . reverse
   where
     separator = ':'
     splitAroundElem :: Eq a => a -> [a] -> Maybe ([a], [a])

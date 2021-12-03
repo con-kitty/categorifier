@@ -72,14 +72,6 @@ traceTcS' str doc = pprTrace' str doc (pure ())
 traceTc' :: String -> Plugins.SDoc -> Typechecker.TcRn ()
 traceTc' str doc = pprTrace' str doc (pure ())
 
--- | Need this instance to use a `Bag.Bag` as the output of @RWST@.
-instance Semigroup (Bag.Bag a) where
-  (<>) = Bag.unionBags
-
--- | Need this instance to use a `Bag.Bag` as the output of @RWST@.
-instance Monoid (Bag.Bag a) where
-  mempty = Bag.emptyBag
-
 -- | The result type is a slight improvement of the situation handed to us by
 --  `Typechecker.runTcInteractive`, so not too much we can do about it other than hide it a bit and
 --   try to keep it from leaking all over everything.

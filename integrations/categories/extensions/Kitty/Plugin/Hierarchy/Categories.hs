@@ -18,6 +18,7 @@ import Kitty.Plugin.Hierarchy
     identifier,
     mkMethodApps,
   )
+import Kitty.Plugin.Core.Types (CategoryStack)
 
 -- | A hierarchy using the type classes available in the
 --   [@categories@](https://hackage.haskell.org/package/categories) library. This includes
@@ -25,7 +26,7 @@ import Kitty.Plugin.Hierarchy
 --   results in mixing stuff from @categories@ and the `Control.Arrow.Arrow` hierarchy, which is
 --   /not/ part of the expected @categories@ instances. It does illustrate that mixing hierarchies
 --   works, though.
-hierarchy :: Monad f => Lookup (Hierarchy f)
+hierarchy :: Lookup (Hierarchy CategoryStack)
 hierarchy =
   fmap getFirst $
     (<>) <$> fmap First hierarchy' <*> fmap First baseHierarchy

@@ -15,22 +15,23 @@ where
 import Bag (isEmptyBag)
 import Control.Monad ((<=<), unless)
 import Control.Monad.Trans.Class (lift)
-import Control.Monad.Trans.Except (runExceptT)
+import Control.Monad.Trans.Except (ExceptT (..), runExceptT, throwE)
 import Control.Monad.Trans.RWS.Strict (RWST (..))
 import Data.Bifunctor (Bifunctor (..))
 import Data.List (findIndex)
 import Data.List.NonEmpty.Extra (NonEmpty, nubOrd)
+import Data.Monoid (Ap (..))
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Data.Monoid (Ap (..))
 import Data.Text (Text)
 import qualified Data.Text as Text
+import qualified DynamicLoading as Dynamic
 import ErrUtils (WarningMessages)
 import qualified ForeignCall as Plugins
 import qualified GHC.CString
 import qualified GhcPlugins as Plugins
 import Kitty.Common.IO.Exception (SomeException, handle, throwIOAsException)
-import Kitty.Duoidal (Parallel (..))
+import Kitty.Duoidal (Parallel (..), foldMapD, (=<\<))
 import qualified Kitty.Plugin.Categorize
 import Kitty.Plugin.CommandLineOptions (OptionGroup (..))
 import qualified Kitty.Plugin.Core.BuildDictionary as BuildDictionary
@@ -53,6 +54,7 @@ import Kitty.Plugin.Hierarchy
     baseHierarchy,
     concatOps,
     findId,
+    findName,
     getBaseIdentifiers,
     properFunTy,
   )
@@ -87,20 +89,19 @@ install ::
   Lookup AutoInterpreter ->
   MakerMapFun ->
   (Makers -> [(Plugins.CLabelString, (PrimOp.Boxer, [Plugins.Type], Plugins.Type))]) ->
-  Lookup (Hierarchy CategoryStack) ->
   Map OptionGroup [Text] ->
   [Plugins.CoreToDo] ->
   Plugins.CoreM [Plugins.CoreToDo]
-install tryAutoInterpret makerMapFun additionalBoxers hierarchy opts todos = do
-  convert <-
-    either (throwIOAsException prettyMissingSymbols) pure <=< runExceptT . getParallel $
-      idFromTHName conversionFunction
+install tryAutoInterpret makerMapFun additionalBoxers opts todos = do
   dflags <- Plugins.getDynFlags
+  convert <-
+    either (throwIOAsException $ prettyMissingSymbols dflags) pure <=< runExceptT . getParallel $
+      idFromTHName conversionFunction
   let allOurTodos = categorizeTodos <> [postsimplifier convert dflags, removeCategorize]
       categorizeTodos =
         [ presimplifier convert dflags,
           Plugins.CoreDoPluginPass ("add " <> Plugins.getOccString convert <> " rules") $
-            addCategorizeRules convert opts tryAutoInterpret makerMapFun additionalBoxers hierarchy
+            addCategorizeRules dflags convert opts tryAutoInterpret makerMapFun additionalBoxers
         ]
       removeCategorize =
         Plugins.CoreDoPluginPass ("remove " <> Plugins.getOccString convert <> " rules") $
@@ -167,34 +168,39 @@ postsimplifier convert dflags =
         Plugins.sm_rules = False
       }
 
-prettyMissingSymbols :: NonEmpty MissingSymbol -> String
-prettyMissingSymbols =
+prettyMissingSymbols :: Plugins.DynFlags -> NonEmpty MissingSymbol -> String
+prettyMissingSymbols dflags =
   ("some symbols couldn't be found while attempting to install the Kitty.Plugin plugin:" <>)
-    . concatMap
+    . concat
+    . nubOrd
+    . fmap
       ( \case
+          IncorrectType name ty ->
+            [fmt|\n  - `{Plugins.showPpr dflags name}` was found, but didn't have type `{Plugins.showPpr dflags ty}`|]
           MissingDataCon modu name ->
             [fmt|\n  - data constructor {name} in {Plugins.moduleNameString modu}|]
           MissingId modu name ->
             [fmt|\n  - identifier {name} in {Plugins.moduleNameString modu}|]
+          MissingName modu name ->
+            [fmt|\n  - name {name} in {Plugins.moduleNameString modu}|]
           MissingTyCon modu name ->
             [fmt|\n  - type constructor {name} in {Plugins.moduleNameString modu}|]
       )
-    . nubOrd
 
 -- | A plugin pass that adds our `categorize` rule to the list of simplifier rules to be run.
 --
 --  __NB__: We're forced to fold our failures into `IO` here.
 addCategorizeRules ::
+  Plugins.DynFlags ->
   Plugins.Id ->
   Map OptionGroup [Text] ->
   Lookup AutoInterpreter ->
   MakerMapFun ->
   (Makers -> [(Plugins.CLabelString, (PrimOp.Boxer, [Plugins.Type], Plugins.Type))]) ->
-  Lookup (Hierarchy CategoryStack) ->
   Plugins.CorePluginPass
-addCategorizeRules convert opts tryAutoInterpret makerMapFun additionalBoxers hierarchy guts =
-  either (throwIOAsException prettyMissingSymbols) (\r -> pure (mapModGutsRules (r <>) guts))
-    =<< categorizeRules convert opts tryAutoInterpret makerMapFun additionalBoxers hierarchy guts
+addCategorizeRules dflags convert opts tryAutoInterpret makerMapFun additionalBoxers guts =
+  either (throwIOAsException $ prettyMissingSymbols dflags) (\r -> pure (mapModGutsRules (r <>) guts))
+    =<< categorizeRules convert opts tryAutoInterpret makerMapFun additionalBoxers guts
 
 -- | Given the arguments for a `Plugins.BuiltinRule`, this builds a list of rules that try to handle
 --   partial application of the original rule. One caveat is that the provided `Plugins.RuleFun` has
@@ -287,6 +293,29 @@ idFromTHName name =
     (flip findId $ TH.nameBase name)
     $ TH.nameModule name
 
+nameFromTHName :: TH.Name -> Lookup Plugins.Name
+nameFromTHName name =
+  maybe
+    ( Parallel . lift $
+        throwIOAsException
+          (("This name should have been global, but has no module: " <>) . TH.nameBase)
+          name
+    )
+    (flip findName $ TH.nameBase name)
+    $ TH.nameModule name
+
+-- |
+-- __TODO__: `Dynamic.getValueSafely` throws in many cases. Try to catch, accumulate, return in
+--           `Either` (not that we can drop the IO regardless).
+getDynamicValueSafely :: Plugins.HscEnv -> Plugins.Name -> Plugins.Type -> IO (Maybe a)
+getDynamicValueSafely = Dynamic.getValueSafely
+
+nameFromText :: Text -> Lookup Plugins.Name
+nameFromText =
+  uncurry findName
+    . bimap (Text.unpack . Text.dropWhileEnd (== '.')) Text.unpack
+    . Text.breakOnEnd "."
+
 -- | Wiring our function into a `Plugins.BuiltInRule` for the plugin system.
 categorizeRules ::
   Plugins.Id ->
@@ -294,21 +323,39 @@ categorizeRules ::
   Lookup AutoInterpreter ->
   MakerMapFun ->
   (Makers -> [(Plugins.CLabelString, (PrimOp.Boxer, [Plugins.Type], Plugins.Type))]) ->
-  Lookup (Hierarchy CategoryStack) ->
   Plugins.ModGuts ->
   Plugins.CoreM (Either (NonEmpty MissingSymbol) [Plugins.CoreRule])
-categorizeRules convert opts tryAutoInterpret makerMapFun additionalBoxers hierarchy guts =
-  runExceptT . getParallel $ do
-    apply <- idFromTHName '($)
-    throw <- idFromTHName 'Prelude.error
-    str <- idFromTHName 'GHC.CString.unpackCStringUtf8#
-    hask <- concatOps
+categorizeRules convert opts tryAutoInterpret makerMapFun additionalBoxers guts =
+  runExceptT $ do
+    -- __TODO__: This @do@ block currently has monadic semantics, but it should have duoidal
+    --           ones. It's a bit complicated to get it to applicative with manual duoidal handling
+    --           (as we do elsewhere via explicit `Parallel` handling, but GHC 9.0 should make this
+    --           easy to get right with @QualifiedDo@.
+    apply <- getParallel $ idFromTHName '($)
+    throw <- getParallel $ idFromTHName 'Prelude.error
+    str <- getParallel $ idFromTHName 'GHC.CString.unpackCStringUtf8#
+    hierarchyTy <- getParallel $ Plugins.exprType . Plugins.Var <$> idFromTHName 'baseHierarchy
+    hask <- getParallel concatOps
+    let hierarchyOptions =
+          getParallel . maybe (pure <$> nameFromTHName 'baseHierarchy) (traverse nameFromText) $
+            Map.lookup HierarchyOptions opts
+    hscEnv <- lift Plugins.getHscEnv
+    let handleOptions ::
+          [Plugins.Name] -> ExceptT (NonEmpty MissingSymbol) Plugins.CoreM (Hierarchy CategoryStack)
+        handleOptions =
+          fmap getFirst
+            . foldMapD
+              ( \opt ->
+                  maybe (throwE . pure $ IncorrectType opt hierarchyTy) (fmap First . getParallel)
+                    <=< Plugins.liftIO $ getDynamicValueSafely hscEnv opt hierarchyTy
+              )
+    let hierarchy = handleOptions =<\< hierarchyOptions
     h <- hierarchy
-    bh <- combineHierarchies [baseHierarchy, hierarchy]
-    baseIdentifiers <- getBaseIdentifiers
-    hscEnv <- Parallel $ lift Plugins.getHscEnv
-    uniqS <- Parallel $ lift Plugins.getUniqueSupplyM
-    tai <- tryAutoInterpret
+    bh <- getParallel $ combineHierarchies [baseHierarchy, Parallel hierarchy]
+    baseIdentifiers <- getParallel getBaseIdentifiers
+    uniqS <- lift Plugins.getUniqueSupplyM
+    hierarchyOptions' <- hierarchyOptions
+    tai <- getParallel tryAutoInterpret
     pure $
       partialAppRules apply (Plugins.varName convert) 5 $
         \dflags inScope ident exprs ->
@@ -318,6 +365,7 @@ categorizeRules convert opts tryAutoInterpret makerMapFun additionalBoxers hiera
                   unsafePerformIO $
                     applyCategorize
                       convert
+                      hierarchyOptions'
                       ( if Map.member DeferFailuresOption opts
                           then pure $ deferFailures throw str
                           else Nothing
@@ -347,6 +395,7 @@ categorizeRules convert opts tryAutoInterpret makerMapFun additionalBoxers hiera
 --   errors or anything, so we need to process everything before we return. This does the "safe"
 --   part of that, so all that's left is to perform the `IO` as late as possible.
 runStack ::
+  [Plugins.Name] ->
   Maybe Plugins.CoreExpr ->
   Plugins.DynFlags ->
   Plugins.UniqSupply ->
@@ -354,7 +403,7 @@ runStack ::
   Plugins.CoreExpr ->
   (Plugins.CoreExpr -> CategoryStack Plugins.CoreExpr) ->
   IO Plugins.CoreExpr
-runStack defer dflags uniqS calls f =
+runStack hierarchyOptions defer dflags uniqS calls f =
   handlePanic . deferException . deferLeft <=< printWarnings . runExceptT . ($ f)
   where
     deferException :: IO Plugins.CoreExpr -> IO Plugins.CoreExpr
@@ -375,7 +424,7 @@ runStack defer dflags uniqS calls f =
       unless (isEmptyBag warns) . hPutStrLn stderr . Text.unpack $ Errors.showWarnings dflags warns
       pure val
     printFailure :: NonEmpty CategoricalFailure -> IO a
-    printFailure = throwIOAsException (Text.unpack . Errors.showFailures dflags f)
+    printFailure = throwIOAsException (Text.unpack . Errors.showFailures dflags hierarchyOptions f)
 
 -- | __HIC SUNT DRACONES__
 --
@@ -389,18 +438,20 @@ runStack defer dflags uniqS calls f =
 --   haven't failed in `IO`).
 applyCategorize ::
   Plugins.Id ->
+  [Plugins.Name] ->
   Maybe (Plugins.Type -> Plugins.Type -> Plugins.Type -> Plugins.CoreExpr -> Plugins.CoreExpr) ->
   Plugins.DynFlags ->
   Plugins.UniqSupply ->
   (Plugins.Type -> Plugins.CoreExpr -> CategoryStack Plugins.CoreExpr) ->
   [Plugins.CoreExpr] ->
   IO (Maybe Plugins.CoreExpr)
-applyCategorize convert defer dflags uniqS f = \case
+applyCategorize convert hierarchyOptions defer dflags uniqS f = \case
   (Plugins.Type cat : Plugins.Type a : Plugins.Type b : calls : function : extraArgs) ->
     if null extraArgs
       then
         pure
           <$> runStack
+            hierarchyOptions
             ((\fn -> fn cat a b calls) <$> defer)
             dflags
             uniqS

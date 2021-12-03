@@ -28,6 +28,7 @@ module Kitty.Duoidal
     (*\>),
     bisequenceD,
     bitraverseD,
+    foldMapD,
     joinD,
     liftD2,
     pureD,
@@ -44,6 +45,7 @@ import Control.Monad.Trans.Writer.Strict (WriterT (..))
 import Data.Bifunctor (bimap, first)
 import Data.Bitraversable (Bitraversable, bisequence, bitraverse)
 import Data.Functor.Compose (Compose (..))
+import Data.Monoid (Ap (..))
 
 newtype Parallel f a = Parallel {getParallel :: f a}
 
@@ -104,6 +106,9 @@ sequenceD = getParallel . traverse Parallel
 -- | `traverse` over a `Duoid`.
 traverseD :: (Traversable t, Duoid f) => (a -> f b) -> t a -> f (t b)
 traverseD f = getParallel . traverse (Parallel . f)
+
+foldMapD :: (Foldable t, Duoid f, Monoid b) => (a -> f b) -> t a -> f b
+foldMapD f = getParallel . getAp . foldMap (Ap . Parallel . f)
 
 -- INSTANCES
 

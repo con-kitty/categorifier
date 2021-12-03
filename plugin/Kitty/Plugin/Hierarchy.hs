@@ -24,6 +24,7 @@ module Kitty.Plugin.Hierarchy
     -- * building hierarchies
     findDataCon,
     findId,
+    findName,
     findTyCon,
     identifier,
     mkFunctionApps,
@@ -71,6 +72,7 @@ import GhcPlugins (CoreExpr, Type)
 import qualified GhcPlugins as Plugins
 import HscTypes (lookupDataCon, lookupId, lookupTyCon)
 import Kitty.Duoidal (Parallel (..))
+import Kitty.Plugin.Core.Types (CategoryStack)
 import Prelude hiding (mod)
 import qualified PrimOp
 import qualified Unique
@@ -616,19 +618,30 @@ emptyHierarchy =
     }
 
 data MissingSymbol
-  = MissingDataCon ModuleName String
+  = IncorrectType Plugins.Name Plugins.Type
+  | MissingDataCon ModuleName String
   | MissingId ModuleName String
+  | MissingName ModuleName String
   | MissingTyCon ModuleName String
-  deriving (Eq, Ord)
+
+lookupName :: ModuleName -> (String -> Plugins.OccName) -> String -> CoreM (Maybe Plugins.Name)
+lookupName modu mkOcc str = do
+  hscEnv <- getHscEnv
+  liftIO . fmap (fmap fst) . lookupRdrNameInModuleForPlugins hscEnv modu . Unqual $ mkOcc str
 
 -- __TODO__: This can throw in `lookupRdrNameInModuleForPlugins` if it can't find the module. We
 --           should capture that.
 lookupRdr ::
   ModuleName -> (String -> Plugins.OccName) -> (Name -> CoreM a) -> String -> CoreM (Maybe a)
-lookupRdr modu mkOcc mkThing str = do
-  hscEnv <- getHscEnv
-  traverse (mkThing . fst) <=< liftIO . lookupRdrNameInModuleForPlugins hscEnv modu . Unqual $
-    mkOcc str
+lookupRdr modu mkOcc mkThing = traverse mkThing <=< lookupName modu mkOcc
+
+findName :: String -> String -> Lookup Plugins.Name
+findName modu str =
+  let mod = mkModuleName modu
+   in Parallel
+        ( ExceptT
+            (maybe (Left . pure $ MissingName mod str) pure <$> lookupName mod Plugins.mkVarOcc str)
+        )
 
 findDataCon :: String -> String -> Lookup Plugins.DataCon
 findDataCon modu str =
@@ -742,7 +755,10 @@ mkMethodApps' onDictCls onDictMeth fn tc tys terms = do
   mkFunctionApps onDictMeth method tys terms
 
 -- | A hierarchy using only type classes available in @base@.
-baseHierarchy :: Monad f => Lookup (Hierarchy f)
+--
+--  __TODO__: This could generalize `CategoryStack` to @`Monad` f => f@, but can't currently
+--            dynamically load a parameterized type successfully.
+baseHierarchy :: Lookup (Hierarchy CategoryStack)
 baseHierarchy = do
   absV <- closedUnaryOp "Prelude" "abs"
   abstCV <-

@@ -51,3 +51,109 @@ library
     , DeriveFoldable
     , DeriveTraversable
     , DerivingStrategies
+
+test-suite concat-class-hierarchy
+  import: options
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is: Test/Plugin/ConCat/Main.hs
+  ghc-options:
+    -fplugin Kitty.Plugin
+    -fplugin-opt Kitty.Plugin:defer-failures
+    -fplugin-opt Kitty.Plugin:hierarchy:Kitty.Plugin.Hierarchy.ConCat.classHierarchy
+    -O0
+  build-depends:
+    , adjunctions
+    , base
+    , concat-classes
+    , concat-examples
+    , either
+    , ghc-prim
+    , hedgehog
+    , kitty-cat-category
+    , kitty-cat-client
+    , kitty-cat-concat-extensions
+    , kitty-cat-concat-extensions-test
+    , kitty-cat-plugin
+    , kitty-cat-plugin-test
+    , template-haskell
+
+test-suite concat-class-hierarchy-optimized
+  import: options
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is: Test/Plugin/ConCat/Main.hs
+  ghc-options:
+    -fplugin Kitty.Plugin
+    -fplugin-opt Kitty.Plugin:defer-failures
+    -fplugin-opt Kitty.Plugin:hierarchy:Kitty.Plugin.Hierarchy.ConCat.classHierarchy
+    -O2
+    -fignore-interface-pragmas
+  build-depends:
+    , adjunctions
+    , base
+    , concat-classes
+    , concat-examples
+    , either
+    , ghc-prim
+    , hedgehog
+    , kitty-cat-category
+    , kitty-cat-client
+    , kitty-cat-concat-extensions
+    , kitty-cat-concat-extensions-test
+    , kitty-cat-plugin
+    , kitty-cat-plugin-test
+    , template-haskell
+
+test-suite concat-function-hierarchy
+  import: options
+  type:          exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is:       Test/Plugin/ConCat/Main.hs
+  ghc-options:
+    -fplugin Kitty.Plugin
+    -fplugin-opt Kitty.Plugin:defer-failures
+    -fplugin-opt Kitty.Plugin:hierarchy:Kitty.Plugin.Hierarchy.ConCat.functionHierarchy
+    -O0
+  build-depends:
+    , adjunctions
+    , base
+    , concat-classes
+    , concat-examples
+    , either
+    , ghc-prim
+    , hedgehog
+    , kitty-cat-category
+    , kitty-cat-client
+    , kitty-cat-concat-extensions
+    , kitty-cat-concat-extensions-test
+    , kitty-cat-plugin
+    , kitty-cat-plugin-test
+    , template-haskell
+
+test-suite concat-function-hierarchy-optimized
+  import: options
+  type:          exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is:       Test/Plugin/ConCat/Main.hs
+  ghc-options:
+    -fplugin Kitty.Plugin
+    -fplugin-opt Kitty.Plugin:defer-failures
+    -fplugin-opt Kitty.Plugin:hierarchy:Kitty.Plugin.Hierarchy.ConCat.functionHierarchy
+    -O2
+    -fignore-interface-pragmas
+  build-depends:
+    , adjunctions
+    , base
+    , concat-classes
+    , concat-examples
+    , either
+    , ghc-prim
+    , hedgehog
+    , kitty-cat-category
+    , kitty-cat-client
+    , kitty-cat-concat-extensions
+    , kitty-cat-concat-extensions-test
+    , kitty-cat-plugin
+    , kitty-cat-plugin-test
+    , template-haskell
