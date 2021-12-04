@@ -20,7 +20,7 @@ import GHC.Int (Int16, Int32, Int64, Int8)
 import GHC.Word (Word16, Word32, Word64, Word8)
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
-import Kitty.Plugin.Test.Data (One (..), Pair (..))
+import Kitty.Plugin.Test.Data (Pair (..))
 import Kitty.Plugin.Test.HList (HList1 (..))
 import Kitty.Plugin.Test.Categories.Instances (Hask (..), Term)
 import Kitty.Plugin.Test.Tests
@@ -441,7 +441,6 @@ mkTestTerms
     )
   . HCons1 (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HCons1 (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
-  . HCons1 (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HCons1 (TestCases (const [])) -- no support for `error` in Categories
   . HCons1 (TestCases (const [(([t|Int64|], [t|Word8|]), pure ([|Gen.enumBounded|], [|show|]))]))
   . HCons1 (TestCases (const [(([t|Int64|], [t|Word8|]), pure ([|Gen.enumBounded|], [|show|]))]))
@@ -519,7 +518,6 @@ mkTestTerms
     ( TestCases
         (const [([t|Word8|], pure ([|Pair <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
     )
-  . HCons1 (TestCases (const []))
   . HCons1
     ( TestCases
         (const [([t|Word8|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
@@ -540,7 +538,6 @@ mkTestTerms
             ]
         )
     )
-  . HCons1 (TestCases (const [([t|Int64|], pure ([|Gen.enumBounded|], [|show|]))]))
   . HCons1 (TestCases (const [])) -- no support for `liftA2` in Categories
   . HCons1
     ( TestCases
@@ -548,10 +545,6 @@ mkTestTerms
     )
   . HCons1
     ( TestCases
-        (const [([t|Word8|], pure ([|(,pure) . Identity <$> Gen.enumBounded|], [|show . fst|]))])
-    )
-  . HCons1
-    ( TestCases
         ( const
             [ ( ([t|Word8|], [t|Bool|]),
                 pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|])
@@ -564,30 +557,6 @@ mkTestTerms
         ( const
             [ ( ([t|Word8|], [t|Bool|]),
                 pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|])
-              )
-            ]
-        )
-    )
-  . HCons1
-    ( TestCases
-        ( const
-            [ ( ([t|Identity|], [t|Word8|]),
-                pure ([|(,) <$> Gen.enumBounded <*> pure ()|], [|show|])
-              ),
-              ( ([t|One|], [t|Word8|]),
-                pure ([|(,) <$> (One <$> Gen.enumBounded) <*> pure ()|], [|show|])
-              )
-            ]
-        )
-    )
-  . HCons1
-    ( TestCases
-        ( const
-            [ ( ([t|Identity|], [t|Word8|]),
-                pure ([|const <$> Gen.enumBounded|], [|("\\() -> " <>) . show . ($ ())|])
-              ),
-              ( ([t|One|], [t|Word8|]),
-                pure ([|const <$> Gen.enumBounded|], [|("\\() -> " <>) . show . ($ ())|])
               )
             ]
         )

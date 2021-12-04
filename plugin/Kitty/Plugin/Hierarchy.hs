@@ -976,30 +976,14 @@ baseHierarchy = do
   modV <- closedBinaryOp "GHC.Real" "mod"
   let nativeV = Nothing
   negateV <- closedUnaryOp "Prelude" "negate"
-  indexV <-
-    pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      op <- identifier "Data.Functor.Rep" "index"
-      rep <- findTyCon "Data.Functor.Rep" "Rep"
-      pure $ \onDict cat f a -> do
-        let repfTy = Plugins.mkTyConApp rep [f]
-        op' <- mkMethodApps onDict op [f] [a] []
-        mkMethodApps onDict arr [cat] [Plugins.mkAppTy f a, funTy repfTy a] [op']
+  let indexV = Nothing
   realToFracV <-
     pure <$> do
       arr <- identifier "Control.Arrow" "arr"
       op <- identifier "GHC.Real" "realToFrac"
       pure $ \onDict cat a b ->
         mkMethodApps onDict arr [cat] [a, b] . pure =<< mkFunctionApps onDict op [a, b] []
-  tabulateV <-
-    pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      op <- identifier "Data.Functor.Rep" "tabulate"
-      rep <- findTyCon "Data.Functor.Rep" "Rep"
-      pure $ \onDict cat f a -> do
-        let repfTy = Plugins.mkTyConApp rep [f]
-        op' <- mkMethodApps onDict op [f] [a] []
-        mkMethodApps onDict arr [cat] [funTy repfTy a, Plugins.mkAppTy f a] [op']
+  let tabulateV = Nothing
   notV <-
     pure <$> do
       arr <- identifier "Control.Arrow" "arr"

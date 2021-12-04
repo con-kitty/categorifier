@@ -16,13 +16,12 @@ import Control.Arrow (Arrow (..), ArrowChoice (..))
 import Control.Monad ((<=<))
 import Data.Bool (bool)
 import Data.Either.Validation (Validation)
-import Data.Functor.Identity (Identity (..))
 import Data.Semigroup (Sum (..))
 import GHC.Int (Int64)
 import GHC.Word (Word64, Word8)
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
-import Kitty.Plugin.Test.Data (One (..), Pair (..))
+import Kitty.Plugin.Test.Data (Pair (..))
 import Kitty.Plugin.Test.HList (HList1 (..))
 import Kitty.Plugin.Test.Hask (Hask (..))
 import Kitty.Plugin.Test.Term (Term)
@@ -243,7 +242,6 @@ mkTestTerms
   . HCons1 (TestCases (const [([t|Word8|], Nothing)]))
   . HCons1 (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HCons1 (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
-  . HCons1 (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HCons1
     ( TestCases
         ( \arrow ->
@@ -265,41 +263,14 @@ mkTestTerms
   . HCons1 (TestCases (const [([t|Word8|], Nothing)]))
   . HCons1 (TestCases (const [(([t|Pair|], [t|Word8|]), Nothing)]))
   . HCons1 (TestCases (const [([t|Word8|], Nothing)]))
-  . HCons1 (TestCases (const []))
   . HCons1 (TestCases (const [([t|Word8|], Nothing)]))
   . HCons1 (TestCases (const [([t|Word8|], Nothing)]))
   . HCons1 (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))
   . HCons1 (TestCases (const [])) -- no curry
-  . HCons1 (TestCases (const [])) -- no curry
   . HCons1 (TestCases (const [(([t|Validation ()|], [t|Int64|], [t|Int64|]), Nothing)]))
   . HCons1 (TestCases (const [([t|Word8|], Nothing)])) -- no curry
-  . HCons1 (TestCases (const [([t|Word8|], Nothing)])) -- no curry
   . HCons1 (TestCases (const [(([t|Word8|], [t|Bool|]), Nothing)]))
   . HCons1 (TestCases (const [(([t|Word8|], [t|Bool|]), Nothing)]))
-  . HCons1
-    ( TestCases
-        ( const
-            [ ( ([t|Identity|], [t|Word8|]),
-                pure ([|(,) <$> Gen.enumBounded <*> pure ()|], [|show|])
-              ),
-              ( ([t|One|], [t|Word8|]),
-                pure ([|(,) <$> (One <$> Gen.enumBounded) <*> pure ()|], [|show|])
-              )
-            ]
-        )
-    )
-  . HCons1
-    ( TestCases
-        ( const
-            [ ( ([t|Identity|], [t|Word8|]),
-                pure ([|const <$> Gen.enumBounded|], [|("\\() -> " <>) . show . ($ ())|])
-              ),
-              ( ([t|One|], [t|Word8|]),
-                pure ([|const <$> Gen.enumBounded|], [|("\\() -> " <>) . show . ($ ())|])
-              )
-            ]
-        )
-    )
   . HCons1 (TestCases (const []))
   . HCons1 (TestCases (const []))
   . HCons1 (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))

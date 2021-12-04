@@ -31,7 +31,6 @@ import Control.Arrow (arr)
 import Data.Coerce (coerce)
 import qualified Data.Foldable
 import Data.Functor.Identity (Identity (..))
-import qualified Data.Functor.Rep as Representable
 import Data.Semigroup (Sum (..))
 import Data.Tuple (swap)
 import qualified GHC.Classes
@@ -399,12 +398,6 @@ baseTestTerms =
     . HCons1
       (mkExprTest (mkBinaryTestConfig "ListAppend") (\a -> ([t|[$a]|], [t|[$a] -> [$a]|])) [|(++)|])
     . HCons1 (mkExprTest (mkUnaryTestConfig "Pure") (\a -> (a, [t|Identity $a|])) [|pure|])
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "PureRep")
-          (\a -> (a, [t|Identity $a|]))
-          [|Representable.pureRep|]
-      )
     . HCons1 (mkExprTest (mkUnaryTestConfig "Return") (\a -> (a, [t|Identity $a|])) [|return|])
     . HCons1 (mkExprTest (mkUnaryTestConfig "Error") (\a -> ([t|String|], a)) [|error|])
     . HCons1
@@ -457,12 +450,6 @@ baseTestTerms =
           [|((id &&& id) <$>)|]
       )
     . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "FmapRep")
-          (\a -> ([t|Identity $a|], [t|Identity $a|]))
-          [|Representable.fmapRep id|]
-      )
-    . HCons1
       (mkExprTest (mkBinaryTestConfig "ConstNot") (\a -> (a, [t|Bool -> Bool|])) [|(\_ -> not)|])
     . HCons1
       ( mkExprTest
@@ -475,12 +462,6 @@ baseTestTerms =
       (mkExprTest (mkUnaryTestConfig "Ap") (\(f, a) -> ([t|$f $a|], [t|$f $a|])) [|(pure id <*>)|])
     . HCons1
       ( mkExprTest
-          (mkUnaryTestConfig "ApRep")
-          (\a -> ([t|Identity $a|], [t|Identity $a|]))
-          [|Representable.apRep (Identity id)|]
-      )
-    . HCons1
-      ( mkExprTest
           (mkBinaryTestConfig "LiftA2")
           (\(f, a, b) -> ([t|$f $a|], [t|$f $b -> $f $a|]))
           [|liftA2 const|]
@@ -491,30 +472,12 @@ baseTestTerms =
           (\a -> ([t|Identity $a|], [t|($a -> Identity $a) -> Identity $a|]))
           [|(>>=)|]
       )
-    . HCons1
-      ( mkExprTest
-          (mkBinaryTestConfig "BindRep")
-          (\a -> ([t|Identity $a|], [t|($a -> Identity $a) -> Identity $a|]))
-          [|Representable.bindRep|]
-      )
     . HCons1 (mkExprTest (mkBinaryTestConfig "Curry") (\(a, b) -> (a, [t|$b -> $a|])) [|const|])
     . HCons1
       ( mkExprTest
           (mkUnaryTestConfig "Uncurry")
           (\(a, b) -> ([t|($a, $b)|], a))
           [|uncurry (\x _ -> x)|]
-      )
-    . HCons1
-      ( mkExprTest
-          (mkBinaryTestConfig "Index")
-          (\(f, a) -> ([t|$f $a|], [t|Representable.Rep $f -> $a|]))
-          [|Representable.index|]
-      )
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "Tabulate")
-          (\(f, a) -> ([t|Representable.Rep $f -> $a|], [t|$f $a|]))
-          [|Representable.tabulate|]
       )
     . HCons1
       ( mkExprTest

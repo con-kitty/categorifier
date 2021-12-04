@@ -47,9 +47,11 @@ import GHC.Int (Int16, Int32, Int64, Int8)
 import GHC.Word (Word16, Word32, Word64, Word8)
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
+import qualified Kitty.Plugin.Test.Adjunctions as Adjunctions
 import Kitty.Plugin.Test.ConCat.Instances (Hask (..), Term)
 import Kitty.Plugin.Test.Data (One (..), Pair (..))
 import Kitty.Plugin.Test.HList (HList1 (..))
+import qualified Kitty.Plugin.Test.HList as HList
 import Kitty.Plugin.Test.Tests
   ( TestCases (..),
     TestCategory (..),
@@ -65,7 +67,7 @@ import System.Exit (exitFailure, exitSuccess)
 {-# ANN module ("HLint: ignore Avoid restricted extensions" :: String) #-}
 
 mkTestTerms
-  defaultTestTerms
+  (HList.append defaultTestTerms Adjunctions.testTerms)
   --             name     type         prefix       strategy
   [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
     TestCategory ''(->) [t|(->)|] "plainArrow" (ComputeFromInput [|id|]),
@@ -568,7 +570,6 @@ mkTestTerms
   . HCons1 (TestCases (const [])) -- no support for `++` in ConCat
   . HCons1 (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HCons1 (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
-  . HCons1 (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HCons1
     ( TestCases
         -- __FIXME__: This works for ConCat_function, but not ConCat_class.
@@ -697,17 +698,6 @@ mkTestTerms
   . HCons1
     ( TestCases
         ( \arrow ->
-            if arrow
-              `elem` [ ''Syn, -- no Strong
-                       ''TotOrd -- SW-1940
-                     ]
-              then []
-              else [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]
-        )
-    )
-  . HCons1
-    ( TestCases
-        ( \arrow ->
             if arrow == ''TotOrd
               then [] -- no ClosedCat
               else [([t|Word8|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
@@ -730,34 +720,52 @@ mkTestTerms
     )
   . HCons1 (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))
   . HCons1 (TestCases (const [])) -- no support for `<*>` in ConCat
-  . HCons1 (TestCases (const [])) -- no support for `apRep` in ConCat
   . HCons1 (TestCases (const [])) -- no support for `liftA2` in ConCat
   . HCons1 (TestCases (const [])) -- no support for `>>=` in ConCat
+  . HCons1
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- no ClosedCat
+              else
+                [ ( ([t|Word8|], [t|Bool|]),
+                    pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|])
+                  )
+                ]
+        )
+    )
+  . HCons1
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- no ClosedCat
+              else
+                [ ( ([t|Word8|], [t|Bool|]),
+                    pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|])
+                  )
+                ]
+        )
+    )
+  . HCons1 (TestCases (const [])) -- no support for `sequenceA` in ConCat
+  . HCons1 (TestCases (const [])) -- no support for `traverse` in ConCat
+  . HCons1 (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
+  . HCons1 (TestCases (const [])) -- can only work with specialization
+  . HCons1 (TestCases (const [])) -- can only work with specialization
+  -- adjunctions
+  . HCons1 (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
+  . HCons1
+    ( TestCases
+        ( \arrow ->
+            if arrow
+              `elem` [ ''Syn, -- no Strong
+                       ''TotOrd -- SW-1940
+                     ]
+              then []
+              else [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HCons1 (TestCases (const [])) -- no support for `apRep` in ConCat
   . HCons1 (TestCases (const [])) -- no support for `bindRep` in ConCat
-  . HCons1
-    ( TestCases
-        ( \arrow ->
-            if arrow == ''TotOrd
-              then [] -- no ClosedCat
-              else
-                [ ( ([t|Word8|], [t|Bool|]),
-                    pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|])
-                  )
-                ]
-        )
-    )
-  . HCons1
-    ( TestCases
-        ( \arrow ->
-            if arrow == ''TotOrd
-              then [] -- no ClosedCat
-              else
-                [ ( ([t|Word8|], [t|Bool|]),
-                    pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|])
-                  )
-                ]
-        )
-    )
   . HCons1
     ( TestCases
         ( \arrow ->
@@ -788,11 +796,6 @@ mkTestTerms
                 ]
         )
     )
-  . HCons1 (TestCases (const [])) -- no support for `sequenceA` in ConCat
-  . HCons1 (TestCases (const [])) -- no support for `traverse` in ConCat
-  . HCons1 (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
-  . HCons1 (TestCases (const [])) -- can only work with specialization
-  . HCons1 (TestCases (const [])) -- can only work with specialization
   $ HNil1
 
 main :: IO ()

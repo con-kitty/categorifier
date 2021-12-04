@@ -61,6 +61,9 @@ test-suite concat-class-hierarchy
     -fplugin Kitty.Plugin
     -fplugin-opt Kitty.Plugin:defer-failures
     -fplugin-opt Kitty.Plugin:hierarchy:Kitty.Plugin.Hierarchy.ConCat.classHierarchy
+    -fplugin-opt Kitty.Plugin:maker-map:Kitty.Plugin.Core.MakerMap.baseMakerMapFun
+    -- ConCat includes support for `index` and `tabulate`
+    -fplugin-opt Kitty.Plugin:maker-map:Kitty.Plugin.Adjunctions.Extensions.makerMapFun
     -O0
   build-depends:
     , adjunctions
@@ -70,6 +73,8 @@ test-suite concat-class-hierarchy
     , either
     , ghc-prim
     , hedgehog
+    , kitty-cat-adjunctions-extensions
+    , kitty-cat-adjunctions-extensions-test
     , kitty-cat-category
     , kitty-cat-client
     , kitty-cat-concat-extensions
@@ -87,16 +92,20 @@ test-suite concat-class-hierarchy-optimized
     -fplugin Kitty.Plugin
     -fplugin-opt Kitty.Plugin:defer-failures
     -fplugin-opt Kitty.Plugin:hierarchy:Kitty.Plugin.Hierarchy.ConCat.classHierarchy
+    -fplugin-opt Kitty.Plugin:maker-map:Kitty.Plugin.Core.MakerMap.baseMakerMapFun
+    -- ConCat includes support for `index` and `tabulate`
+    -fplugin-opt Kitty.Plugin:maker-map:Kitty.Plugin.Adjunctions.Extensions.makerMapFun
     -O2
     -fignore-interface-pragmas
   build-depends:
-    , adjunctions
     , base
     , concat-classes
     , concat-examples
     , either
     , ghc-prim
     , hedgehog
+    , kitty-cat-adjunctions-extensions
+    , kitty-cat-adjunctions-extensions-test
     , kitty-cat-category
     , kitty-cat-client
     , kitty-cat-concat-extensions
@@ -114,15 +123,19 @@ test-suite concat-function-hierarchy
     -fplugin Kitty.Plugin
     -fplugin-opt Kitty.Plugin:defer-failures
     -fplugin-opt Kitty.Plugin:hierarchy:Kitty.Plugin.Hierarchy.ConCat.functionHierarchy
+    -fplugin-opt Kitty.Plugin:maker-map:Kitty.Plugin.Core.MakerMap.baseMakerMapFun
+    -- ConCat includes support for `index` and `tabulate`
+    -fplugin-opt Kitty.Plugin:maker-map:Kitty.Plugin.Adjunctions.Extensions.makerMapFun
     -O0
   build-depends:
-    , adjunctions
     , base
     , concat-classes
     , concat-examples
     , either
     , ghc-prim
     , hedgehog
+    , kitty-cat-adjunctions-extensions
+    , kitty-cat-adjunctions-extensions-test
     , kitty-cat-category
     , kitty-cat-client
     , kitty-cat-concat-extensions
@@ -140,6 +153,9 @@ test-suite concat-function-hierarchy-optimized
     -fplugin Kitty.Plugin
     -fplugin-opt Kitty.Plugin:defer-failures
     -fplugin-opt Kitty.Plugin:hierarchy:Kitty.Plugin.Hierarchy.ConCat.functionHierarchy
+    -fplugin-opt Kitty.Plugin:maker-map:Kitty.Plugin.Core.MakerMap.baseMakerMapFun
+    -- ConCat includes support for `index` and `tabulate`
+    -fplugin-opt Kitty.Plugin:maker-map:Kitty.Plugin.Adjunctions.Extensions.makerMapFun
     -O2
     -fignore-interface-pragmas
   build-depends:
@@ -150,6 +166,8 @@ test-suite concat-function-hierarchy-optimized
     , either
     , ghc-prim
     , hedgehog
+    , kitty-cat-adjunctions-extensions
+    , kitty-cat-adjunctions-extensions-test
     , kitty-cat-category
     , kitty-cat-client
     , kitty-cat-concat-extensions
