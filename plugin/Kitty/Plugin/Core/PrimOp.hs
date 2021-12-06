@@ -13,6 +13,7 @@ module Kitty.Plugin.Core.PrimOp
   ( -- * Replacement
     replace,
     Boxer (..),
+    noAdditionalBoxers,
 
     -- ** Sanity-checking
     checkForUnboxedVars,
@@ -80,6 +81,13 @@ data Boxer = Boxer
 type OpMap opType = Map opType [(([Plugins.TyCon], Plugins.TyCon), Boxer)]
 
 type PrimOpMap = OpMap PrimOp.PrimOp
+
+-- |
+--
+--  __TODO__: This should perhaps eventually become `baseBoxers`, and have none hardcoded
+noAdditionalBoxers ::
+  Makers -> [(Plugins.CLabelString, (Boxer, [Plugins.Type], Plugins.Type))]
+noAdditionalBoxers = const []
 
 constructPrimOpMap :: Makers -> [IntConstructor] -> PrimOpMap
 constructPrimOpMap makers intCons =

@@ -119,8 +119,8 @@ showWarnings dflags warns =
 {renderSDoc dflags . Plugins.vcat $ pprErrMsgBagWithLoc warns}|]
 
 showFailures ::
-  Plugins.DynFlags -> Plugins.CoreExpr -> NonEmpty CategoricalFailure -> Text
-showFailures dflags f =
+  Plugins.DynFlags -> NonEmpty Plugins.Name -> Plugins.CoreExpr -> NonEmpty CategoricalFailure -> Text
+showFailures dflags hierarchyOptions f =
   ( [fmt|Kitty.Plugin failed to categorize the following expression:
 {Plugins.showPpr dflags f}|]
       <>
@@ -138,10 +138,10 @@ showFailures dflags f =
     . countOccurances
     -- We unfortunately have to `show` before de-duplicating, because there are no reasonable
     -- instances on `CoreExpr` and similar types.
-    . fmap (showFailure dflags)
+    . fmap (showFailure dflags hierarchyOptions)
 
-showFailure :: Plugins.DynFlags -> CategoricalFailure -> Text
-showFailure dflags = \case
+showFailure :: Plugins.DynFlags -> NonEmpty Plugins.Name -> CategoricalFailure -> Text
+showFailure dflags hierarchyOptions = \case
   BareUnboxedVar var expr ->
     [fmt|Found an unboxed variable ({showP var} :: {showP $ Plugins.varType var})
     that isn't wrapped in a boxing constructor in the following expression. This
@@ -191,8 +191,9 @@ showFailure dflags = \case
 
     Please file an issue against the plugin.|]
   MissingCategoricalRepresentation name ->
-    [fmt|There is no categorical representation defined for "{name}". You can try using
-    a different category hierarchy, or modify the existing hierarchy definition to
+    [fmt|There is no categorical representation defined for "{name} when using the
+    following hierarchies: {showP $ toList hierarchyOptions}". You can try using a
+    different category hierarchy, or modify the existing hierarchy definition to
     support additional operations.|]
   NotEnoughTypeArgs loc expr ty args ->
     [fmt|in {loc}, the type of

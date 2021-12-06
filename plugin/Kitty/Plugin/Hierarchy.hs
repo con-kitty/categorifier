@@ -13,8 +13,6 @@ module Kitty.Plugin.Hierarchy
     getLast,
     HaskOps (..),
     Hierarchy (..),
-    Lookup,
-    MissingSymbol (..),
 
     -- * concrete hierarchies
     baseHierarchy,
@@ -24,6 +22,7 @@ module Kitty.Plugin.Hierarchy
     -- * building hierarchies
     findDataCon,
     findId,
+    findName,
     findTyCon,
     identifier,
     mkFunctionApps,
@@ -62,7 +61,6 @@ import Control.Monad.Trans.Except (ExceptT (..))
 import CoreMonad (CoreM, getHscEnv, liftIO)
 import Data.Bits (FiniteBits (..))
 import Data.Functor.Identity (Identity (..))
-import Data.List.NonEmpty (NonEmpty)
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Dual (..))
 import DynamicLoading (lookupRdrNameInModuleForPlugins)
@@ -71,6 +69,7 @@ import GhcPlugins (CoreExpr, Type)
 import qualified GhcPlugins as Plugins
 import HscTypes (lookupDataCon, lookupId, lookupTyCon)
 import Kitty.Duoidal (Parallel (..))
+import Kitty.Plugin.Core.Types (CategoryStack, Lookup, MissingSymbol (..))
 import Prelude hiding (mod)
 import qualified PrimOp
 import qualified Unique
@@ -85,11 +84,6 @@ properFunTy =
 --   provided types.
 funTy :: Type -> Type -> Type
 funTy a b = Plugins.mkTyConApp Plugins.funTyCon [Plugins.typeKind a, Plugins.typeKind b, a, b]
-
--- | This type lets us perform everything in `CoreM` while tracking failures properly. It uses
---  `Parallel` explicitly rather than relying on the `Kitty.Plugin.Duoid` operations because we want
---   to take advantage of @do@ notation for building up our records.
-type Lookup = Parallel (ExceptT (NonEmpty MissingSymbol) CoreM)
 
 -- | These are operations that we need to use in __Hask__, rather than in the target category.
 data HaskOps f = HaskOps
@@ -615,20 +609,24 @@ emptyHierarchy =
       uncurryV = Nothing
     }
 
-data MissingSymbol
-  = MissingDataCon ModuleName String
-  | MissingId ModuleName String
-  | MissingTyCon ModuleName String
-  deriving (Eq, Ord)
+lookupName :: ModuleName -> (String -> Plugins.OccName) -> String -> CoreM (Maybe Plugins.Name)
+lookupName modu mkOcc str = do
+  hscEnv <- getHscEnv
+  liftIO . fmap (fmap fst) . lookupRdrNameInModuleForPlugins hscEnv modu . Unqual $ mkOcc str
 
 -- __TODO__: This can throw in `lookupRdrNameInModuleForPlugins` if it can't find the module. We
 --           should capture that.
 lookupRdr ::
   ModuleName -> (String -> Plugins.OccName) -> (Name -> CoreM a) -> String -> CoreM (Maybe a)
-lookupRdr modu mkOcc mkThing str = do
-  hscEnv <- getHscEnv
-  traverse (mkThing . fst) <=< liftIO . lookupRdrNameInModuleForPlugins hscEnv modu . Unqual $
-    mkOcc str
+lookupRdr modu mkOcc mkThing = traverse mkThing <=< lookupName modu mkOcc
+
+findName :: String -> String -> Lookup Plugins.Name
+findName modu str =
+  let mod = mkModuleName modu
+   in Parallel
+        ( ExceptT
+            (maybe (Left . pure $ MissingName mod str) pure <$> lookupName mod Plugins.mkVarOcc str)
+        )
 
 findDataCon :: String -> String -> Lookup Plugins.DataCon
 findDataCon modu str =
@@ -685,7 +683,7 @@ mkFunctionApps onDict fn tys terms =
 --   particular way. E.g., given a class like
 --
 --   >>> class Foldable t where
---   >>>   foldMap :: forall a m. Monoid m => (a -> m) -> t a -> m
+--   >>>   foldMap :: Monoid m => (a -> m) -> t a -> m
 --
 --   we need to do a few things in the right order:
 -- 1. apply the type parameters in the class declaration (@t@),
@@ -742,7 +740,10 @@ mkMethodApps' onDictCls onDictMeth fn tc tys terms = do
   mkFunctionApps onDictMeth method tys terms
 
 -- | A hierarchy using only type classes available in @base@.
-baseHierarchy :: Monad f => Lookup (Hierarchy f)
+--
+--  __TODO__: This could generalize `CategoryStack` to @`Monad` f => f@, but can't currently
+--            dynamically load a parameterized type successfully.
+baseHierarchy :: Lookup (Hierarchy CategoryStack)
 baseHierarchy = do
   absV <- closedUnaryOp "Prelude" "abs"
   abstCV <-
@@ -975,30 +976,14 @@ baseHierarchy = do
   modV <- closedBinaryOp "GHC.Real" "mod"
   let nativeV = Nothing
   negateV <- closedUnaryOp "Prelude" "negate"
-  indexV <-
-    pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      op <- identifier "Data.Functor.Rep" "index"
-      rep <- findTyCon "Data.Functor.Rep" "Rep"
-      pure $ \onDict cat f a -> do
-        let repfTy = Plugins.mkTyConApp rep [f]
-        op' <- mkMethodApps onDict op [f] [a] []
-        mkMethodApps onDict arr [cat] [Plugins.mkAppTy f a, funTy repfTy a] [op']
+  let indexV = Nothing
   realToFracV <-
     pure <$> do
       arr <- identifier "Control.Arrow" "arr"
       op <- identifier "GHC.Real" "realToFrac"
       pure $ \onDict cat a b ->
         mkMethodApps onDict arr [cat] [a, b] . pure =<< mkFunctionApps onDict op [a, b] []
-  tabulateV <-
-    pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      op <- identifier "Data.Functor.Rep" "tabulate"
-      rep <- findTyCon "Data.Functor.Rep" "Rep"
-      pure $ \onDict cat f a -> do
-        let repfTy = Plugins.mkTyConApp rep [f]
-        op' <- mkMethodApps onDict op [f] [a] []
-        mkMethodApps onDict arr [cat] [funTy repfTy a, Plugins.mkAppTy f a] [op']
+  let tabulateV = Nothing
   notV <-
     pure <$> do
       arr <- identifier "Control.Arrow" "arr"

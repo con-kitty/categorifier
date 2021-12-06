@@ -154,7 +154,7 @@ import UnliftIO.Exception (Exception (..), SomeException)
 import qualified UnliftIO.Exception as Exception
 
 -- | This is a trivial wrapper, but it prevents `impureThrow` from being inlined too soon for the
---  "Kitty.Cat" plugin to handle it. It also doesn't work using `Exception.impureThrow` instead of
+--  "Kitty.Plugin" plugin to handle it. It also doesn't work using `Exception.impureThrow` instead of
 --  `throw` (presumably becasue of the `Exception.SyncExceptionWrapper` handling).
 impureThrow :: Exception e => e -> a
 impureThrow = throw

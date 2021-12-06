@@ -17,10 +17,10 @@ import qualified Hedgehog.Range as Range
 import P
 import System.Exit (exitFailure, exitSuccess)
 import System.IO (IO)
-import Test.Plugin.Data (One (..), Pair (..))
-import Test.Plugin.HList (HList1 (..))
-import Test.Plugin.Term (Term)
-import Test.Plugin.Tests
+import Test.Data (One (..), Pair (..))
+import Test.HList (HList1 (..))
+import Test.Term (Term)
+import Test.Tests
   ( TestCases (..),
     TestCategory (..),
     TestStrategy (..),

@@ -12,20 +12,66 @@ module Kitty.Plugin.Client
   )
 where
 
-import Data.Functor.Compose (Compose (..))
+import Data.Functor.Compose (Compose)
+import Data.Functor.Identity (Identity)
 import qualified Data.Functor.Product as Functor
 import qualified Data.Functor.Sum as Functor
+import Data.Complex (Complex)
 import Data.List.NonEmpty (NonEmpty)
+import Data.Proxy (Proxy)
 import Data.Ratio (Ratio)
 import qualified Data.Semigroup as Semigroup
+import qualified GHC.Generics as Generic
 import Kitty.Plugin.Client.Internal (HasRep (..), deriveHasRep)
 
 deriveHasRep ''[]
+deriveHasRep ''(,,)
+deriveHasRep ''(,,,)
+deriveHasRep ''(,,,,)
+deriveHasRep ''(,,,,,)
+deriveHasRep ''(,,,,,,)
+deriveHasRep ''(,,,,,,,)
+deriveHasRep ''(,,,,,,,,)
+deriveHasRep ''(,,,,,,,,,)
+deriveHasRep ''(,,,,,,,,,,)
+deriveHasRep ''(,,,,,,,,,,,)
+deriveHasRep ''(,,,,,,,,,,,,)
+deriveHasRep ''(,,,,,,,,,,,,,)
+deriveHasRep ''(,,,,,,,,,,,,,,)
+deriveHasRep ''(,,,,,,,,,,,,,,,)
+deriveHasRep ''(,,,,,,,,,,,,,,,,)
+deriveHasRep ''(,,,,,,,,,,,,,,,,,)
+deriveHasRep ''(,,,,,,,,,,,,,,,,,,)
+deriveHasRep ''(,,,,,,,,,,,,,,,,,,,)
+deriveHasRep ''(,,,,,,,,,,,,,,,,,,,,)
+deriveHasRep ''(,,,,,,,,,,,,,,,,,,,,,)
+deriveHasRep ''(,,,,,,,,,,,,,,,,,,,,,,)
+deriveHasRep ''(,,,,,,,,,,,,,,,,,,,,,,,)
+deriveHasRep ''(,,,,,,,,,,,,,,,,,,,,,,,,)
+deriveHasRep ''(,,,,,,,,,,,,,,,,,,,,,,,,,)
+deriveHasRep ''(,,,,,,,,,,,,,,,,,,,,,,,,,,)
+deriveHasRep ''Complex
 deriveHasRep ''Compose
-deriveHasRep ''NonEmpty
-deriveHasRep ''Ordering
 deriveHasRep ''Functor.Product
 deriveHasRep ''Functor.Sum
+deriveHasRep ''(Generic.:+:)
+deriveHasRep ''(Generic.:*:)
+deriveHasRep ''(Generic.:.:)
+deriveHasRep ''Generic.K1
+deriveHasRep ''Generic.M1
+deriveHasRep ''Generic.Par1
+deriveHasRep ''Generic.U1
+deriveHasRep ''Identity
+deriveHasRep ''Maybe
+deriveHasRep ''NonEmpty
+deriveHasRep ''Ordering
+deriveHasRep ''Proxy
 deriveHasRep ''Ratio
+deriveHasRep ''Semigroup.All
+deriveHasRep ''Semigroup.Any
+deriveHasRep ''Semigroup.Dual
+deriveHasRep ''Semigroup.Endo
 deriveHasRep ''Semigroup.Max
 deriveHasRep ''Semigroup.Min
+deriveHasRep ''Semigroup.Product
+deriveHasRep ''Semigroup.Sum

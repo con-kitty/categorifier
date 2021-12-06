@@ -24,7 +24,7 @@ library
     -Wall
   build-depends:
     , base
-    , concat-classes
+    , kitty-cat-client
   default-language: Haskell2010
   default-extensions:
       InstanceSigs

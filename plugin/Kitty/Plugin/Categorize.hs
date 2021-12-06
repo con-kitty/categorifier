@@ -1,7 +1,7 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE TemplateHaskell #-}
 
--- | These are the operations to use with the "Kitty.Cat" plugin, which trigger conversion from
+-- | These are the operations to use with the "Kitty.Plugin" plugin, which trigger conversion from
 --  `(->)` to some target category.
 --
 --  __NB__: This module is expected to be imported qualified.
@@ -31,12 +31,12 @@ import qualified Language.Haskell.TH as TH
 -- | The name of the module for the plugin.
 pluginModule :: String
 pluginModule =
-  -- This would ideally be more like @`TH.moduleName` 'Kitty.Cat.plugin@, but that would cause a
+  -- This would ideally be more like @`TH.moduleName` 'Kitty.Plugin.plugin@, but that would cause a
   -- circular dependency, so we just hardcode the `String` and try to be careful.
-  "Kitty.Cat"
+  "Kitty.Plugin"
 
 -- | This is a pseudo-function that represents a functor from __Hask__ to some target category
---  __C__. It should be replaced at compile-time by `Kitty.Cat.plugin`. If it's not replaced, it
+--  __C__. It should be replaced at compile-time by `Kitty.Plugin.plugin`. If it's not replaced, it
 --   will always `Exception.impureThrow` an `UnconvertedCall` `Exception`.
 --
 --   @c@ is the type of arrows in the target category (__C__). It's perhaps surprising that there
@@ -58,7 +58,7 @@ expression :: forall c a b. HasCallStack => (a -> b) -> a `c` b
 expression f = Exception.impureThrow $ UnconvertedCall f callStack
 {-# NOINLINE expression #-}
 
--- | An exception thrown at runtime if `Kitty.Cat.plugin` either isn't available, or couldn't
+-- | An exception thrown at runtime if `Kitty.Plugin.plugin` either isn't available, or couldn't
 --   compile away a call to `expression`.
 data UnconvertedCall = forall a b. UnconvertedCall (a -> b) CallStack
 

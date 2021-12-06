@@ -63,23 +63,24 @@ constraints:
   , vec >=0.3 && <0.5
   , yaya >=0.3.2 && <0.4
 
+tests: True
+
 packages:
   ./category/kitty-cat-category.cabal
-  ./category-kitty/kitty-cat-category-kitty.cabal
-  ./category-unconcat/kitty-cat-category-unconcat.cabal
   ./client/kitty-cat-client.cabal
   ./common/kitty-cat-common.cabal
   ./duoids/kitty-cat-duoids.cabal
-  ./extensions-categories/kitty-cat-extensions-categories.cabal
-  ./extensions-concat/kitty-cat-extensions-concat.cabal
-  ./extensions-kitty/kitty-cat-extensions-kitty.cabal
-  ./extensions-unconcat/kitty-cat-extensions-unconcat.cabal
+  ./integrations/adjunctions/extensions/kitty-cat-adjunctions-extensions.cabal
+  ./integrations/adjunctions/extensions-test/kitty-cat-adjunctions-extensions-test.cabal
+  ./integrations/categories/extensions/kitty-cat-categories-extensions.cabal
+  ./integrations/categories/extensions-test/kitty-cat-categories-extensions-test.cabal
+  ./integrations/concat/extensions/kitty-cat-concat-extensions.cabal
+  ./integrations/concat/extensions-test/kitty-cat-concat-extensions-test.cabal
+  ./integrations/kitty/category/kitty-cat-kitty-category.cabal
+  ./integrations/kitty/extensions/kitty-cat-kitty-extensions.cabal
+  ./integrations/kitty/extensions-test/kitty-cat-kitty-extensions-test.cabal
+  ./integrations/unconcat/category/kitty-cat-unconcat-category.cabal
+  ./integrations/unconcat/extensions/kitty-cat-unconcat-extensions.cabal
+  ./integrations/unconcat/extensions-test/kitty-cat-unconcat-extensions-test.cabal
   ./plugin/kitty-cat-plugin.cabal
-  -- __TODO__: Replace multiple plugins with dynamic loading
-  ./plugin-base/kitty-cat-plugin-base.cabal
-  ./plugin-categories/kitty-cat-plugin-categories.cabal
-  ./plugin-concat-class/kitty-cat-plugin-concat-class.cabal
-  ./plugin-concat-function/kitty-cat-plugin-concat-function.cabal
-  ./plugin-kitty/kitty-cat-plugin-kitty.cabal
   ./plugin-test/kitty-cat-plugin-test.cabal
-  ./plugin-unconcat/kitty-cat-plugin-unconcat.cabal

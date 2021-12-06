@@ -10,6 +10,7 @@ module Kitty.Plugin.Core.MakerMap
     MakerMapFun,
     combineMakerMapFuns,
     baseMakerMapFun,
+    adjunctionsMakerMapFun,
 
     -- * Helper functions for combining categorized expressions
     applyCat,
@@ -78,7 +79,8 @@ import qualified Unsafe.Coerce
 -- returns @Nothing@, the name will be inlined.
 type MakerMap = Map TH.Name ([Plugins.CoreExpr] -> Maybe (CategoryStack Plugins.CoreExpr))
 
--- | A function for building `MakerMap`.
+-- | Extending support in the source language ... if you have operations that should map more
+--   directly than simply being inlined.
 type MakerMapFun =
   Plugins.DynFlags ->
   Makers ->
@@ -108,6 +110,81 @@ combineMakerMapFuns fs dflags m n target expr cat var args modu catFun catLambda
   Map.unionsWith (\_ x -> x) maps
   where
     maps = fmap (\f -> f dflags m n target expr cat var args modu catFun catLambda) fs
+
+adjunctionsMakerMapFun :: MakerMapFun
+adjunctionsMakerMapFun
+  dflags
+  m@Makers {..}
+  n
+  target
+  expr
+  cat
+  var
+  args
+  modu
+  categorizeFun
+  categorizeLambda =
+    Map.fromListWith
+      const
+      [ ( 'Data.Functor.Rep.apRep,
+          \case
+            f : a : b : representable : rest ->
+              ($ (f : representable : a : b : rest)) =<< Map.lookup '(GHC.Base.<*>) baseMakerMap
+            _ -> Nothing
+        ),
+        ( 'Data.Functor.Rep.bindRep,
+          \case
+            f : a : b : representable : rest ->
+              ($ (f : representable : a : b : rest)) =<< Map.lookup '(GHC.Base.>>=) baseMakerMap
+            _ -> Nothing
+        ),
+        ( 'Data.Functor.Rep.fmapRep,
+          \case
+            f : a : b : representable : rest ->
+              ($ (f : representable : a : b : rest)) =<< Map.lookup 'GHC.Base.fmap baseMakerMap
+            _ -> Nothing
+        ),
+        ( 'Data.Functor.Rep.index,
+          \case
+            Plugins.Type f : _representable : Plugins.Type a : rest ->
+              pure $ maker1 rest =<\< mkIndex f a
+            _ -> Nothing
+        ),
+        ( 'Data.Functor.Rep.liftR2,
+          \case
+            f : a : b : c : representable : rest ->
+              ($ (f : representable : a : b : c : rest))
+                =<< Map.lookup 'GHC.Base.liftA2 baseMakerMap
+            _ -> Nothing
+        ),
+        ( 'Data.Functor.Rep.pureRep,
+          \case
+            f : a : representable : rest ->
+              ($ (f : representable : a : rest)) =<< Map.lookup 'GHC.Base.pure baseMakerMap
+            _ -> Nothing
+        ),
+        ( 'Data.Functor.Rep.tabulate,
+          \case
+            Plugins.Type f : _representable : Plugins.Type a : rest ->
+              pure $ maker1 rest =<\< mkTabulate f a
+            _ -> Nothing
+        )
+      ]
+    where
+      baseMakerMap =
+        baseMakerMapFun
+          dflags
+          m
+          n
+          target
+          expr
+          cat
+          var
+          args
+          modu
+          categorizeFun
+          categorizeLambda
+      maker1 = makeMaker1 m categorizeLambda
 
 baseMakerMapFun :: MakerMapFun
 baseMakerMapFun
@@ -240,49 +317,6 @@ baseMakerMapFun
               \case
                 f : a : b : functor : rest ->
                   ($ (f : functor : a : b : rest)) =<< Map.lookup 'GHC.Base.fmap makerMap
-                _ -> Nothing
-            ),
-            ( 'Data.Functor.Rep.apRep,
-              \case
-                f : a : b : representable : rest ->
-                  ($ (f : representable : a : b : rest)) =<< Map.lookup '(GHC.Base.<*>) makerMap
-                _ -> Nothing
-            ),
-            ( 'Data.Functor.Rep.bindRep,
-              \case
-                f : a : b : representable : rest ->
-                  ($ (f : representable : a : b : rest)) =<< Map.lookup '(GHC.Base.>>=) makerMap
-                _ -> Nothing
-            ),
-            ( 'Data.Functor.Rep.fmapRep,
-              \case
-                f : a : b : representable : rest ->
-                  ($ (f : representable : a : b : rest)) =<< Map.lookup 'GHC.Base.fmap makerMap
-                _ -> Nothing
-            ),
-            ( 'Data.Functor.Rep.index,
-              \case
-                Plugins.Type f : _representable : Plugins.Type a : rest ->
-                  pure $ maker1 rest =<\< mkIndex f a
-                _ -> Nothing
-            ),
-            ( 'Data.Functor.Rep.liftR2,
-              \case
-                f : a : b : c : representable : rest ->
-                  ($ (f : representable : a : b : c : rest))
-                    =<< Map.lookup 'GHC.Base.liftA2 makerMap
-                _ -> Nothing
-            ),
-            ( 'Data.Functor.Rep.pureRep,
-              \case
-                f : a : representable : rest ->
-                  ($ (f : representable : a : rest)) =<< Map.lookup 'GHC.Base.pure makerMap
-                _ -> Nothing
-            ),
-            ( 'Data.Functor.Rep.tabulate,
-              \case
-                Plugins.Type f : _representable : Plugins.Type a : rest ->
-                  pure $ maker1 rest =<\< mkTabulate f a
                 _ -> Nothing
             ),
             ( 'Data.Traversable.sequenceA,
@@ -742,11 +776,9 @@ baseMakerMapFun
                 _ -> Nothing
             )
           ]
-
       maker1 = makeMaker1 m categorizeLambda
       maker2 = makeMaker2 m categorizeLambda expr
       handleExtraArgs = handleAdditionalArgs m categorizeLambda
-
       -- from: (\n -> liftA2 {{u}}) :: n -> f a -> f b -> f c
       -- to:   curry (curry (liftA2 (uncurry (uncurry (categorize n {{u}})))) . strength) ::
       --         n `k` (f a -> f b -> f c)
@@ -782,11 +814,8 @@ baseMakerMapFun
           applyEnriched' [u] rest
             <$> mkTraverse t f (nameTuple a) b
             <*\> mkStrength t (Plugins.varType n) a
-
       applyEnriched = applyEnrichedCat m categorizeLambda
-
       applyEnriched' = applyEnrichedCat' m categorizeLambda
-
       nameTuple = makeTupleTyWithVar n
 
 applyCat ::
@@ -976,7 +1005,13 @@ isHeadVarId e =
     (Plugins.Var ident, [Plugins.Type _cat, _category, Plugins.Type _a]) ->
       case splitNameString $ Plugins.getName ident of
         (Just modu, "id") ->
-          modu `elem` ["Control.Category", "Haskerwaul.Semigroupoid", "Kitty.UnconCat"]
+          modu
+            `elem`
+              [ "ConCat.Category",
+                "Control.Category",
+                "Haskerwaul.Semigroupoid",
+                "Kitty.Plugin.UnconCat"
+              ]
         (_, _) -> False
     (_, _) -> False
 

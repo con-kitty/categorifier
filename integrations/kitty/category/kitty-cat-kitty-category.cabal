@@ -1,0 +1,46 @@
+cabal-version:  2.4
+
+name:           kitty-cat-kitty-category
+version:        0.1
+description:    Categorical classes extending Conal's ConCat
+homepage:       https://github.com/con-kitty/kitty-cat#readme
+bug-reports:    https://github.com/con-kitty/kitty-cat/issues
+build-type:     Simple
+tested-with:    GHC==8.10.2
+
+source-repository head
+  type: git
+  location: https://github.com/con-kitty/kitty-cat
+
+library
+  exposed-modules:
+      Kitty.Plugin.Kitty
+  other-modules:
+      Paths_kitty_cat_kitty_category
+  autogen-modules:
+      Paths_kitty_cat_kitty_category
+  ghc-options:
+    -O2
+    -Wall
+  build-depends:
+    , base
+    , concat-classes
+  default-language: Haskell2010
+  default-extensions:
+      InstanceSigs
+    , ScopedTypeVariables
+    , TypeApplications
+    , FlexibleContexts
+    , FlexibleInstances
+    , FunctionalDependencies
+    , LambdaCase
+    , NoStarIsType
+    , TypeOperators
+    , BangPatterns
+    , StandaloneDeriving
+    , DeriveGeneric
+    , DeriveDataTypeable
+    , DeriveFunctor
+    , DeriveFoldable
+    , DeriveTraversable
+    , DerivingStrategies
