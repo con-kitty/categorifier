@@ -983,7 +983,7 @@ categorize
             | otherwise = pure Nothing
 
           tryAutoInterpret' =
-            maybeTraceWith debug (const $ "Automatically interpreted " <> dbg target)
+            fmap (fmap (maybeTraceWith debug (const $ "Automatically interpreted " <> dbg target)))
               . tryAutoInterpret
                 buildDictionary
                 cat
