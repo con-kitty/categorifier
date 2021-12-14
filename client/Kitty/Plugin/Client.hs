@@ -1,3 +1,6 @@
+-- `PolyKinds` ensures the derived HasRep instances are fully polymorphic. In future, we could try
+-- to make this explicit in `deriveHasRep`.
+{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
