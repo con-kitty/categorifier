@@ -29,10 +29,10 @@ import Data.Char (toLower)
 import Data.Foldable (toList)
 import Data.Maybe (mapMaybe)
 import Data.Tuple.Extra (uncurry3)
-import GHC.Stack (HasCallStack, withFrozenCallStack)
 import qualified Hedgehog
 import Kitty.Common.IO.Exception (SomeException, evaluate, try)
 import qualified Kitty.Plugin.Categorize as Categorize
+import Kitty.Plugin.Hedgehog (floatingEq)
 import Kitty.Plugin.Test.HList (HList1 (..), zipLowerWith)
 import Language.Haskell.TH (Dec, Exp, Name, Q, Type)
 import qualified Language.Haskell.TH as TH
@@ -90,12 +90,6 @@ mkPropName i = TH.mkName . (\nm -> "hprop_" <> nm <> show i) . TH.nameBase
 
 mkPropLabel :: Int -> Name -> String
 mkPropLabel i = (<> show i) . TH.nameBase
-
--- | A variant on `Hedgehog.===` that identifies NaNs as equals. It still works for non-FP types.
-floatingEq :: (Hedgehog.MonadTest m, Eq a, Show a, HasCallStack) => a -> a -> m ()
-floatingEq x y = withFrozenCallStack $ Hedgehog.diff x eq y
-  where
-    eq x' y' = x' /= x' && y' /= y' || x' == y'
 
 -- | Create a TH splice defining a Hedgehog property test of the given function.  This should be
 -- automatically found and run by tasty.

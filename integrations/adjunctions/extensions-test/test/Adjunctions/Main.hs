@@ -16,6 +16,7 @@ import Data.Functor.Identity (Identity (..))
 import GHC.Int (Int64)
 import GHC.Word (Word8)
 import qualified Hedgehog.Gen as Gen
+import Kitty.Plugin.Hedgehog (genFloating)
 import qualified Kitty.Plugin.Test.Adjunctions as Adjunctions
 import Kitty.Plugin.Test.Data (One (..))
 import Kitty.Plugin.Test.HList (HList1 (..))
@@ -24,7 +25,6 @@ import Kitty.Plugin.Test.Tests
   ( TestCases (..),
     TestCategory (..),
     TestStrategy (..),
-    genFloating,
     mkTestTerms,
   )
 import System.Exit (exitFailure, exitSuccess)

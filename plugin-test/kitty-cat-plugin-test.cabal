@@ -46,6 +46,7 @@ library
     , kitty-cat-category
     , kitty-cat-client
     , kitty-cat-common
+    , kitty-cat-hedgehog
     , kitty-cat-plugin
     , template-haskell
     , text
@@ -88,6 +89,7 @@ test-suite default-plugin
     , hedgehog
     , kitty-cat-category
     , kitty-cat-client
+    , kitty-cat-hedgehog
     , kitty-cat-plugin
     , kitty-cat-plugin-test
     , template-haskell
@@ -110,6 +112,7 @@ test-suite base-hierarchy
     , hedgehog
     , kitty-cat-category
     , kitty-cat-client
+    , kitty-cat-hedgehog
     , kitty-cat-plugin
     , kitty-cat-plugin-test
     , template-haskell
@@ -133,6 +136,7 @@ test-suite base-hierarchy-optimized
     , hedgehog
     , kitty-cat-category
     , kitty-cat-client
+    , kitty-cat-hedgehog
     , kitty-cat-plugin
     , kitty-cat-plugin-test
     , template-haskell

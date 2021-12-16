@@ -1,0 +1,44 @@
+cabal-version:  2.4
+
+name:           kitty-cat-hedgehog
+version:        0.1
+description:    Additional functions to assist testing with Hedgehog.
+homepage:       https://github.com/con-kitty/kitty-cat#readme
+bug-reports:    https://github.com/con-kitty/kitty-cat/issues
+build-type:     Simple
+tested-with:    GHC==8.10.2
+
+source-repository head
+  type: git
+  location: https://github.com/con-kitty/kitty-cat
+
+library
+  exposed-modules:
+      Kitty.Plugin.Hedgehog
+  other-modules:
+      Paths_kitty_cat_hedgehog
+  autogen-modules:
+      Paths_kitty_cat_hedgehog
+  ghc-options: -Wall
+  build-depends:
+    , base
+    , hedgehog
+  default-language: Haskell2010
+  default-extensions:
+      InstanceSigs
+    , ScopedTypeVariables
+    , TypeApplications
+    , FlexibleContexts
+    , FlexibleInstances
+    , FunctionalDependencies
+    , LambdaCase
+    , NoStarIsType
+    , TypeOperators
+    , BangPatterns
+    , StandaloneDeriving
+    , DeriveGeneric
+    , DeriveDataTypeable
+    , DeriveFunctor
+    , DeriveFoldable
+    , DeriveTraversable
+    , DerivingStrategies

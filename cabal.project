@@ -70,6 +70,7 @@ packages:
   ./client/kitty-cat-client.cabal
   ./common/kitty-cat-common.cabal
   ./duoids/kitty-cat-duoids.cabal
+  ./hedgehog/kitty-cat-hedgehog.cabal
   ./integrations/adjunctions/extensions/kitty-cat-adjunctions-extensions.cabal
   ./integrations/adjunctions/extensions-test/kitty-cat-adjunctions-extensions-test.cabal
   ./integrations/categories/extensions/kitty-cat-categories-extensions.cabal

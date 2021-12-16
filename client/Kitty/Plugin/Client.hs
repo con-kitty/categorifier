@@ -12,6 +12,10 @@
 module Kitty.Plugin.Client
   ( HasRep (..),
     deriveHasRep,
+
+    -- * testing
+    abstReturn,
+    reprReturn,
   )
 where
 
@@ -21,11 +25,23 @@ import qualified Data.Functor.Product as Functor
 import qualified Data.Functor.Sum as Functor
 import Data.Complex (Complex)
 import Data.List.NonEmpty (NonEmpty)
-import Data.Proxy (Proxy)
+import Data.Proxy (Proxy (..))
 import Data.Ratio (Ratio)
 import qualified Data.Semigroup as Semigroup
 import qualified GHC.Generics as Generic
 import Kitty.Plugin.Client.Internal (HasRep (..), deriveHasRep)
+
+-- | This property should be true for every `HasRep` instance. `r` should be a classifying object,
+--   and the first argument a comparison (e.g., `Bool` and `==` or `Hedgehog.Property` and
+--  `Hedgehog.===`) to make it easy to test.
+abstReturn :: forall a r. HasRep a => Proxy a -> (Rep a -> Rep a -> r) -> Rep a -> r
+abstReturn Proxy eq = eq <$> id <*> repr . abst @a
+
+-- | This property should be true for every `HasRep` instance. `r` should be a classifying object,
+--   and the first argument a comparison (e.g., `Bool` and `==` or `Hedgehog.Property` and
+--  `Hedgehog.===`) to make it easy to test.
+reprReturn :: HasRep a => (a -> a -> r) -> a -> r
+reprReturn eq = eq <$> id <*> abst . repr
 
 deriveHasRep ''[]
 deriveHasRep ''(,,)

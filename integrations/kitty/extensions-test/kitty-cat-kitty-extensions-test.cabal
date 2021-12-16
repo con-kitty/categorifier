@@ -70,6 +70,7 @@ test-suite kitty-hierarchy
     , kitty-cat-category
     , kitty-cat-client
     , kitty-cat-concat-extensions
+    , kitty-cat-hedgehog
     , kitty-cat-kitty-category
     , kitty-cat-kitty-extensions
     , kitty-cat-kitty-extensions-test
@@ -100,6 +101,7 @@ test-suite kitty-hierarchy-optimized
     , kitty-cat-category
     , kitty-cat-client
     , kitty-cat-concat-extensions
+    , kitty-cat-hedgehog
     , kitty-cat-kitty-category
     , kitty-cat-kitty-extensions
     , kitty-cat-kitty-extensions-test

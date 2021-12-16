@@ -79,6 +79,7 @@ test-suite concat-class-hierarchy
     , kitty-cat-client
     , kitty-cat-concat-extensions
     , kitty-cat-concat-extensions-test
+    , kitty-cat-hedgehog
     , kitty-cat-plugin
     , kitty-cat-plugin-test
     , template-haskell
@@ -110,6 +111,7 @@ test-suite concat-class-hierarchy-optimized
     , kitty-cat-client
     , kitty-cat-concat-extensions
     , kitty-cat-concat-extensions-test
+    , kitty-cat-hedgehog
     , kitty-cat-plugin
     , kitty-cat-plugin-test
     , template-haskell
@@ -140,6 +142,7 @@ test-suite concat-function-hierarchy
     , kitty-cat-client
     , kitty-cat-concat-extensions
     , kitty-cat-concat-extensions-test
+    , kitty-cat-hedgehog
     , kitty-cat-plugin
     , kitty-cat-plugin-test
     , template-haskell
@@ -172,6 +175,7 @@ test-suite concat-function-hierarchy-optimized
     , kitty-cat-client
     , kitty-cat-concat-extensions
     , kitty-cat-concat-extensions-test
+    , kitty-cat-hedgehog
     , kitty-cat-plugin
     , kitty-cat-plugin-test
     , template-haskell
