@@ -86,7 +86,7 @@ hierarchy = do
          in -- Here we must avoid building dictionaries on the `c` constraint in
             -- @constraintK :: forall c a. c => a `k` c@ (hence the `pure`), because we are
             -- going to pass `c`'s dictionary as a term argument.
-            mkMethodApps' onDict pure fn [Plugins.typeKind a, cat'] [b, a] []
+            mkMethodApps' onDict pure fn [Plugins.typeKind a, cat', b] [a] []
   kcoshV <-
     pure <$> do
       fn <- identifier' "coshK"
