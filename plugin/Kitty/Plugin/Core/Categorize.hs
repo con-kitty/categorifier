@@ -649,19 +649,22 @@ categorize
         [Plugins.CoreExpr] ->
         CategoryStack Plugins.CoreExpr
       categorizeDataCon name e dc args =
-        case (Plugins.getOccString dc, args) of
-          ("(,)", Plugins.Type a : Plugins.Type b : rest) ->
+        case (splitNameString $ Plugins.dataConName dc, args) of
+          -- Handle the data constructors expected in `Kitty.Plugin.Client.Rep` terms.
+          ((Just "Data.Constraint", "Dict"), [Plugins.Type _, constraint]) ->
+            mkConst' makers (Plugins.varType name) constraint
+          ((Just "Data.Either", "Left"), Plugins.Type a : Plugins.Type b : rest) ->
+            makeMaker1 makers (categorizeLambda name) rest =<\< mkInl makers a b
+          ((Just "Data.Either", "Right"), Plugins.Type a : Plugins.Type b : rest) ->
+            makeMaker1 makers (categorizeLambda name) rest =<\< mkInr makers a b
+          ((Just "GHC.Tuple", "(,)"), Plugins.Type a : Plugins.Type b : rest) ->
             makeMaker2 makers (categorizeLambda name) e rest
               <=\< mkId makers
               $ Plugins.mkBoxedTupleTy [a, b]
-          ("Left", Plugins.Type a : Plugins.Type b : rest) ->
-            makeMaker1 makers (categorizeLambda name) rest =<\< mkInl makers a b
-          ("Right", Plugins.Type a : Plugins.Type b : rest) ->
-            makeMaker1 makers (categorizeLambda name) rest =<\< mkInr makers a b
           -- "Given a saturated constructor application /Con e1...en/, rewrite it to /abst (inline
           --  repr (Con e1...en))/, where /inline e/ tells GHC’s simplifier to inline the expression
           -- /e/." ⸻§9
-          (_, _) -> do
+          ((_, _), _) -> do
             let nonTypeArgs = filter (not . Plugins.isTypeArg) args
                 (binds, body) =
                   Plugins.collectBinders
@@ -983,7 +986,7 @@ categorize
             | otherwise = pure Nothing
 
           tryAutoInterpret' =
-            maybeTraceWith debug (const $ "Automatically interpreted " <> dbg target)
+            fmap (fmap (maybeTraceWith debug (const $ "Automatically interpreted " <> dbg target)))
               . tryAutoInterpret
                 buildDictionary
                 cat

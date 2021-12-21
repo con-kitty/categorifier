@@ -21,6 +21,7 @@ import GHC.Int (Int64)
 import GHC.Word (Word64, Word8)
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
+import Kitty.Plugin.Hedgehog (genFloating)
 import Kitty.Plugin.Test.Data (Pair (..))
 import Kitty.Plugin.Test.HList (HList1 (..))
 import Kitty.Plugin.Test.Hask (Hask (..))
@@ -30,7 +31,6 @@ import Kitty.Plugin.Test.Tests
     TestCategory (..),
     TestStrategy (..),
     defaultTestTerms,
-    genFloating,
     mkTestTerms,
   )
 import System.Exit (exitFailure, exitSuccess)

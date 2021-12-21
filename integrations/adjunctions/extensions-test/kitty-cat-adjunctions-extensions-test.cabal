@@ -74,6 +74,7 @@ test-suite adjunctions-hierarchy
     , kitty-cat-categories-extensions-test
     , kitty-cat-category
     , kitty-cat-client
+    , kitty-cat-hedgehog
     , kitty-cat-plugin
     , kitty-cat-plugin-test
     , template-haskell
@@ -105,6 +106,7 @@ test-suite adjunctions-hierarchy-optimized
     , kitty-cat-categories-extensions-test
     , kitty-cat-category
     , kitty-cat-client
+    , kitty-cat-hedgehog
     , kitty-cat-plugin
     , kitty-cat-plugin-test
     , template-haskell

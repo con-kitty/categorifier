@@ -47,6 +47,7 @@ import GHC.Int (Int16, Int32, Int64, Int8)
 import GHC.Word (Word16, Word32, Word64, Word8)
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
+import Kitty.Plugin.Hedgehog (genFloating)
 import qualified Kitty.Plugin.Test.Adjunctions as Adjunctions
 import Kitty.Plugin.Test.ConCat.Instances (Hask (..), Term)
 import Kitty.Plugin.Test.Data (One (..), Pair (..))
@@ -57,7 +58,6 @@ import Kitty.Plugin.Test.Tests
     TestCategory (..),
     TestStrategy (..),
     defaultTestTerms,
-    genFloating,
     mkTestTerms,
   )
 import Kitty.Plugin.Test.TotOrd (TotOrd, runTotOrd)

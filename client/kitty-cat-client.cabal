@@ -27,7 +27,38 @@ library
     , extra
     , template-haskell
     , kitty-cat-common
+    , kitty-cat-duoids
   default-language: Haskell2010
+  default-extensions:
+      InstanceSigs
+    , ScopedTypeVariables
+    , TypeApplications
+    , FlexibleContexts
+    , FlexibleInstances
+    , FunctionalDependencies
+    , LambdaCase
+    , NoStarIsType
+    , TypeOperators
+    , BangPatterns
+    , StandaloneDeriving
+    , DeriveGeneric
+    , DeriveDataTypeable
+    , DeriveFunctor
+    , DeriveFoldable
+    , DeriveTraversable
+    , DerivingStrategies
+
+test-suite client-instances
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is: Main.hs
+  build-depends:
+    , base
+    , constraints
+    , fin
+    , hedgehog
+    , kitty-cat-client
+    , kitty-cat-hedgehog
   default-extensions:
       InstanceSigs
     , ScopedTypeVariables

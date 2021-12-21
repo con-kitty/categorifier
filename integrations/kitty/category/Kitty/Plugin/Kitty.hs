@@ -352,5 +352,5 @@ instance (FModCat k a, con a) => FModCat (ConCat.Constrained con k) a where
   fmodK = ConCat.Constrained fmodK
 
 -- | Similar to 'ConCat.ConstCat', but for constraints.
-class ConstraintCat (k :: kind -> Constraint -> Type) where
-  constraintK :: forall c a. c => a `k` c
+class ConstraintCat (k :: kind -> Constraint -> Type) (c :: Constraint) where
+  constraintK :: forall a. c => a `k` c
