@@ -17,15 +17,17 @@ module Kitty.Plugin.Core.Types
     MissingSymbol (..),
     WithIdInfo (..),
     DictionaryFailure (..),
+    liftDictionaryStack,
     neverAutoInterpret,
     writerT,
   )
 where
 
 import qualified Bag
-import Control.Monad.Trans.Except (ExceptT (..))
-import Control.Monad.Trans.RWS.Strict (RWST (..))
+import Control.Monad.Trans.Except (ExceptT (..), mapExceptT)
+import Control.Monad.Trans.RWS.Strict (RWST (..), withRWST)
 import CoreMonad (CoreM)
+import Data.Bifunctor (Bifunctor (..))
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import ErrUtils (ErrorMessages, WarningMessages)
@@ -49,6 +51,10 @@ type DictionaryStack =
   ExceptT
     (NonEmpty DictionaryFailure)
     (RWST () WarningMessages CategoryState IO)
+
+liftDictionaryStack :: Plugins.Type -> Plugins.CoreExpr -> DictionaryStack a -> CategoryStack a
+liftDictionaryStack ty expr =
+  mapExceptT (fmap (first (pure . CouldNotBuildDictionary ty expr)) . withRWST (const ((),)))
 
 data CategoryState = CategoryState
   { csUniqSupply :: Plugins.UniqSupply,
@@ -113,7 +119,6 @@ data CategoricalFailure
   | NotTyConApp String Plugins.Type
   | TypeMismatch String Plugins.Type Plugins.Type
   | UninlinedExpr Plugins.CoreExpr (Maybe Plugins.Unfolding)
-  | ConstraintNotFound Plugins.CoreExpr Plugins.Type
   | UnsupportedCast Plugins.CoreExpr Plugins.Coercion
   | UnsupportedDependentType Plugins.Var (Either Plugins.Coercion Plugins.Type)
   | UnsupportedMutuallyRecursiveLetBindings [(Plugins.CoreBndr, Plugins.CoreExpr)]

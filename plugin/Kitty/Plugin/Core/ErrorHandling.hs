@@ -259,16 +259,6 @@ showFailure dflags hierarchyOptions = \case
     Kitty.Plugin.|]
         )
         unf
-  ConstraintNotFound expr constraint ->
-    [fmt|Kitty.Plugin encountered a `Data.Constraint.Dict`, but was unable to
-    find a `CoreExpr` of type `{showP constraint}` in the following expression:
-
-    {showE expr}
-
-    The desired type is usually contained in the first value arg of `baddDicts`
-    (i.e., `AllB c b`). Currently we only support 2-tuples for `AllB`, so
-    make sure all `AllB` definitions use nested 2-tuples only.
-    |]
   UnsupportedCast expr co ->
     [fmt|Kitty.Plugin can't apply the coercion `{showP $ Unpretty co}` to the expression
     {showP expr} :: {showP $ Plugins.exprType expr}|]
