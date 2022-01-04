@@ -66,6 +66,7 @@ import Kitty.Plugin.Core.Types
     DictCacheEntry (..),
     DictionaryFailure (..),
     DictionaryStack,
+    liftDictionaryStack,
   )
 import Kitty.Plugin.Hierarchy (BaseIdentifiers (..), getLast, pattern Last)
 import qualified Language.Haskell.TH as TH
@@ -436,13 +437,13 @@ categorize
                 | isDictDataCon dc,
                   let predTy = Plugins.varType v,
                   Plugins.isPredTy predTy ->
-                  let go [] = throwE . pure $ ConstraintNotFound scrut predTy
-                      go (x : xs) =
-                        findTypeInTuple makers predTy (Plugins.Var x) >>= \case
-                          Just expr -> do
-                            categorizeLambda name $ Plugins.Let (Plugins.NonRec v expr) rhs
-                          Nothing -> go xs
-                   in go (universeBi scrut)
+                  let findPred [] = liftDictionaryStack predTy scrut $ buildDictionary predTy
+                      findPred (x : xs) =
+                        findTypeInTuple makers predTy (Plugins.Var x) >>= maybe (findPred xs) pure
+                   in do
+                     expr <- findPred $ universeBi scrut
+                     categorizeLambda name $ Plugins.Let (Plugins.NonRec v expr) rhs
+
               -- "One more transformation eliminates the unboxing __case__ scrutinees: transform
               --  an expression like “__case__ /a/ __of__ /I# x/ → ... /boxI x/ ...” to “__let__
               --  /x′/ = /a/ __in__ ... /x′/ ...”." ⸻§10.1
