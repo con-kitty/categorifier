@@ -177,12 +177,18 @@ hierarchy' moduleName = do
     pure <$> do
       fn <- identifier' "maxC"
       pure (\onDict cat a -> mkMethodApps onDict fn [cat, a] [] [])
-  let maximumV = Nothing
+  maximumV <-
+    pure <$> do
+      fn <- identifier' "maximumC"
+      pure (\onDict cat f a -> mkMethodApps onDict fn [cat, f, a] [] [])
   minV <-
     pure <$> do
       fn <- identifier' "minC"
       pure (\onDict cat a -> mkMethodApps onDict fn [cat, a] [] [])
-  let minimumV = Nothing
+  minimumV <-
+    pure <$> do
+      fn <- identifier' "minimumC"
+      pure (\onDict cat f a -> mkMethodApps onDict fn [cat, f, a] [] [])
   minusV <-
     pure <$> do
       fn <- identifier' "subC"
@@ -234,14 +240,20 @@ hierarchy' moduleName = do
       pure (\onDict cat a -> mkMethodApps onDict fn [cat, a] [] [])
   let remV = Nothing
   reprCV <- pure <$> repOp "reprC"
-  let sequenceAV = Nothing
+  sequenceAV <-
+    pure <$> do
+      fn <- identifier' "sequenceAC"
+      pure (\onDict cat t f a -> mkMethodApps onDict fn [cat, t, f] [a] [])
   let signumV = Nothing
   sinV <-
     pure <$> do
       fn <- identifier' "sinC"
       pure (\onDict cat a -> mkMethodApps onDict fn [cat, a] [] [])
   let sinhV = Nothing
-  let sqrtV = Nothing
+  sqrtV <-
+    pure <$> do
+      fn <- identifier' "sqrtC"
+      pure (\onDict cat a -> mkMethodApps onDict fn [cat, a] [] [])
   strengthV <-
     pure <$> do
       fn <- identifier' "strength"

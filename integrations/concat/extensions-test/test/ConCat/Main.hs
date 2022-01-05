@@ -42,7 +42,7 @@ import ConCat.Syntactic (Syn)
 import Control.Arrow (Arrow (..), ArrowChoice (..))
 import Data.Bool (bool)
 import Data.Functor.Identity (Identity (..))
-import Data.Semigroup (Sum (..))
+import Data.Semigroup (Product (..), Sum (..))
 import GHC.Int (Int16, Int32, Int64, Int8)
 import GHC.Word (Word16, Word32, Word64, Word8)
 import qualified Hedgehog.Gen as Gen
@@ -346,8 +346,8 @@ mkTestTerms
     )
   . HCons1 (TestCases (const [])) -- no support for `sin` in ConCat
   . HCons1 (TestCases (const [])) -- no support for `sinh` in ConCat
-  . HCons1 (TestCases (const [])) -- no support for `sqrt` in ConCat
-  . HCons1 (TestCases (const [])) -- no support for `sqrtDouble` in ConCat
+  . HCons1 (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
+  . HCons1 (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
   . HCons1 (TestCases (const [])) -- no support for `tan` in ConCat
   . HCons1 (TestCases (const [])) -- no support for `tanh` in ConCat
   . HCons1
@@ -746,8 +746,19 @@ mkTestTerms
                 ]
         )
     )
-  . HCons1 (TestCases (const [])) -- no support for `sequenceA` in ConCat
-  . HCons1 (TestCases (const [])) -- no support for `traverse` in ConCat
+  . HCons1
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- no ClosedCat
+              else
+                [ ( ([t|Sum|], [t|Product|], [t|Word8|]),
+                    pure ([|Sum . Product <$> Gen.enumBounded|], [|show|])
+                  )
+                ]
+        )
+    )
+  . HCons1 (TestCases (const [])) -- `traverseC` isn't category-polymorphic for some reason
   . HCons1 (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HCons1 (TestCases (const [])) -- can only work with specialization
   . HCons1 (TestCases (const [])) -- can only work with specialization

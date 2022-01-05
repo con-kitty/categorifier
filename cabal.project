@@ -1,37 +1,41 @@
 source-repository-package
   type: git
   location: git://github.com/con-kitty/concat.git
-  tag: d770559e99aac57c14d45c4458acf022281e74a1
+  tag: 773406eb69d7518bc07221814597a00865b33aaa
   subdir: classes
 
 source-repository-package
   type: git
   location: git://github.com/con-kitty/concat.git
-  tag: d770559e99aac57c14d45c4458acf022281e74a1
+  tag: 773406eb69d7518bc07221814597a00865b33aaa
   subdir: examples
 
+-- dependency of concat-classes, concat-examples
 source-repository-package
   type: git
   location: git://github.com/con-kitty/concat.git
-  tag: d770559e99aac57c14d45c4458acf022281e74a1
+  tag: 773406eb69d7518bc07221814597a00865b33aaa
   subdir: inline
 
+-- dependency of concat-classes, concat-examples
 source-repository-package
   type: git
   location: git://github.com/con-kitty/concat.git
-  tag: d770559e99aac57c14d45c4458acf022281e74a1
+  tag: 773406eb69d7518bc07221814597a00865b33aaa
   subdir: known
 
+-- dependency of concat-examples
 source-repository-package
   type: git
   location: git://github.com/con-kitty/concat.git
-  tag: d770559e99aac57c14d45c4458acf022281e74a1
+  tag: 773406eb69d7518bc07221814597a00865b33aaa
   subdir: plugin
 
+-- dependency of concat-classes
 source-repository-package
   type: git
   location: git://github.com/con-kitty/concat.git
-  tag: d770559e99aac57c14d45c4458acf022281e74a1
+  tag: 773406eb69d7518bc07221814597a00865b33aaa
   subdir: satisfy
 
 constraints:

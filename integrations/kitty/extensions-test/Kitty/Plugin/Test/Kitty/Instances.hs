@@ -27,9 +27,8 @@ import Kitty.Plugin.Kitty
     PowICat (..),
     RealToFracCat (..),
     SemigroupCat (..),
-    TracedCat (..),
     TranscendentalCat (..),
-    TraversableCat (..),
+    TraversableCat' (..),
   )
 import Kitty.Plugin.Test.ConCat.Instances (Hask (..), Term (..), unaryZero)
 import Kitty.Plugin.Test.TotOrd (TotOrd (..))
@@ -45,7 +44,6 @@ instance IntegralCat' Term a where
 
 instance FloatingCat' Term m where
   powK = ZeroId
-  sqrtK = ZeroId
 
 instance TranscendentalCat Term a where
   tanK = ZeroId
@@ -86,10 +84,8 @@ instance Functor m => MonadCat Term m where
 instance Functor m => BindableCat Term m where
   bindK = ZeroId
 
-instance TraversableCat Term t where
-  type OkTraversable Term t f = ()
+instance TraversableCat' Term t f where
   traverseK = unaryZero
-  sequenceAK = ZeroId
 
 instance NumCat' Term a where
   absK = ZeroId
@@ -98,9 +94,6 @@ instance NumCat' Term a where
 
 instance SemigroupCat Term m where
   appendK = ZeroId
-
-instance TracedCat Term where
-  traceK = unaryZero
 
 instance FixedCat Term where
   fixK = unaryZero
@@ -126,11 +119,8 @@ instance MonadCat (->) m => MonadCat Hask m where
 instance BindableCat (->) m => BindableCat Hask m where
   bindK = Hask bindK
 
-instance TraversableCat (->) t => TraversableCat Hask t where
-  type OkTraversable Hask t f = Applicative f
-
+instance TraversableCat' (->) t f => TraversableCat' Hask t f where
   traverseK (Hask fn) = Hask (traverseK fn)
-  sequenceAK = Hask sequenceAK
 
 instance NumCat' (->) m => NumCat' Hask m where
   absK = Hask absK
@@ -142,7 +132,6 @@ instance Integral a => IntegralCat' Hask a where
 
 instance FloatingCat' (->) m => FloatingCat' Hask m where
   powK = Hask powK
-  sqrtK = Hask sqrtK
 
 instance (Floating a, TranscendentalCat (->) a) => TranscendentalCat Hask a where
   tanK = Hask tanK
@@ -158,9 +147,6 @@ instance (Floating a, TranscendentalCat (->) a) => TranscendentalCat Hask a wher
 
 instance SemigroupCat (->) m => SemigroupCat Hask m where
   appendK = Hask appendK
-
-instance TracedCat Hask where
-  traceK (Hask f) = Hask (traceK f)
 
 instance FixedCat Hask where
   fixK (Hask f) = Hask (fixK f)
@@ -197,7 +183,6 @@ instance Monad f => MonadCat TotOrd f where
 
 instance (Floating a, Ord a) => FloatingCat' TotOrd a where
   powK = TotOrd powK
-  sqrtK = TotOrd sqrtK
 
 instance (Floating a, Ord a) => TranscendentalCat TotOrd a where
   tanK = TotOrd tanK
@@ -240,8 +225,13 @@ instance Integral a => IntegralCat' TotOrd a where
 instance Semigroup m => SemigroupCat TotOrd m where
   appendK = TotOrd . ConCat.Constrained $ uncurry (<>)
 
-instance TracedCat TotOrd where
-  traceK (TotOrd fn) = TotOrd $ traceK fn
+-- | This should live in "Kitty.Plugin.Kitty", but can't until
+--   @`ConCat.TracedCat` `ConCat.Constrained`@ is moved upstream.
+instance
+  (FixedCat k, ConCat.OpSat (ConCat.Prod k) con) =>
+  FixedCat (ConCat.Constrained con k)
+  where
+  fixK (ConCat.Constrained fn) = ConCat.Constrained $ fixK fn
 
 instance FixedCat TotOrd where
   fixK (TotOrd fn) = TotOrd $ fixK fn

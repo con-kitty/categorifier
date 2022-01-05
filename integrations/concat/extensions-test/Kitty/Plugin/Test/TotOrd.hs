@@ -54,12 +54,16 @@ instance
   ConCat.OrdCat (ConCat.Constrained con k) a
   where
   lessThan = ConCat.Constrained ConCat.lessThan
-
   greaterThan = ConCat.Constrained ConCat.greaterThan
-
   lessThanOrEqual = ConCat.Constrained ConCat.lessThanOrEqual
-
   greaterThanOrEqual = ConCat.Constrained ConCat.greaterThanOrEqual
+
+-- | Orphan that we should push upstream to ConCat.
+instance
+  (ConCat.TracedCat k, ConCat.OpSat (ConCat.Prod k) con) =>
+  ConCat.TracedCat (ConCat.Constrained con k)
+  where
+  trace (ConCat.Constrained fn) = ConCat.Constrained $ ConCat.trace fn
 
 instance (RepCat k a r, con a, con r) => RepCat (ConCat.Constrained con k) a r where
   abstC = ConCat.Constrained abstC
@@ -111,12 +115,10 @@ instance (Client.HasRep a, r ~ Client.Rep a, Ord a, Ord r) => RepCat TotOrd a r 
 
 instance (Floating a, Ord a) => ConCat.FloatingCat TotOrd a where
   cosC = TotOrd ConCat.cosC
-
   expC = TotOrd ConCat.expC
-
   logC = TotOrd ConCat.logC
-
   sinC = TotOrd ConCat.sinC
+  sqrtC = TotOrd ConCat.sqrtC
 
 instance (Applicative m, Ord a) => ConCat.PointedCat TotOrd m a where
   pointC = TotOrd ConCat.pointC
@@ -126,3 +128,6 @@ instance Ord a => ConCat.IfCat TotOrd a where
 
 instance (Ord a, Ord b) => ConCat.BottomCat TotOrd a b where
   bottomC = TotOrd ConCat.bottomC
+
+instance ConCat.TracedCat TotOrd where
+  trace (TotOrd fn) = TotOrd $ ConCat.trace fn
