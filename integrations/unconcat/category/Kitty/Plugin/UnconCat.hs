@@ -5,6 +5,8 @@
 -- | This module contains some category classes similar to those in @ConCat.Category@,
 -- but without the @Ok@ constraints. This can improve the performance significantly,
 -- since we don't need to build the dictionaries for the @Ok@ constraints.
+--
+-- __NB__: `Category` itself comes from base, as the unconstrained version is the same.
 module Kitty.Plugin.UnconCat
   ( Category (..),
     AssociativePCat (..),
@@ -22,8 +24,8 @@ module Kitty.Plugin.UnconCat
   )
 where
 
+import Control.Category (Category (..))
 import qualified Control.Arrow as P
-import Data.Kind (Type)
 import qualified Prelude as P
 
 type Coprod k = P.Either
@@ -31,11 +33,6 @@ type Coprod k = P.Either
 type Exp k = (->)
 
 type Prod k = (,)
-
-class Category (k :: Type -> Type -> Type) where
-  id :: forall a. a `k` a
-  infixr 9 .
-  (.) :: forall b c a. (b `k` c) -> (a `k` b) -> (a `k` c)
 
 class Category k => AssociativePCat k where
   lassocP :: forall a b c. Prod k a (Prod k b c) `k` Prod k (Prod k a b) c
@@ -119,10 +116,6 @@ compose2 f g = curry (uncurry f . (exl &&& uncurry g))
 ------------------------------------------------------------------------------
 
 -- * (->) instances
-
-instance Category (->) where
-  id = P.id
-  (.) = (P..)
 
 instance AssociativePCat (->) where
   lassocP = \(a, (b, c)) -> ((a, b), c)

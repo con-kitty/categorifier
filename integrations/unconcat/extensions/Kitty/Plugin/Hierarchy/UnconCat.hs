@@ -8,6 +8,7 @@ module Kitty.Plugin.Hierarchy.UnconCat
   )
 where
 
+import qualified GhcPlugins as Plugins
 import Kitty.Plugin.Core.Types (CategoryStack, Lookup)
 import Kitty.Plugin.Hierarchy
   ( Hierarchy (..),
@@ -30,7 +31,7 @@ hierarchy = do
   kcomposeV <-
     pure <$> do
       fn <- identifier' "."
-      pure (\onDict cat a b c -> mkMethodApps onDict fn [cat] [b, c, a] [])
+      pure (\onDict cat a b c -> mkMethodApps onDict fn [Plugins.typeKind a, cat] [b, c, a] [])
   kcompose2V <-
     pure <$> do
       fn <- identifier' "compose2"
@@ -54,7 +55,7 @@ hierarchy = do
   kidV <-
     pure <$> do
       fn <- identifier' "id"
-      pure (\onDict cat a -> mkMethodApps onDict fn [cat] [a] [])
+      pure (\onDict cat a -> mkMethodApps onDict fn [Plugins.typeKind a, cat] [a] [])
   kinlV <-
     pure <$> do
       fn <- identifier' "inl"

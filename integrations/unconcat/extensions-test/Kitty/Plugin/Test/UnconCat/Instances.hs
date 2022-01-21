@@ -15,10 +15,6 @@ import Kitty.Plugin.Test.ConCat.Instances (Hask (..), Term (..), binaryZero, una
 
 -- * Hask UnconCat instances
 
-instance UnconCat.Category Hask where
-  id = Hask UnconCat.id
-  Hask f . Hask g = Hask (f UnconCat.. g)
-
 instance UnconCat.AssociativePCat Hask
 
 instance UnconCat.ClosedCat Hask where
@@ -47,10 +43,6 @@ instance UnconCat.ProductCat Hask where
 ------------------------------------------------------------------------------
 
 -- * Term UnconCat instances
-
-instance UnconCat.Category Term where
-  id = ZeroId
-  (.) = binaryZero
 
 instance UnconCat.AssociativePCat Term
 
