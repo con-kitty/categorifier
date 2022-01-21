@@ -31,7 +31,7 @@ import Kitty.Plugin.Hierarchy
 hierarchy' :: Monad f => String -> Lookup (Hierarchy f)
 hierarchy' moduleName = do
   let absV = Nothing
-  let abstCV = Nothing
+  abstCV <- pure <$> repOp "abstC"
   let acosV = Nothing
   let acoshV = Nothing
   andV <-
@@ -233,7 +233,7 @@ hierarchy' moduleName = do
       fn <- identifier' "recipC"
       pure (\onDict cat a -> mkMethodApps onDict fn [cat, a] [] [])
   let remV = Nothing
-  let reprCV = Nothing
+  reprCV <- pure <$> repOp "reprC"
   let sequenceAV = Nothing
   let signumV = Nothing
   sinV <-
@@ -268,6 +268,19 @@ hierarchy' moduleName = do
   pure Hierarchy {..}
   where
     identifier' = identifier moduleName
+    repOp ::
+      Monad f =>
+      String ->
+      Lookup
+        ( (Plugins.CoreExpr -> f Plugins.CoreExpr) ->
+          Plugins.Type ->
+          Plugins.Type ->
+          f Plugins.CoreExpr
+        )
+    repOp name = do
+      op <- identifier "Kitty.Plugin.Category" name
+      rep <- findTyCon "Kitty.Plugin.Client" "Rep"
+      pure $ \onDict cat a -> mkMethodApps onDict op [cat, a, Plugins.mkTyConApp rep [a]] [] []
 
 -- | A hierarchy using the type classes provided by Conal Eliot's @concat@ library.
 --
@@ -275,7 +288,6 @@ hierarchy' moduleName = do
 classHierarchy :: Lookup (Hierarchy CategoryStack)
 classHierarchy = do
   hierarchy <- hierarchy' moduleName
-  abstCV <- pure <$> repOp "abstC"
   coerceV <-
     pure <$> do
       fn <- identifier moduleName "coerceC"
@@ -292,14 +304,11 @@ classHierarchy = do
       fn <- identifier moduleName "fromIntegralC"
       pure $ \onDict cat a b ->
         mkMethodApps onDict fn [Plugins.typeKind a, Plugins.typeKind b, cat, a, b] [] []
-  reprCV <- pure <$> repOp "reprC"
   pure
     hierarchy
-      { abstCV = abstCV,
-        coerceV = coerceV,
+      { coerceV = coerceV,
         fromIntegerV = fromIntegerV,
-        fromIntegralV = fromIntegralV,
-        reprCV = reprCV
+        fromIntegralV = fromIntegralV
       }
   where
     moduleName = "ConCat.Category"
@@ -309,7 +318,6 @@ classHierarchy = do
 functionHierarchy :: Lookup (Hierarchy CategoryStack)
 functionHierarchy = do
   hierarchy <- hierarchy' moduleName
-  abstCV <- pure <$> repOp "abstC"
   coerceV <-
     pure <$> do
       fn <- identifier moduleName "coerceC"
@@ -323,25 +331,12 @@ functionHierarchy = do
     pure <$> do
       fn <- identifier moduleName "fromIntegralC"
       pure $ \onDict cat a b -> mkMethodApps onDict fn [cat, a, b] [] []
-  reprCV <- pure <$> repOp "reprC"
   pure
     hierarchy
-      { abstCV = abstCV,
-        coerceV = coerceV,
+      { coerceV = coerceV,
         fromIntegerV = fromIntegerV,
-        fromIntegralV = fromIntegralV,
-        reprCV = reprCV
+        fromIntegralV = fromIntegralV
       }
   where
     moduleName = "ConCat.AltCat"
 
-repOp ::
-  Monad f =>
-  String ->
-  Lookup
-    ((Plugins.CoreExpr -> f Plugins.CoreExpr) -> Plugins.Type -> Plugins.Type -> f Plugins.CoreExpr)
-repOp name = do
-  op <- identifier "Kitty.Plugin.Category" name
-  rep <- findTyCon "Kitty.Plugin.Client" "Rep"
-  pure $ \onDict cat a ->
-    mkMethodApps onDict op [cat, a, Plugins.mkTyConApp rep [a]] [] []
