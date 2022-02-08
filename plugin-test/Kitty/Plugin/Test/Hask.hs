@@ -9,7 +9,7 @@ where
 
 import qualified Control.Arrow as Base
 import qualified Control.Category as Base
-import Kitty.Plugin.Category (ReferenceCat (..), RepCat (..))
+import Kitty.Plugin.Category (ReferenceCat (..), RepCat (..), UnsafeCoerceCat (..))
 import qualified Kitty.Plugin.Client as Client
 
 -- | A trivial wrapper around __Hask__ for testing purposes.
@@ -40,3 +40,6 @@ instance (Client.HasRep a, r ~ Client.Rep a) => RepCat Hask a r where
   reprC = Hask Client.repr
 
 instance ReferenceCat Hask a b
+
+instance UnsafeCoerceCat Hask a b where
+  unsafeCoerceK = Hask unsafeCoerceK

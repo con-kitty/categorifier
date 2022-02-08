@@ -1,3 +1,4 @@
+
 {-# LANGUAGE TypeFamilies #-}
 
 module Kitty.Plugin.Test.Term
@@ -9,7 +10,7 @@ where
 
 import qualified Control.Arrow as Base
 import qualified Control.Category as Base
-import Kitty.Plugin.Category (RepCat (..))
+import Kitty.Plugin.Category (RepCat (..), UnsafeCoerceCat (..))
 import qualified Kitty.Plugin.Client as Client
 
 -- | The terminal object in __Cat__ -- a category with only a single object (up to unique
@@ -44,5 +45,7 @@ instance Base.ArrowLoop Term where
 
 instance (Client.HasRep a, r ~ Client.Rep a) => RepCat Term a r where
   abstC = ZeroId
-
   reprC = ZeroId
+
+instance UnsafeCoerceCat Term a b where
+  unsafeCoerceK = ZeroId

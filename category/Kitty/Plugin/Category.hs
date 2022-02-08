@@ -11,11 +11,13 @@ module Kitty.Plugin.Category
     ForeignFunCallCat (..),
     NativeCat (..),
     RepCat (..),
+    UnsafeCoerceCat (..),
   )
 where
 
 import GHC.TypeLits (Symbol)
 import Kitty.Plugin.Client (HasRep (..))
+import Unsafe.Coerce (unsafeCoerce)
 
 -- | This lifts `HasRep` into the target category.
 --
@@ -53,3 +55,13 @@ class ForeignFunCallCat k i a b where
 -- obtain the @Proxy@ tycon.
 class NativeCat k (tag :: Symbol) a b where
   nativeK :: a `k` b
+
+-- | This class is intended to lift `unsafeCoerce` into the target category @k@. This is needed for
+--   converting various coercions.
+--
+--  __NB__: See https://github.com/conal/concat/issues/34 for more context on this.
+class UnsafeCoerceCat k a b where
+  unsafeCoerceK :: a `k` b
+
+instance UnsafeCoerceCat (->) a b where
+  unsafeCoerceK = unsafeCoerce

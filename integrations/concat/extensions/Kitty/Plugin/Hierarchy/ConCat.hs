@@ -55,7 +55,15 @@ hierarchy' moduleName = do
     pure <$> do
       fn <- identifier' "bottomC"
       pure (\onDict cat a b -> mkMethodApps onDict fn [cat, a, b] [] [])
-  let coerceV = Nothing
+  coerceV <-
+    pure <$> do
+      -- __NB__: This uses `Kitty.Plugin.Category.unsafeCoerceK` instead of
+      --        `ConCat.Category.coerceC` because the `Coercible` constraint on the latter requires
+      --         imports for an unbounded number of @newtype@ constructors. See
+      --         https://github.com/conal/concat/issues/34 for some further discussion.
+      fn <- identifier "Kitty.Plugin.Category" "unsafeCoerceK"
+      pure $ \onDict cat from to ->
+        mkMethodApps onDict fn [Plugins.typeKind from, Plugins.typeKind to, cat, from, to] [] []
   let compareV = Nothing
   composeV <-
     pure <$> do
@@ -300,11 +308,6 @@ hierarchy' moduleName = do
 classHierarchy :: Lookup (Hierarchy CategoryStack)
 classHierarchy = do
   hierarchy <- hierarchy' moduleName
-  coerceV <-
-    pure <$> do
-      fn <- identifier moduleName "coerceC"
-      pure $ \onDict cat from to ->
-        mkMethodApps onDict fn [Plugins.typeKind from, Plugins.typeKind to, cat, from, to] [] []
   fromIntegerV <-
     pure <$> do
       fn <- identifier moduleName "fromIntegralC"
@@ -318,8 +321,7 @@ classHierarchy = do
         mkMethodApps onDict fn [Plugins.typeKind a, Plugins.typeKind b, cat, a, b] [] []
   pure
     hierarchy
-      { coerceV = coerceV,
-        fromIntegerV = fromIntegerV,
+      { fromIntegerV = fromIntegerV,
         fromIntegralV = fromIntegralV
       }
   where
@@ -330,10 +332,6 @@ classHierarchy = do
 functionHierarchy :: Lookup (Hierarchy CategoryStack)
 functionHierarchy = do
   hierarchy <- hierarchy' moduleName
-  coerceV <-
-    pure <$> do
-      fn <- identifier moduleName "coerceC"
-      pure (\onDict cat from to -> mkFunctionApps onDict fn [cat, from, to] [])
   fromIntegerV <-
     pure <$> do
       fn <- identifier moduleName "fromIntegralC"
@@ -345,8 +343,7 @@ functionHierarchy = do
       pure $ \onDict cat a b -> mkMethodApps onDict fn [cat, a, b] [] []
   pure
     hierarchy
-      { coerceV = coerceV,
-        fromIntegerV = fromIntegerV,
+      { fromIntegerV = fromIntegerV,
         fromIntegralV = fromIntegralV
       }
   where

@@ -123,9 +123,6 @@ instance ConCat.FractionalCat Term a where
   divideC = ZeroId
   recipC = ZeroId
 
-instance ConCat.CoerceCat Term a b where
-  coerceC = ZeroId
-
 instance ConCat.RepresentableCat Term f where
   tabulateC = ZeroId
   indexC = ZeroId
@@ -244,9 +241,6 @@ instance Floating a => ConCat.FloatingCat Hask a where
 instance Fractional a => ConCat.FractionalCat Hask a where
   divideC = Hask ConCat.divideC
   recipC = Hask ConCat.recipC
-
-instance ConCat.CoerceCat Hask a b where
-  coerceC = Hask ConCat.coerceC
 
 instance ConCat.RepresentableCat (->) f => ConCat.RepresentableCat Hask f where
   tabulateC = Hask ConCat.tabulateC
