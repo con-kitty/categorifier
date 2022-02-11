@@ -65,6 +65,11 @@ constraints:
 
 tests: True
 
+-- Since concat-examples is a source-repository-package, this is needed to
+-- avoid running tests in concat-examples with `cabal test all`.
+package concat-examples
+  tests: False
+
 packages:
   ./category/kitty-cat-category.cabal
   ./client/kitty-cat-client.cabal
