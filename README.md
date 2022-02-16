@@ -2,7 +2,7 @@
 
 This package contains targets for the frontend of the code generation system, using an approach that
 generalizes arbitrary Haskell into a categorical representation that can then be translated to
-various targets (e.g., C code).
+various targets (e.g., [C code](https://github.com/con-kitty/kitty-cat-c)).
 
 ## Usage
 
