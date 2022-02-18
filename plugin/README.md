@@ -1,6 +1,8 @@
+# Kitty-Cat(egorize) GHC Plugin
+
 This package contains targets for the frontend of the code generation system, using an approach that
 generalizes arbitrary Haskell into a categorical representation that can then be translated to
-various targets (e.g., C code).
+various targets (e.g., [C code](https://github.com/con-kitty/kitty-cat-c)).
 
 ## Usage
 
@@ -11,7 +13,7 @@ directly, as well as ones that are depended on (transitively) by the ones that u
 
 - enable the plugin with `-fplugin=Kitty.Plugin`,
 - ensure inlining is available with `-fno-ignore-interface-pragmas` (implied by `-O` or `-O2`), and
-- import `Kitty.Plugin.Convert` to make `categorize` available (you must import the _entire_ module,
+- import `Kitty.Plugin.Categorize` to make `categorize` available (you must import the _entire_ module,
   but it may be qualified).
 
 ### targets you depend on
@@ -26,7 +28,7 @@ directly, as well as ones that are depended on (transitively) by the ones that u
 ### other steps
 
 - define instances for your target category using your preferred type class hierarchy (the default
-  is `ConCat.Category`)
+  is `base`)
 - define `Kitty.Plugin.HasRep` instances for any types that you use in a converted function (the plugin
   will tell you if you are missing any when you try to convert)
 
@@ -52,33 +54,8 @@ which case, you can bump `-fsimpl-tick-factor`) and things will take a lot longe
 
 ### defining `HasRep` instances
 
-**TODO**: Once we have `HasRep` defined within `Kitty.Plugin` (as opposed to in concat), this
-          documentation should move to that module.
-
-`HasRep` is meant to map arbitrary Haskell types to a set of fundamental categorical structures. It
-is similar to `Generic`, but with a different set of "target" types. The target types are:
-
-- `(,)` - for representing arbitrary products, like records
-- `Either` - for representing arbitrary sum type alternatives
-- `Dict` - for representing constraints
-- `()` - for representing empty products
-
-As with `Generic`, your instances should not recursively process the data, but rather do the minimum
-required to take a step closer to the ideal representation. In particular, you don't have to go
-immediately to 2-tuples, but can have larger tuples for your types (up to 8, currently) -- so long
-as there is a `HasRep` instance for the type you're converting to.
-
-You also need to add an `INLINE` pragma for both the `abst` and `repr` definitions.
-
-In most cases, you should be able to define `HasRep` in terms of `Generic`, like
-
-```haskell
-data Foo = ...
-
-deriveHasRep ''Foo
-```
-
-However, if your type has constraints or is a GADT, you'll currently have to write out a more direct instance.
+You should generally use `Kitty.Plugin.Client.deriveHasRep` for all `HasRep` instances. However, for
+some GADTS you'll currently have to write out a more direct instance.
 
 ## Limitations
 
@@ -155,16 +132,17 @@ This is ostensibly a more correct approach, given the way GHC is structured, but
 
 There are a bunch of modules, this calls out the most important ones when diving in.
 
-- [Kitty.Plugin](./src/Kitty/Plugin.hs) - this is the entrypoint of the plugin, everything that hooks into
-  GHC starts from here;
-- [Kitty.Plugin.Core.Categorize](./src/Kitty/Plugin/Core/Categorize.hs) - the high-level logic of the
+- [Kitty.Plugin](./Kitty/Plugin.hs) - this is the entrypoint of the plugin, everything that
+  hooks into GHC starts from here;
+- [Kitty.Plugin.Core.Categorize](./Kitty/Plugin/Core/Categorize.hs) - the high-level logic of the
   categorical transformation as described in Conal's paper, it tries to define as clearly as
   possible the mapping from **Hask** to abstract categories;
-- [Kitty.Plugin.Core.Hierarchy](./src/Kitty/Plugin/Core/Hierarchy.hs) - the mappings from abstract
+- [Kitty.Plugin.Hierarchy](./Kitty/Plugin/Hierarchy.hs) - the mappings from abstract
   categories to specific type class hierarchies.
-- [Test.Hask](./test/Test/Cat/Core/Hask.hs), [Test.Term](./test/Test/Cat/Core/Term.hs),
-  [Test.TotOrd](./test/Test/Cat/Core/TotOrd.hs) - various categories defined (often
-  against multiple type class hierarchies) for testing the plugin.
+- [Kitty.Plugin.Test.Hask](../plugin-test/Kitty/Plugin/Test/Hask.hs),
+  [Kitty.Plugin.Test.Term](../plugin-test/Kitty/Plugin/Test/Term.hs),
+  [Kitty.Plugin.Test.TotOrd](../integrations/concat/extensions-test/Kitty/Plugin/Test/TotOrd.hs) - various
+  categories defined (often against multiple type class hierarchies) for testing the plugin.
 
 ### Debugging
 
