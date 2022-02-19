@@ -1,6 +1,8 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeApplications #-}
 -- To avoid turning @if then else@ into `ifThenElse`.
 {-# LANGUAGE NoRebindableSyntax #-}
 
@@ -14,7 +16,7 @@ import Categorifier.Hedgehog (genFloating)
 import qualified Categorifier.Test.Adjunctions as Adjunctions
 import Categorifier.Test.Categories.Instances (Hask (..), Term)
 import Categorifier.Test.Data (One (..))
-import Categorifier.Test.HList (HList1 (..))
+import Categorifier.Test.HList (HMap1 (..))
 import Categorifier.Test.Tests
   ( TestCases (..),
     TestCategory (..),
@@ -24,6 +26,7 @@ import Categorifier.Test.Tests
   )
 import Data.Bool (bool)
 import Data.Functor.Identity (Identity (..))
+import Data.Proxy (Proxy (..))
 import GHC.Int (Int64)
 import GHC.Word (Word8)
 import qualified Hedgehog.Gen as Gen
@@ -41,10 +44,11 @@ mkTestTerms
       <> builtinTestCategories
   )
   -- adjunctions
-  . HCons1 (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
-  . HCons1 (TestCases (const []))
-  . HCons1 (TestCases (const [([t|Int64|], pure ([|Gen.enumBounded|], [|show|]))]))
-  . HCons1
+  . HInsert1 (Proxy @"PureRep") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"FmapRep") (TestCases (const []))
+  . HInsert1 (Proxy @"ApRep") (TestCases (const [([t|Int64|], pure ([|Gen.enumBounded|], [|show|]))]))
+  . HInsert1
+    (Proxy @"BindRep")
     ( TestCases
         ( const
             [ ( [t|Word8|],
@@ -53,7 +57,8 @@ mkTestTerms
             ]
         )
     )
-  . HCons1
+  . HInsert1
+    (Proxy @"Index")
     ( TestCases
         ( const
             [ ( ([t|Identity|], [t|Word8|]),
@@ -65,7 +70,8 @@ mkTestTerms
             ]
         )
     )
-  . HCons1
+  . HInsert1
+    (Proxy @"Tabulate")
     ( TestCases
         ( const
             [ ( ([t|Identity|], [t|Word8|]),
@@ -77,7 +83,7 @@ mkTestTerms
             ]
         )
     )
-  $ HNil1
+  $ HEmpty1
 
 main :: IO ()
 main = bool exitFailure exitSuccess . and =<< allTestTerms

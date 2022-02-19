@@ -1,3 +1,4 @@
+{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
@@ -26,7 +27,7 @@ where
 import qualified Categorifier.Categorify as Categorify
 import Categorifier.Common.IO.Exception (SomeException, evaluate, try)
 import Categorifier.Hedgehog (floatingEq)
-import Categorifier.Test.HList (HList1 (..), zipLowerWith)
+import Categorifier.Test.HList (HMap1 (..), zipMapLowerWith)
 import Control.Applicative (liftA2)
 import Control.Monad (join)
 import Data.Bifunctor (Bifunctor (..))
@@ -187,7 +188,7 @@ newtype ExprTest a = ExprTest
 mkTestTerms ::
   -- | The expressions to test. If you are using the plugin without extension, then
   --  `Test.Tests.defaultTestTerms` should cover all possible expressions.
-  HList1 ExprTest l ->
+  HMap1 ExprTest l ->
   -- | All of the categories to run the tests against.
   [TestCategory] ->
   -- | The test cases to run for each expression. It's recommended to have /at least/ one test case
@@ -198,7 +199,7 @@ mkTestTerms ::
   --            off the classes for the particular hierarchy. This ties them more directly to the
   --            instances as defined, reducing the amount of code needed and making it easier to
   --            verify coverage.
-  HList1 TestCases l ->
+  HMap1 TestCases l ->
   Q [Dec]
 mkTestTerms testTerms arrows testCases =
   ( uncurry (liftA2 (<>))
@@ -221,7 +222,7 @@ mkTestTerms testTerms arrows testCases =
                   . join
                   . mapMaybe (fmap (fmap groupNames) . selectCase arrowTy)
                   . toList
-                  $ zipLowerWith getExprTest testTerms testCases
+                  $ zipMapLowerWith getExprTest testTerms testCases
           funDecls <- funDecls'
           let (label, expr) = mkTopLevelPair arrowTy names
           topTestDecls <- mkTopLevelTestTarget label expr
