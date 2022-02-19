@@ -1,0 +1,112 @@
+cabal-version:  2.4
+
+name:           categorifier-adjunctions-integration-test
+version:        0.1
+description:    Test utilities for categorifier's adjunctions integration.
+homepage:       https://github.com/con-kitty/categorifier#readme
+bug-reports:    https://github.com/con-kitty/categorifier/issues
+build-type:     Simple
+tested-with:    GHC==8.10.2
+
+source-repository head
+  type: git
+  location: https://github.com/con-kitty/categorifier
+
+common options
+  ghc-options:
+    -- make it possible to inline almost anything
+    -fexpose-all-unfoldings
+    -- ensure unfoldings are available
+    -fno-omit-interface-pragmas
+    -Wall
+
+library
+  exposed-modules:
+      Categorifier.Test.Adjunctions
+  build-depends:
+    , adjunctions
+    , base
+    , categorifier-plugin-test
+  default-language: Haskell2010
+  default-extensions:
+      InstanceSigs
+    , ScopedTypeVariables
+    , TypeApplications
+    , FlexibleContexts
+    , FlexibleInstances
+    , FunctionalDependencies
+    , LambdaCase
+    , NoStarIsType
+    , TypeOperators
+    , BangPatterns
+    , StandaloneDeriving
+    , DeriveGeneric
+    , DeriveDataTypeable
+    , DeriveFunctor
+    , DeriveFoldable
+    , DeriveTraversable
+    , DerivingStrategies
+
+test-suite adjunctions-hierarchy
+  import: options
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is: Adjunctions/Main.hs
+  ghc-options:
+    -fplugin Categorifier
+    -fplugin-opt Categorifier:defer-failures
+    -fplugin-opt Categorifier:hierarchy:Categorifier.Adjunctions.Integration.hierarchy
+    -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.baseHierarchy
+    -- need `curry` for some tests, so we add the categories hierarchy
+    -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.Categories.hierarchy
+    -fplugin-opt Categorifier:maker-map:Categorifier.Adjunctions.Integration.makerMapFun
+    -fplugin-opt Categorifier:maker-map:Categorifier.Core.MakerMap.baseMakerMapFun
+    -O0
+  build-depends:
+    , adjunctions
+    , base
+    , categories
+    , categorifier-adjunctions-integration
+    , categorifier-adjunctions-integration-test
+    , categorifier-categories-integration
+    , categorifier-categories-integration-test
+    , categorifier-category
+    , categorifier-client
+    , categorifier-hedgehog
+    , categorifier-plugin
+    , categorifier-plugin-test
+    , ghc-prim
+    , hedgehog
+    , template-haskell
+
+test-suite adjunctions-hierarchy-optimized
+  import: options
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is: Adjunctions/Main.hs
+  ghc-options:
+    -fplugin Categorifier
+    -fplugin-opt Categorifier:hierarchy:Categorifier.Adjunctions.Integration.hierarchy
+    -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.baseHierarchy
+    -- need `curry` for some tests, so we add the categories hierarchy
+    -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.Categories.hierarchy
+    -fplugin-opt Categorifier:maker-map:Categorifier.Adjunctions.Integration.makerMapFun
+    -fplugin-opt Categorifier:maker-map:Categorifier.Core.MakerMap.baseMakerMapFun
+    -O2
+    -fignore-interface-pragmas
+  build-depends:
+    , adjunctions
+    , base
+    , categories
+    , categorifier-adjunctions-integration
+    , categorifier-adjunctions-integration-test
+    , categorifier-categories-integration
+    , categorifier-categories-integration-test
+    , categorifier-category
+    , categorifier-client
+    , categorifier-hedgehog
+    , categorifier-plugin
+    , categorifier-plugin-test
+    , ghc-prim
+    , hedgehog
+    , template-haskell

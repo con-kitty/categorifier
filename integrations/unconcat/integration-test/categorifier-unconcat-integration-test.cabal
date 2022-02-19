@@ -1,0 +1,111 @@
+cabal-version:  2.4
+
+name:           categorifier-unconcat-integration-test
+version:        0.1
+description:    Plugin using our extensions to Conal's ConCat functions.
+homepage:       https://github.com/con-kitty/categorifier#readme
+bug-reports:    https://github.com/con-kitty/categorifier/issues
+build-type:     Simple
+tested-with:    GHC==8.10.1, GHC==8.10.2, GHC==8.10.4
+
+source-repository head
+  type: git
+  location: https://github.com/con-kitty/categorifier
+
+common options
+  ghc-options:
+    -- make it possible to inline almost anything
+    -fexpose-all-unfoldings
+    -- ensure unfoldings are available
+    -fno-omit-interface-pragmas
+    -Wall
+
+library
+  exposed-modules:
+      Categorifier.Test.UnconCat.Instances
+  build-depends:
+    , base
+    , categorifier-concat-integration-test
+    , categorifier-unconcat-category
+    , categorifier-plugin-test
+    , concat-classes
+  default-language: Haskell2010
+  default-extensions:
+      InstanceSigs
+    , ScopedTypeVariables
+    , TypeApplications
+    , FlexibleContexts
+    , FlexibleInstances
+    , FunctionalDependencies
+    , LambdaCase
+    , NoStarIsType
+    , TypeOperators
+    , BangPatterns
+    , StandaloneDeriving
+    , DeriveGeneric
+    , DeriveDataTypeable
+    , DeriveFunctor
+    , DeriveFoldable
+    , DeriveTraversable
+    , DerivingStrategies
+
+test-suite unconcat-hierarchy
+  import: options
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is: UnconCat/Main.hs
+  ghc-options:
+    -fplugin Categorifier
+    -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.UnconCat.hierarchy
+    -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.ConCat.functionHierarchy
+    -O0
+  build-depends:
+    , adjunctions
+    , base
+    , categorifier-category
+    , categorifier-client
+    , categorifier-concat-integration
+    , categorifier-concat-integration-test
+    , categorifier-hedgehog
+    , categorifier-plugin
+    , categorifier-plugin-test
+    , categorifier-unconcat-category
+    , categorifier-unconcat-integration
+    , categorifier-unconcat-integration-test
+    , concat-classes
+    , concat-examples
+    , either
+    , ghc-prim
+    , hedgehog
+    , template-haskell
+
+test-suite unconcat-hierarchy-optimized
+  import: options
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is: UnconCat/Main.hs
+  ghc-options:
+    -fplugin Categorifier
+    -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.UnconCat.hierarchy
+    -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.ConCat.functionHierarchy
+    -O2
+    -fignore-interface-pragmas
+  build-depends:
+    , adjunctions
+    , base
+    , categorifier-category
+    , categorifier-client
+    , categorifier-concat-integration
+    , categorifier-concat-integration-test
+    , categorifier-hedgehog
+    , categorifier-plugin
+    , categorifier-plugin-test
+    , categorifier-unconcat-category
+    , categorifier-unconcat-integration
+    , categorifier-unconcat-integration-test
+    , concat-classes
+    , concat-examples
+    , either
+    , ghc-prim
+    , hedgehog
+    , template-haskell

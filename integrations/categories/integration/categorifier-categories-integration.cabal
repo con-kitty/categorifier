@@ -1,0 +1,49 @@
+cabal-version:  2.4
+
+name:           categorifier-categories-integration
+version:        0.1
+description:    Extensions to use Kmett's Categories with the plugin.
+homepage:       https://github.com/con-kitty/categorifier#readme
+bug-reports:    https://github.com/con-kitty/categorifier/issues
+build-type:     Simple
+tested-with:    GHC==8.10.1, GHC==8.10.2, GHC==8.10.4
+
+source-repository head
+  type: git
+  location: https://github.com/con-kitty/categorifier
+
+library
+  exposed-modules:
+      Categorifier.Hierarchy.Categories
+  other-modules:
+      Paths_categorifier_categories_integration
+  autogen-modules:
+      Paths_categorifier_categories_integration
+  ghc-options: -Wall
+  build-depends:
+    , base
+    , bytestring
+    , categorifier-duoids
+    , categorifier-plugin
+    , ghc
+    , ghc-prim
+    , transformers
+  default-language: Haskell2010
+  default-extensions:
+      InstanceSigs
+    , ScopedTypeVariables
+    , TypeApplications
+    , FlexibleContexts
+    , FlexibleInstances
+    , FunctionalDependencies
+    , LambdaCase
+    , NoStarIsType
+    , TypeOperators
+    , BangPatterns
+    , StandaloneDeriving
+    , DeriveGeneric
+    , DeriveDataTypeable
+    , DeriveFunctor
+    , DeriveFoldable
+    , DeriveTraversable
+    , DerivingStrategies

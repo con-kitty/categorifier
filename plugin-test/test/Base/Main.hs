@@ -11,6 +11,18 @@ module Main
   )
 where
 
+import Categorifier.Hedgehog (genFloating)
+import Categorifier.Test.Data (Pair (..))
+import Categorifier.Test.HList (HList1 (..))
+import Categorifier.Test.Hask (Hask (..))
+import Categorifier.Test.Term (Term)
+import Categorifier.Test.Tests
+  ( TestCases (..),
+    TestCategory (..),
+    TestStrategy (..),
+    defaultTestTerms,
+    mkTestTerms,
+  )
 import Control.Applicative (liftA2)
 import Control.Arrow (Arrow (..), ArrowChoice (..))
 import Control.Monad ((<=<))
@@ -21,22 +33,10 @@ import GHC.Int (Int64)
 import GHC.Word (Word64, Word8)
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
-import Kitty.Plugin.Hedgehog (genFloating)
-import Kitty.Plugin.Test.Data (Pair (..))
-import Kitty.Plugin.Test.HList (HList1 (..))
-import Kitty.Plugin.Test.Hask (Hask (..))
-import Kitty.Plugin.Test.Term (Term)
-import Kitty.Plugin.Test.Tests
-  ( TestCases (..),
-    TestCategory (..),
-    TestStrategy (..),
-    defaultTestTerms,
-    mkTestTerms,
-  )
 import System.Exit (exitFailure, exitSuccess)
 
 -- For @NoRebindableSyntax@
-{-# ANN module ("HLint: ignore Avoid restricted extensions" :: String) #-}
+{-# ANN module ("HLint: ignore Avoid restricted integration" :: String) #-}
 
 mkTestTerms
   defaultTestTerms

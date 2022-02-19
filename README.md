@@ -1,4 +1,4 @@
-# Kitty-Cat(egorize) ![Build status](https://github.com/con-kitty/categorifier/actions/workflows/ci.yml/badge.svg?branch=master)
+# Categorifier ![Build status](https://github.com/con-kitty/categorifier/actions/workflows/ci.yml/badge.svg?branch=master)
 
 Defining novel interpretations of Haskell programs.
 

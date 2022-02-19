@@ -1,4 +1,4 @@
-name: kitty-cat
+name: categorifier
 on:
   push:
     branches:
