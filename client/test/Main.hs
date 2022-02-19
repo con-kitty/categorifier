@@ -14,15 +14,15 @@ module Main (main) where
 
 import Data.Constraint (Dict (..))
 import Data.Functor.Compose (Compose (..))
+import Data.Proxy (Proxy (..))
 import Data.Type.Nat (Nat (..))
 import qualified Data.Type.Nat as Nat
-import Data.Proxy (Proxy (..))
-import qualified Kitty.Plugin.Client as Client
-import Kitty.Plugin.Hedgehog (genFloating)
 import qualified Hedgehog
 import qualified Hedgehog.Gen
 import qualified Hedgehog.Main as Hedgehog
 import qualified Hedgehog.Range
+import qualified Kitty.Plugin.Client as Client
+import Kitty.Plugin.Hedgehog (genFloating)
 
 -- | Ensures that for a type the `Client.HasRep` instance forms an ismorphism between it and its
 --  `Client.Rep`.
@@ -44,6 +44,7 @@ data Foo a
   | Baz Double
 
 deriving instance Eq a => Eq (Foo a)
+
 deriving instance Show a => Show (Foo a)
 
 Client.deriveHasRep ''Foo
@@ -82,6 +83,7 @@ data AltVec n a where
   BCons :: a -> AltVec n a -> AltVec ('S n) a
 
 deriving instance Eq a => Eq (AltVec n a)
+
 deriving instance Show a => Show (AltVec n a)
 
 -- | This should create two instances, one for `'Z` and one for @`'S` n@, which need to be tested
@@ -99,15 +101,14 @@ prop_altVecZIso =
   let a = Hedgehog.Gen.discard
    in iso (genAltVec @(Nat.FromGHC 0) @Double a) (genRepAltVecZ)
 
-newtype Flipped f a (b :: Nat) = Flip { unflip :: f b a }
+newtype Flipped f a (b :: Nat) = Flip {unflip :: f b a}
 
 -- | Induction on 'Nat', functor form. Useful for computation.
---
-induction1M
-    :: (Monad t, Nat.SNatI n)
-    => t (f 'Z a)
-    -> (forall m. Nat.SNatI m => f m a -> t (f ('S m) a))
-    -> t (f n a)
+induction1M ::
+  (Monad t, Nat.SNatI n) =>
+  t (f 'Z a) ->
+  (forall m. Nat.SNatI m => f m a -> t (f ('S m) a)) ->
+  t (f n a)
 induction1M z f =
   fmap unflip . getCompose $
     Nat.induction (Compose $ fmap Flip z) (\(Compose x) -> Compose $ fmap Flip (f . unflip =<< x))
@@ -136,6 +137,7 @@ data SomeExpr a where
   Add :: SomeExpr a -> SomeExpr a -> SomeExpr a
 
 deriving instance Eq a => Eq (SomeExpr a)
+
 deriving instance Show a => Show (SomeExpr a)
 
 instance Client.HasRep (SomeExpr Double) where

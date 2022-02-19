@@ -5,6 +5,6 @@ mkShell {
     (haskellPackages.ghcWithPackages (p: with p; [
       cabal-install
     ]))
-    graphviz-nox # for concat-examples tests
+    ormolu # for Haskell formatting
   ];
 }

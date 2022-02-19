@@ -70,9 +70,9 @@ import qualified GhcPlugins as Plugins
 import HscTypes (lookupDataCon, lookupId, lookupTyCon)
 import Kitty.Duoidal (Parallel (..))
 import Kitty.Plugin.Core.Types (CategoryStack, Lookup, MissingSymbol (..))
-import Prelude hiding (mod)
 import qualified PrimOp
 import qualified Unique
+import Prelude hiding (mod)
 
 -- | This is the type for @(->)@ when you want to apply it to types of kind `Data.Kind.Type`. It's
 --   easy to build this incorrectly and Core won't tell you that you have, so use this instead.

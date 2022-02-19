@@ -1,4 +1,3 @@
-
 {-# LANGUAGE TypeFamilies #-}
 
 module Kitty.Plugin.Test.Term

@@ -33,7 +33,7 @@ module Kitty.Plugin.Core.PrimOp
 where
 
 import Control.Applicative (Alternative (..))
-import Control.Monad ((<=<), when)
+import Control.Monad (when, (<=<))
 import Control.Monad.Extra (whenJust)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Except (catchE, throwE)
@@ -495,8 +495,8 @@ replacePrimOps resultType replaceExpr = do
         (Plugins.Var mbCmpPrimOp, args) <- Plugins.collectArgs cmpExpr,
         -- Remove `getTag` calls from all arguments.
         Just [enumA, enumB] <- traverse (stripGetTag getTagInfo) args ->
-        rpoLabel "14a" tagToEnumCase
-          <$> reboxEnumCmp mbCmpPrimOp (Plugins.exprType enumA) enumA enumB
+          rpoLabel "14a" tagToEnumCase
+            <$> reboxEnumCmp mbCmpPrimOp (Plugins.exprType enumA) enumA enumB
     -- Case 4. Gnarly comparison stuff
     --
     -- Here is the strategy for handling what GHC generates for comparisons:
@@ -511,8 +511,7 @@ replacePrimOps resultType replaceExpr = do
     tagToEnumCase@(Plugins.App (Plugins.App (Plugins.Var f) (Plugins.Type ty)) unboxedRelation)
       | Just PrimOp.TagToEnumOp <- Plugins.isPrimOpId_maybe f,
         pure Plugins.boolTyCon == Plugins.tyConAppTyCon_maybe ty ->
-        rpoLabel "4a" tagToEnumCase
-          <$> replacePrimOps (pure Plugins.boolTy) unboxedRelation
+          rpoLabel "4a" tagToEnumCase <$> replacePrimOps (pure Plugins.boolTy) unboxedRelation
     appCase@(Plugins.App (Plugins.Var f) v)
       -- Here we remove integer narrowing operations, which are meaningless once the underlying
       -- operation is reboxed.
@@ -521,41 +520,38 @@ replacePrimOps resultType replaceExpr = do
       -- about the resulting boxed type.
       | Just primOp <- Plugins.isPrimOpId_maybe f,
         Just toType <- Map.lookup primOp deleteOpMap ->
-        rpoLabel "7a" appCase
-          <$> replacePrimOps (pure toType) v
+          rpoLabel "7a" appCase <$> replacePrimOps (pure toType) v
       -- Here we handle `fromInteger` by turning `doubleFromInteger` or some similar function
       -- into a boxed `fromInteger`.
       | Just boxedConvertedType <- lookup (Plugins.varName f) fromIntegralNames ->
-        rpoLabel "7b" appCase <$> do
-          arg <- replacePrimOps Nothing v
-          let argType = Plugins.exprType arg
-          op <-
-            lift $
-              if any (`Plugins.eqType` argType) $
-                fmap (Plugins.mkTyConTy . intConstructorTyCon) intCons
-                then -- We are dealing with a `fromIntegral` conversion
-                  mkFromIntegral makers argType boxedConvertedType
-                else -- We are probably dealing with an integer literal of type `Integer` -- use
-                -- `fromInteger` and let it get processed at the top level
-                  mkFromInteger makers boxedConvertedType
-          pure $ Plugins.App op arg
+          rpoLabel "7b" appCase <$> do
+            arg <- replacePrimOps Nothing v
+            let argType = Plugins.exprType arg
+            op <-
+              lift $
+                if any (`Plugins.eqType` argType) $
+                  fmap (Plugins.mkTyConTy . intConstructorTyCon) intCons
+                  then -- We are dealing with a `fromIntegral` conversion
+                    mkFromIntegral makers argType boxedConvertedType
+                  else -- We are probably dealing with an integer literal of type `Integer` -- use
+                  -- `fromInteger` and let it get processed at the top level
+                    mkFromInteger makers boxedConvertedType
+            pure $ Plugins.App op arg
       -- Here we replace primitive integer conversion with a direct `fromIntegral`
       | Plugins.varName f == Plugins.integerToIntName,
         (Plugins.Var toInt, args@[Plugins.Type fromType, _f, arg]) <- Plugins.collectArgs v,
         Plugins.varName toInt == Plugins.toIntegerName,
         Just toType <- resultType ->
-        rpoLabel ("7c (" <> dbg args <> ")") appCase
-          <$> ( Plugins.App
-                  <$> lift (mkFromIntegral makers fromType toType)
-                  <*\> replacePrimOps (pure fromType) arg
-              )
+          rpoLabel ("7c (" <> dbg args <> ")") appCase
+            <$> ( Plugins.App
+                    <$> lift (mkFromIntegral makers fromType toType)
+                    <*\> replacePrimOps (pure fromType) arg
+                )
     -- We're inside the case that unboxed this variable, so we can simply replace it with the
     -- original boxed variable.
     old@(Plugins.Var v)
       | Just v' <- Map.lookup v replacements ->
-        pure
-          . rpoLabel "6" old
-          $ Plugins.Var v'
+          pure . rpoLabel "6" old $ Plugins.Var v'
     -- Case 1. ordinary function application
     e
       -- This match detects occurrences of @`recip` @Double x@, which have been expanded by GHC
@@ -570,29 +566,27 @@ replacePrimOps resultType replaceExpr = do
         Just mbDiv <- Plugins.isPrimOpId_maybe f,
         PrimOp.DoubleDivOp == mbDiv,
         [Plugins.Lit (Plugins.LitDouble 1), x] <- arguments -> do
-        rcp <- lift (mkRecip makers Plugins.doubleTy)
-        arg <- replacePrimOps (pure Plugins.doubleTy) x
-        pure $ Plugins.mkCoreApps rcp [arg]
+          rcp <- lift (mkRecip makers Plugins.doubleTy)
+          arg <- replacePrimOps (pure Plugins.doubleTy) x
+          pure $ Plugins.mkCoreApps rcp [arg]
       -- This match detects occurrences of @`recip` @Float x@, which have been expanded by GHC
       -- into `1 /## x`, and replaces them with boxed `recip` calls.
       | (Plugins.Var f, arguments) <- Plugins.collectArgs e,
         Just mbDiv <- Plugins.isPrimOpId_maybe f,
         PrimOp.FloatDivOp == mbDiv,
         [Plugins.Lit (Plugins.LitFloat 1), x] <- arguments -> do
-        rcp <- lift (mkRecip makers Plugins.floatTy)
-        arg <- replacePrimOps (pure Plugins.floatTy) x
-        pure $ Plugins.mkCoreApps rcp [arg]
+          rcp <- lift (mkRecip makers Plugins.floatTy)
+          arg <- replacePrimOps (pure Plugins.floatTy) x
+          pure $ Plugins.mkCoreApps rcp [arg]
       | (Plugins.Var f, arguments) <- Plugins.collectArgs e,
         -- Make sure we've got some flavor of primop on our hands at least
         isSupportedPrimOp primOpMap f ->
-        rpoLabel "1" e
-          <$> replacePrimOpFunCall e resultType f arguments
+          rpoLabel "1" e <$> replacePrimOpFunCall e resultType f arguments
       | (Plugins.Var f, arguments) <- Plugins.collectArgs e,
         -- Perhaps we are dealing with a GHC-provided primitive (unboxed) function marked @NOINLINE@
         -- in the compiler, like `modInt#`.
         isNoInlinePrimitive noInlinePrimFunctionMap f ->
-        rpoLabel "1a" e
-          <$> replaceNoInlinePrimFunctionCall e resultType f arguments
+          rpoLabel "1a" e <$> replaceNoInlinePrimFunctionCall e resultType f arguments
     -- All other case-expressions are handled here.
     caseExpr@(Plugins.Case sc bndr ty alts) -> do
       -- In general we don't know the equivalent boxed type without doing unification, but in
@@ -622,35 +616,35 @@ replacePrimOps resultType replaceExpr = do
           | [(Plugins.DataAlt con, [_unb], Plugins.App (Plugins.Var si) _unbv)] <- alts,
             con `elem` fmap snd boxers,
             Plugins.varName si == Plugins.smallIntegerName ->
-            pure sc
+              pure sc
           -- This is a case statement that unboxes an existing variable.  Replace it with a
           -- `let`-binding, extend the replacement table and continue descending.
           | [(Plugins.DataAlt con, [unb], e)] <- alts,
             con `elem` fmap snd boxers ->
-            let -- The type of the binder does not change (it's already boxed if we are unboxing
-                -- in the sole alternative); we just reset the occurrence info before using it
-                -- to replace the unboxed thing.
-                bndr' = Plugins.setIdOccInfo bndr Plugins.noOccInfo
-             in -- newReplacements = Map.insert unb bndr' replacements
-                fmap
-                  ( maybeTraceWith
-                      debug
-                      ( \x ->
-                          "replacePrimOps 5> "
-                            <> "\n[ "
-                            <> dbg unb
-                            <> " : "
-                            <> dbg bndr'
-                            <> " :: "
-                            <> dbg (Plugins.varType bndr')
-                            <> " ]\n"
-                            <> dbg caseExpr
-                            <> " ---> "
-                            <> dbg x
-                      )
-                  )
-                  . withNewBinding unb bndr'
-                  $ newApp bndr' sc' <$> replacePrimOps resultType e
+              let -- The type of the binder does not change (it's already boxed if we are unboxing
+                  -- in the sole alternative); we just reset the occurrence info before using it
+                  -- to replace the unboxed thing.
+                  bndr' = Plugins.setIdOccInfo bndr Plugins.noOccInfo
+               in -- newReplacements = Map.insert unb bndr' replacements
+                  fmap
+                    ( maybeTraceWith
+                        debug
+                        ( \x ->
+                            "replacePrimOps 5> "
+                              <> "\n[ "
+                              <> dbg unb
+                              <> " : "
+                              <> dbg bndr'
+                              <> " :: "
+                              <> dbg (Plugins.varType bndr')
+                              <> " ]\n"
+                              <> dbg caseExpr
+                              <> " ---> "
+                              <> dbg x
+                        )
+                    )
+                    . withNewBinding unb bndr'
+                    $ newApp bndr' sc' <$> replacePrimOps resultType e
           -- 4b. Primitive case reboxing
           {- Rewrite
 
@@ -676,18 +670,18 @@ replacePrimOps resultType replaceExpr = do
               ] <-
               alts,
             Plugins.LitNumber _litCoreTy 1 _litHsTy <- one ->
-            fmap
-              (rpoLabel "4b Bool" caseExpr)
-              $ do
-                bndr' <- mkBoxedVarFrom "ccc_boxed_binder" newScTy bndr
-                withNewBinding bndr bndr' $
-                  Plugins.Case sc' bndr' ty
-                    <$> sequenceD
-                      [ (Plugins.DataAlt Plugins.falseDataCon,[],)
-                          <$> replacePrimOps resultType falseExpr,
-                        (Plugins.DataAlt Plugins.trueDataCon,[],)
-                          <$> replacePrimOps resultType trueExpr
-                      ]
+              fmap
+                (rpoLabel "4b Bool" caseExpr)
+                $ do
+                  bndr' <- mkBoxedVarFrom "ccc_boxed_binder" newScTy bndr
+                  withNewBinding bndr bndr' $
+                    Plugins.Case sc' bndr' ty
+                      <$> sequenceD
+                        [ (Plugins.DataAlt Plugins.falseDataCon,[],)
+                            <$> replacePrimOps resultType falseExpr,
+                          (Plugins.DataAlt Plugins.trueDataCon,[],)
+                            <$> replacePrimOps resultType trueExpr
+                        ]
           {- Rewrite
 
              ```
@@ -710,7 +704,7 @@ replacePrimOps resultType replaceExpr = do
             Just fdc <- Plugins.isDataConId_maybe f,
             fdc == Plugins.falseDataCon,
             newScTy `Plugins.eqType` Plugins.boolTy ->
-            pure $ rpoLabel "4b Int->Bool" caseExpr sc'
+              pure $ rpoLabel "4b Int->Bool" caseExpr sc'
           -- Case 3. C call with arguments of unboxed primitive type.
           --
           -- We have encountered a C call.  The actual call, including the `RealWorld#` token,
@@ -738,96 +732,96 @@ replacePrimOps resultType replaceExpr = do
             Plugins.StaticTarget _source functionName _cUnit True <- target,
             Just (Boxer _mod _name _dcs boxedFun, ccallArgTypes, ccallResultType) <-
               findCCallBoxer additionalBoxers makers dflags debug functionName ->
-            fmap
-              (rpoLabel "3" caseExpr)
-              $ do
-                when (length arguments /= length ccallArgTypes + 1) $
-                  lift . throwE . pure
-                    . UnsupportedPrimOpApplication f arguments
-                    $ pure ccallResultType
-                conBind' <- mkBoxedVarFrom "ccc_boxed_ccall" ccallResultType conBind
-                withNewBinding conBind conBind' $
-                  newApp conBind'
-                    <$> applyPrimOpFun boxedFun (List.zip ccallArgTypes $ List.init arguments)
-                    <*\> replacePrimOps resultType e
+              fmap
+                (rpoLabel "3" caseExpr)
+                $ do
+                  when (length arguments /= length ccallArgTypes + 1) $
+                    lift . throwE . pure
+                      . UnsupportedPrimOpApplication f arguments
+                      $ pure ccallResultType
+                  conBind' <- mkBoxedVarFrom "ccc_boxed_ccall" ccallResultType conBind
+                  withNewBinding conBind conBind' $
+                    newApp conBind'
+                      <$> applyPrimOpFun boxedFun (List.zip ccallArgTypes $ List.init arguments)
+                      <*\> replacePrimOps resultType e
           -- Case 2. Primitive op applied inside the scrutinee of a case expression.
           | Plugins.isPrimitiveType (Plugins.exprType sc) ->
-            rpoLabel "2" caseExpr
-              <$> do
-                bndr' <- mkBoxedVarFrom "ccc_boxed" newScTy bndr
-                withNewBinding bndr bndr' . fmap (newApp bndr' sc') $ case alts of
-                  [(Plugins.DEFAULT, [], e)] ->
-                    -- If there is only one branch, the solution is easy.
-                    replacePrimOps resultType e
-                  _ -> do
-                    -- There are multiple branches, so we must do a more complicated rewrite.
-                    (acc, mbDefault) <-
-                      traverseD (cleanAlt newScTy) alts
-                        >>= foldrM (flip rewriteAlts) (id, Nothing)
-                    maybe
-                      (lift . throwE . pure $ UnexpectedMissingDefault caseExpr)
-                      (pure . acc)
-                      mbDefault
-                    where
-                      -- Step 1 is to rule out invalid situations (like `DataAlt`s) on this
-                      -- primitive type.  We organize this way so we can report all such issues
-                      -- at once.
-                      --
-                      -- Here we also replacePrimOps on the right-hand sides of all valid
-                      -- branches.
-                      cleanAlt t = \case
-                        (Plugins.DEFAULT, _binds, defExpr) ->
-                          Left <$> replacePrimOps resultType defExpr
-                        -- __TODO__: We've run into Core Lint complaints here when dealing with
-                        -- negative literals (e.g., @-1# :: Int32@), but we've managed to avoid them
-                        -- by interpreting operations where they occur.
-                        (Plugins.LitAlt (Plugins.LitNumber nt i _oldTy), _binds, litExpr) ->
-                          Right . (Plugins.LitNumber nt i t,)
-                            <$> replacePrimOps resultType litExpr
-                        (Plugins.LitAlt x, _binds, _e) ->
-                          lift . throwE . pure $ UnsupportedPrimitiveLiteral x caseExpr
-                        (Plugins.DataAlt dc, _binds, _e) ->
-                          lift . throwE . pure $ UnsupportedPrimitiveDataAlt dc caseExpr
-                      -- Step 2 is to transform situations like
-                      --
-                      --    case primScrut of primBinder {
-                      --      __DEFAULT -> e0;
-                      --      LitAlt lit1 -> e1;
-                      --      LitAlt lit2 -> e2;
-                      --    }
-                      --
-                      -- into
-                      --
-                      --    case (boxedScrut == lit1) of boolBinder1 {
-                      --      False -> case (boxedScrut == lit2) of boolBinder2 {
-                      --        False -> e0;
-                      --        True -> e2;
-                      --      True -> e1;
-                      --    }
-                      rewriteAlts (acc, mbDefault) = \case
-                        Left defaultExpr ->
-                          maybe
-                            (pure (acc, Just defaultExpr))
-                            (const . lift . throwE . pure $ UnexpectedDoubleDefault caseExpr)
-                            mbDefault
-                        Right (lit, litExpr) -> do
-                          eqScrut <-
-                            applyPrimOpFun
-                              (mkEqual makers newScTy)
-                              [(newScTy, Plugins.Lit lit), (newScTy, Plugins.Var bndr')]
-                          eqBndr <-
-                            mkBoxedVarFrom "ccc_boxed_compare" Plugins.boolTy bndr
-                          pure
-                            ( \k ->
-                                Plugins.Case
-                                  eqScrut
-                                  eqBndr
-                                  (Plugins.exprType litExpr)
-                                  [ (Plugins.DataAlt Plugins.falseDataCon, [], acc k),
-                                    (Plugins.DataAlt Plugins.trueDataCon, [], litExpr)
-                                  ],
+              rpoLabel "2" caseExpr
+                <$> do
+                  bndr' <- mkBoxedVarFrom "ccc_boxed" newScTy bndr
+                  withNewBinding bndr bndr' . fmap (newApp bndr' sc') $ case alts of
+                    [(Plugins.DEFAULT, [], e)] ->
+                      -- If there is only one branch, the solution is easy.
+                      replacePrimOps resultType e
+                    _ -> do
+                      -- There are multiple branches, so we must do a more complicated rewrite.
+                      (acc, mbDefault) <-
+                        traverseD (cleanAlt newScTy) alts
+                          >>= foldrM (flip rewriteAlts) (id, Nothing)
+                      maybe
+                        (lift . throwE . pure $ UnexpectedMissingDefault caseExpr)
+                        (pure . acc)
+                        mbDefault
+                      where
+                        -- Step 1 is to rule out invalid situations (like `DataAlt`s) on this
+                        -- primitive type.  We organize this way so we can report all such issues
+                        -- at once.
+                        --
+                        -- Here we also replacePrimOps on the right-hand sides of all valid
+                        -- branches.
+                        cleanAlt t = \case
+                          (Plugins.DEFAULT, _binds, defExpr) ->
+                            Left <$> replacePrimOps resultType defExpr
+                          -- __TODO__: We've run into Core Lint complaints here when dealing with
+                          -- negative literals (e.g., @-1# :: Int32@), but we've managed to avoid them
+                          -- by interpreting operations where they occur.
+                          (Plugins.LitAlt (Plugins.LitNumber nt i _oldTy), _binds, litExpr) ->
+                            Right . (Plugins.LitNumber nt i t,)
+                              <$> replacePrimOps resultType litExpr
+                          (Plugins.LitAlt x, _binds, _e) ->
+                            lift . throwE . pure $ UnsupportedPrimitiveLiteral x caseExpr
+                          (Plugins.DataAlt dc, _binds, _e) ->
+                            lift . throwE . pure $ UnsupportedPrimitiveDataAlt dc caseExpr
+                        -- Step 2 is to transform situations like
+                        --
+                        --    case primScrut of primBinder {
+                        --      __DEFAULT -> e0;
+                        --      LitAlt lit1 -> e1;
+                        --      LitAlt lit2 -> e2;
+                        --    }
+                        --
+                        -- into
+                        --
+                        --    case (boxedScrut == lit1) of boolBinder1 {
+                        --      False -> case (boxedScrut == lit2) of boolBinder2 {
+                        --        False -> e0;
+                        --        True -> e2;
+                        --      True -> e1;
+                        --    }
+                        rewriteAlts (acc, mbDefault) = \case
+                          Left defaultExpr ->
+                            maybe
+                              (pure (acc, Just defaultExpr))
+                              (const . lift . throwE . pure $ UnexpectedDoubleDefault caseExpr)
                               mbDefault
-                            )
+                          Right (lit, litExpr) -> do
+                            eqScrut <-
+                              applyPrimOpFun
+                                (mkEqual makers newScTy)
+                                [(newScTy, Plugins.Lit lit), (newScTy, Plugins.Var bndr')]
+                            eqBndr <-
+                              mkBoxedVarFrom "ccc_boxed_compare" Plugins.boolTy bndr
+                            pure
+                              ( \k ->
+                                  Plugins.Case
+                                    eqScrut
+                                    eqBndr
+                                    (Plugins.exprType litExpr)
+                                    [ (Plugins.DataAlt Plugins.falseDataCon, [], acc k),
+                                      (Plugins.DataAlt Plugins.trueDataCon, [], litExpr)
+                                    ],
+                                mbDefault
+                              )
           -- If we aren't dealing with any primitive types, we can simply go ahead and descend
           -- through this case-statement, taking care to provide the correct result type
           -- information.
@@ -837,25 +831,24 @@ replacePrimOps resultType replaceExpr = do
           -- catch by mistake.
           | not (Plugins.isPrimitiveType ty),
             not (Plugins.isPrimitiveType $ Plugins.varType bndr) ->
-            fmap (rpoLabel "8" caseExpr) $
-              Plugins.Case
-                <$> replacePrimOps (pure $ Plugins.varType bndr) sc
-                <*\> pure bndr
-                <*\> pure ty
-                <*\> traverseD
-                  ( \(con, bind, expr) ->
-                      (con,bind,)
-                        <$> replacePrimOps (pure ty) expr
-                  )
-                  alts
+              fmap (rpoLabel "8" caseExpr) $
+                Plugins.Case
+                  <$> replacePrimOps (pure $ Plugins.varType bndr) sc
+                  <*\> pure bndr
+                  <*\> pure ty
+                  <*\> traverseD
+                    ( \(con, bind, expr) ->
+                        (con,bind,)
+                          <$> replacePrimOps (pure ty) expr
+                    )
+                    alts
           -- TODO(MP): what error conditions should be caught here?
           | otherwise -> lift . throwE . pure $ UnsupportedPrimOpExpression "case" caseExpr
     -- Remove the application of a boxing constructor.
     reboxingApp@(Plugins.App (Plugins.Var f) e)
       | Just dc <- Plugins.isDataConId_maybe f,
         dc `elem` fmap snd boxers ->
-        rpoLabel "9" reboxingApp
-          <$> replacePrimOps (pure $ Plugins.dataConOrigResTy dc) e
+          rpoLabel "9" reboxingApp <$> replacePrimOps (pure $ Plugins.dataConOrigResTy dc) e
     -- The cases below here all correspond to boring old traversals on hopefully boxed types.
     -- We cannot use something like `descendM` here, because we want to propagate result-type
     -- info if it's available.
@@ -869,34 +862,34 @@ replacePrimOps resultType replaceExpr = do
     Plugins.Var v -> pure $ Plugins.Var v
     lit@(Plugins.Lit l)
       | Just ty <- resultType ->
-        let dataCon
-              | ty `Plugins.eqType` Plugins.doubleTy = pure Plugins.doubleDataCon
-              | ty `Plugins.eqType` Plugins.floatTy = pure Plugins.floatDataCon
-              | otherwise = do
-                tc <- Plugins.tyConAppTyCon_maybe ty
-                intCon <- List.find ((== tc) . intConstructorTyCon) intCons
-                pure $ intConstructorDataCon intCon
-         in maybe
-              -- When the dataCon is not found, it's usually because @resultType@ is @Integer@.
-              -- In this case we set the type field of the `Plugins.LitNumber` to `resultType`.
-              --
-              -- TODO (ziyang): Can we add @Integer@ to @[IntConstructor]@?
-              --
-              -- TODO(MP): This is bogus!
-              --
-              -- The type field of a `Plugins.LitNumber` should always be one of the unboxed types
-              -- according to the GHC documentation.  If we maintain this invariant, we can't
-              -- continue searching for unboxed types or doing type deduction in the same way.
-              -- Furthermore, we haven't encountered any Core Lint or other complaints from GHC
-              -- about setting the type field to a boxed type.  We expect such literals to
-              -- hopefully get caught in the top-level case, which applies `mkConst'` to them.
-              -- I don't know what happens after that.
-              --
-              -- My best idea for how to resolve this situation nicely is to wrap
-              -- `Plugins.isPrimitiveType` in our own logic which handles `Plugins.Literal` values.
-              (pure . Plugins.Lit $ maybe l (`setLiteralType` l) resultType)
-              (pure . flip Plugins.mkCoreConApps [lit])
-              dataCon
+          let dataCon
+                | ty `Plugins.eqType` Plugins.doubleTy = pure Plugins.doubleDataCon
+                | ty `Plugins.eqType` Plugins.floatTy = pure Plugins.floatDataCon
+                | otherwise = do
+                    tc <- Plugins.tyConAppTyCon_maybe ty
+                    intCon <- List.find ((== tc) . intConstructorTyCon) intCons
+                    pure $ intConstructorDataCon intCon
+           in maybe
+                -- When the dataCon is not found, it's usually because @resultType@ is @Integer@.
+                -- In this case we set the type field of the `Plugins.LitNumber` to `resultType`.
+                --
+                -- TODO (ziyang): Can we add @Integer@ to @[IntConstructor]@?
+                --
+                -- TODO(MP): This is bogus!
+                --
+                -- The type field of a `Plugins.LitNumber` should always be one of the unboxed types
+                -- according to the GHC documentation.  If we maintain this invariant, we can't
+                -- continue searching for unboxed types or doing type deduction in the same way.
+                -- Furthermore, we haven't encountered any Core Lint or other complaints from GHC
+                -- about setting the type field to a boxed type.  We expect such literals to
+                -- hopefully get caught in the top-level case, which applies `mkConst'` to them.
+                -- I don't know what happens after that.
+                --
+                -- My best idea for how to resolve this situation nicely is to wrap
+                -- `Plugins.isPrimitiveType` in our own logic which handles `Plugins.Literal` values.
+                (pure . Plugins.Lit $ maybe l (`setLiteralType` l) resultType)
+                (pure . flip Plugins.mkCoreConApps [lit])
+                dataCon
       | otherwise -> pure lit
     Plugins.Type t -> pure $ Plugins.Type t
     -- The strategy for applications and lambdas is a bit complex; see notes below.
@@ -908,17 +901,17 @@ replacePrimOps resultType replaceExpr = do
       -- replacement in the argument.
       | Plugins.Lam binder body <- f,
         not $ binder `isFreeIn` body ->
-        rpoLabel "11a" a <$> replacePrimOps resultType f
+          rpoLabel "11a" a <$> replacePrimOps resultType f
       -- If instead we find that this is a normal lambda (the binder is used), we do everything we
       -- can to work out the appropriate boxed types.  This requires looking ahead into the lambda
       -- just like the previous case.
       | Plugins.Lam binder body <- f ->
-        rpoLabel "11b" a <$> do
-          let predictedBinderBoxedType = deduceEBTFrom boxers binder $ universe body
-          argument <- replacePrimOps predictedBinderBoxedType x
-          let argTy = Plugins.exprType argument
-              lamTy = mkFunTy argTy <$> resultType
-          Plugins.App <$> replacePrimOps lamTy f <*\> pure argument
+          rpoLabel "11b" a <$> do
+            let predictedBinderBoxedType = deduceEBTFrom boxers binder $ universe body
+            argument <- replacePrimOps predictedBinderBoxedType x
+            let argTy = Plugins.exprType argument
+                lamTy = mkFunTy argTy <$> resultType
+            Plugins.App <$> replacePrimOps lamTy f <*\> pure argument
       -- To form the correct type for the `f` term, we need to figure out what the argument type is
       -- (by replacing in `x`, since `f` is not a `Lam`) and combine it with `resultType` using a
       -- function arrow.  To form the correct type for the `x` term, we need to figure out what the
@@ -929,11 +922,11 @@ replacePrimOps resultType replaceExpr = do
       -- replacing in `f` and `x` in both orders and only fail if neither ordering can deduce all
       -- the boxed types.
       | otherwise ->
-        fmap (rpoLabel "11c" a) . Reader.ReaderT $ \binders -> do
-          let fx, xf :: CategoryStack Plugins.CoreExpr
-              fx = Reader.runReaderT fThenX binders
-              xf = Reader.runReaderT xThenF binders
-          fx `catchE` catchDeductionFailure xf
+          fmap (rpoLabel "11c" a) . Reader.ReaderT $ \binders -> do
+            let fx, xf :: CategoryStack Plugins.CoreExpr
+                fx = Reader.runReaderT fThenX binders
+                xf = Reader.runReaderT xThenF binders
+            fx `catchE` catchDeductionFailure xf
       where
         fThenX = do
           f' <- replacePrimOps Nothing f
@@ -959,20 +952,19 @@ replacePrimOps resultType replaceExpr = do
           _ -> False
     lam@(Plugins.Lam binder body)
       | not $ binder `isFreeIn` body ->
-        rpoLabel "13a" lam . Plugins.Lam binder <$> replacePrimOps resTy body
+          rpoLabel "13a" lam . Plugins.Lam binder <$> replacePrimOps resTy body
       | Plugins.isPrimitiveType $ Plugins.varType binder ->
-        rpoLabel "13b" lam <$> do
-          bindTy <-
-            maybe
-              (lift . throwE . pure $ CannotDeduceBoxedTypeOfExpr (Plugins.Var binder) lam)
-              pure
-              bindTy'
-          binder' <- mkBoxedVarFrom "ccc_boxed_lam" bindTy binder
-          withNewBinding binder binder' $
-            Plugins.Lam binder' <$> replacePrimOps resTy body
+          rpoLabel "13b" lam <$> do
+            bindTy <-
+              maybe
+                (lift . throwE . pure $ CannotDeduceBoxedTypeOfExpr (Plugins.Var binder) lam)
+                pure
+                bindTy'
+            binder' <- mkBoxedVarFrom "ccc_boxed_lam" bindTy binder
+            withNewBinding binder binder' $
+              Plugins.Lam binder' <$> replacePrimOps resTy body
       | otherwise ->
-        rpoLabel "13c" lam . Plugins.Lam binder
-          <$> replacePrimOps resTy body
+          rpoLabel "13c" lam . Plugins.Lam binder <$> replacePrimOps resTy body
       where
         bt, resTy :: Maybe Plugins.Type
         (bt, resTy) = NonEmpty.unzip $ Plugins.splitFunTy_maybe =<< resultType
@@ -981,19 +973,19 @@ replacePrimOps resultType replaceExpr = do
     -- TODO(MP): Here we assume the types are already boxed.
     letExpr@(Plugins.Let (Plugins.NonRec binder definition) expression)
       | containsPrimitiveType $ Plugins.varType binder ->
-        rpoLabel "12a" letExpr <$> do
-          definition' <- replacePrimOps Nothing definition
-          binder' <- mkBoxedVarFrom "ccc_boxed_let" (Plugins.exprType definition') binder
-          withNewBinding binder binder' $
-            Plugins.Let (Plugins.NonRec binder' definition')
-              <$> replacePrimOps resultType expression
+          rpoLabel "12a" letExpr <$> do
+            definition' <- replacePrimOps Nothing definition
+            binder' <- mkBoxedVarFrom "ccc_boxed_let" (Plugins.exprType definition') binder
+            withNewBinding binder binder' $
+              Plugins.Let (Plugins.NonRec binder' definition')
+                <$> replacePrimOps resultType expression
       | otherwise ->
-        fmap (rpoLabel "12b" letExpr) $
-          Plugins.Let
-            <$> ( Plugins.NonRec binder
-                    <$> replacePrimOps (pure $ Plugins.varType binder) definition
-                )
-            <*\> replacePrimOps resultType expression
+          fmap (rpoLabel "12b" letExpr) $
+            Plugins.Let
+              <$> ( Plugins.NonRec binder
+                      <$> replacePrimOps (pure $ Plugins.varType binder) definition
+                  )
+              <*\> replacePrimOps resultType expression
     -- Nothing to do.
     e -> lift . throwE . pure $ UnsupportedPrimOpExpression "replacePrimOps" e
 
@@ -1039,7 +1031,7 @@ matchBoxingApp boxers = \case
   Plugins.App (Plugins.Var b) _e
     | Just dc <- Plugins.isDataConId_maybe b,
       dc `elem` fmap snd boxers ->
-      pure dc
+        pure dc
   _ -> Nothing
 
 -- | Return the original expression if it's an application of `toInteger`; otherwise return
@@ -1049,7 +1041,7 @@ matchToIntegerApp = \case
   a@(Plugins.App _ _)
     | (Plugins.Var ti, _args) <- Plugins.collectArgs a,
       Plugins.varName ti == Plugins.toIntegerName ->
-      pure a
+        pure a
   _ -> Nothing
 
 -- | Return the original expression if it's an application of @integerToInt@; otherwise return
@@ -1073,7 +1065,7 @@ matchTagToEnumApp = \case
   Plugins.App (Plugins.collectArgs -> (Plugins.Var couldBeTagToEnum, _arg)) _arg'
     | Just t2e <- Plugins.isPrimOpId_maybe couldBeTagToEnum,
       t2e == PrimOp.TagToEnumOp ->
-      pure t2e
+        pure t2e
   _ -> Nothing
 
 -- | Given a predicate function, return the first result found as a result of calling it on the
@@ -1116,7 +1108,7 @@ scanForBinderEBTViaReboxing boxers binder = \case
       arg == binder,
       Just dc <- Plugins.isDataConId_maybe mbDcId,
       Just binderTy <- Plugins.mkTyConTy <$> lookup dc (fmap Tuple.swap boxers) ->
-      pure binderTy
+        pure binderTy
   _ -> Nothing
 
 setLiteralType :: Plugins.Type -> Plugins.Literal -> Plugins.Literal
@@ -1131,7 +1123,7 @@ containsPrimitiveType :: Plugins.Type -> Bool
 containsPrimitiveType ty
   | Plugins.isFunTy ty,
     (args, res) <- Plugins.splitFunTys ty =
-    any containsPrimitiveType (res : args)
+      any containsPrimitiveType (res : args)
   | otherwise = Plugins.isPrimitiveType ty
 
 replacePrimOpFunCall ::
@@ -1726,6 +1718,6 @@ stripGetTag (GetTagInfo gtId) = go
       app@Plugins.App {}
         | (Plugins.Var op, [Plugins.Type _ty, x]) <- Plugins.collectArgs app,
           op == gtId ->
-          pure x
+            pure x
       -- Plugins.Cast expr _coercion -> go expr
       _ -> Nothing

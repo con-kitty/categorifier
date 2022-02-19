@@ -5,7 +5,7 @@
 {-# OPTIONS_GHC -Wno-partial-type-signatures #-}
 
 module Kitty.Plugin.Test.Adjunctions
-  ( testTerms
+  ( testTerms,
   )
 where
 

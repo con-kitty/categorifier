@@ -329,15 +329,15 @@ haskMakers dflags inScope guts hscEnv HaskOps {..} Hierarchy {..} cat =
       case invisFunArg (Plugins.exprType e) of
         Just ty
           | isPredTy' ty ->
-            -- Find the wanted type class instance in the environment, apply `e` to it,
-            -- and continue
-            onDicts
-              <=< ExceptT
-                . withRWST (const ((),))
-                . fmap (bimap (pure . CouldNotBuildDictionary ty e) (Plugins.App e))
-                . runExceptT
-                . buildDictionary hscEnv dflags guts inScope
-              $ ty
+              -- Find the wanted type class instance in the environment, apply `e` to it,
+              -- and continue
+              onDicts
+                <=< ExceptT
+                  . withRWST (const ((),))
+                  . fmap (bimap (pure . CouldNotBuildDictionary ty e) (Plugins.App e))
+                  . runExceptT
+                  . buildDictionary hscEnv dflags guts inScope
+                $ ty
         _ -> pure e
 
     {-

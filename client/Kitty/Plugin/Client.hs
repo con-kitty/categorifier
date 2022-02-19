@@ -19,11 +19,11 @@ module Kitty.Plugin.Client
   )
 where
 
+import Data.Complex (Complex)
 import Data.Functor.Compose (Compose)
 import Data.Functor.Identity (Identity)
 import qualified Data.Functor.Product as Functor
 import qualified Data.Functor.Sum as Functor
-import Data.Complex (Complex)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Proxy (Proxy (..))
 import Data.Ratio (Ratio)

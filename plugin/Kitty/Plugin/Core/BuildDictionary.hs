@@ -280,7 +280,7 @@ getCachedDict goalTy = do
     >>= ( \case
             Just cached
               | Plugins.eqType goalTy (dceType cached) ->
-                pure . Just $ Plugins.Var (dceVar cached)
+                  pure . Just $ Plugins.Var (dceVar cached)
             _ -> pure Nothing
         )
       . Map.lookup (cacheKey goalTy)
