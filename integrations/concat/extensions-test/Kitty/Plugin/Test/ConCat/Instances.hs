@@ -91,6 +91,9 @@ instance Functor f => ConCat.FunctorCat Term f where
 instance Functor f => ConCat.Strong Term f where
   strength = ZeroId
 
+instance ConCat.TraversableCat Term t f where
+  sequenceAC = ZeroId
+
 instance ConCat.EqCat Term a where
   equal = ZeroId
 
@@ -120,9 +123,6 @@ instance ConCat.FractionalCat Term a where
   divideC = ZeroId
   recipC = ZeroId
 
-instance ConCat.CoerceCat Term a b where
-  coerceC = ZeroId
-
 instance ConCat.RepresentableCat Term f where
   tabulateC = ZeroId
   indexC = ZeroId
@@ -132,6 +132,7 @@ instance ConCat.FloatingCat Term a where
   expC = ZeroId
   logC = ZeroId
   sinC = ZeroId
+  sqrtC = ZeroId
 
 instance ConCat.PointedCat Term m a where
   pointC = ZeroId
@@ -141,6 +142,9 @@ instance ConCat.IfCat Term a where
 
 instance ConCat.BottomCat Term a b where
   bottomC = ZeroId
+
+instance ConCat.TracedCat Term where
+  trace = unaryZero
 
 -- Hask
 
@@ -200,6 +204,9 @@ instance Functor f => ConCat.FunctorCat Hask f where
 instance Functor f => ConCat.Strong Hask f where
   strength = Hask ConCat.strength
 
+instance ConCat.TraversableCat (->) t f => ConCat.TraversableCat Hask t f where
+  sequenceAC = Hask ConCat.sequenceAC
+
 instance Eq a => ConCat.EqCat Hask a where
   equal = Hask ConCat.equal
   notEqual = Hask ConCat.notEqual
@@ -229,13 +236,11 @@ instance Floating a => ConCat.FloatingCat Hask a where
   expC = Hask ConCat.expC
   logC = Hask ConCat.logC
   sinC = Hask ConCat.sinC
+  sqrtC = Hask ConCat.sqrtC
 
 instance Fractional a => ConCat.FractionalCat Hask a where
   divideC = Hask ConCat.divideC
   recipC = Hask ConCat.recipC
-
-instance ConCat.CoerceCat Hask a b where
-  coerceC = Hask ConCat.coerceC
 
 instance ConCat.RepresentableCat (->) f => ConCat.RepresentableCat Hask f where
   tabulateC = Hask ConCat.tabulateC
@@ -255,3 +260,6 @@ instance Integral a => ConCat.IntegralCat Hask a where
 
 instance ConCat.IfCat Hask a where
   ifC = Hask ConCat.ifC
+
+instance ConCat.TracedCat Hask where
+  trace (Hask f) = Hask (ConCat.trace f)

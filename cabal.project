@@ -1,37 +1,41 @@
 source-repository-package
   type: git
-  location: git://github.com/con-kitty/concat.git
-  tag: d770559e99aac57c14d45c4458acf022281e74a1
+  location: git://github.com/conal/concat.git
+  tag: a0f894d73be00099b652010e22bf021637320881
   subdir: classes
 
 source-repository-package
   type: git
-  location: git://github.com/con-kitty/concat.git
-  tag: d770559e99aac57c14d45c4458acf022281e74a1
+  location: git://github.com/conal/concat.git
+  tag: a0f894d73be00099b652010e22bf021637320881
   subdir: examples
 
+-- dependency of concat-classes, concat-examples
 source-repository-package
   type: git
-  location: git://github.com/con-kitty/concat.git
-  tag: d770559e99aac57c14d45c4458acf022281e74a1
+  location: git://github.com/conal/concat.git
+  tag: a0f894d73be00099b652010e22bf021637320881
   subdir: inline
 
+-- dependency of concat-classes, concat-examples
 source-repository-package
   type: git
-  location: git://github.com/con-kitty/concat.git
-  tag: d770559e99aac57c14d45c4458acf022281e74a1
+  location: git://github.com/conal/concat.git
+  tag: a0f894d73be00099b652010e22bf021637320881
   subdir: known
 
+-- dependency of concat-examples
 source-repository-package
   type: git
-  location: git://github.com/con-kitty/concat.git
-  tag: d770559e99aac57c14d45c4458acf022281e74a1
+  location: git://github.com/conal/concat.git
+  tag: a0f894d73be00099b652010e22bf021637320881
   subdir: plugin
 
+-- dependency of concat-classes
 source-repository-package
   type: git
-  location: git://github.com/con-kitty/concat.git
-  tag: d770559e99aac57c14d45c4458acf022281e74a1
+  location: git://github.com/conal/concat.git
+  tag: a0f894d73be00099b652010e22bf021637320881
   subdir: satisfy
 
 constraints:
@@ -47,7 +51,7 @@ constraints:
   , either >=5.0.1 && <5.1
   , extra >=1.7.8 && <1.8
   , fin >=0.1.1 && <0.3
-  , ghc >=0.10.1 && <8.11
+  , ghc >=8.10.1 && <8.10.7
   , ghc-prim >=0.6.1 && <0.8
   , hedgehog >=1.0.3 && <1.1
   , linear >=1.21.3 && <1.22

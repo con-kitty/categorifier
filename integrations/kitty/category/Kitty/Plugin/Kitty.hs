@@ -17,21 +17,20 @@ module Kitty.Plugin.Kitty
     ApplicativeCat (..),
     MonadCat (..),
     BindableCat (..),
-    TraversableCat (..),
+    TraversableCat' (..),
     NumCat' (..),
     FloatingCat' (..),
     PowICat (..),
     SemigroupCat (..),
-    TracedCat (..),
     FixedCat (..),
     RealToFracCat (..),
-    MinMaxCat' (..),
     FloatingPointConvertCat (..),
     FloatingPointClassifyCat (..),
     TranscendentalCat (..),
     ArcTan2Cat (..),
     FModCat (..),
     ConstraintCat (..),
+    defaultTrace,
   )
 where
 
@@ -114,19 +113,11 @@ class MonadCat k h => BindableCat (k :: Type -> Type -> Type) h where
 instance Monad h => BindableCat (->) h where
   bindK = uncurry (>>=)
 
-class TraversableCat k t where
-  type OkTraversable k t (f :: Type -> Type) :: Constraint
+class ConCat.TraversableCat k t f => TraversableCat' k t f where
+  traverseK :: forall a b. a `k` f b -> t a `k` f (t b)
 
-  traverseK :: forall f a b. OkTraversable k t f => a `k` f b -> t a `k` f (t b)
-
-  sequenceAK :: forall f a. OkTraversable k t f => t (f a) `k` f (t a)
-
-instance Traversable t => TraversableCat (->) t where
-  type OkTraversable (->) t f = Applicative f
-
+instance (Traversable t, Applicative f) => TraversableCat' (->) t f where
   traverseK = traverse
-
-  sequenceAK = sequenceA
 
 -- | Extends `ConCat.Category.NumCat` with additional operations from `Num`.
 class NumCat' (k :: Type -> Type -> Type) a where
@@ -159,15 +150,12 @@ instance (IntegralCat' k a, con a) => IntegralCat' (ConCat.Constrained con k) a 
 
 class FloatingCat' (k :: Type -> Type -> Type) a where
   powK :: ConCat.Prod k a a `k` a
-  sqrtK :: a `k` a
 
 instance Floating a => FloatingCat' (->) a where
   powK = uncurry (**)
-  sqrtK = sqrt
 
 instance (FloatingCat' k a, con a) => FloatingCat' (ConCat.Constrained con k) a where
   powK = ConCat.Constrained powK
-  sqrtK = ConCat.Constrained sqrtK
 
 class PowICat k a where
   -- This is defined this way rather than @(a, i) `k` a@, because `^` should be evaluated
@@ -185,49 +173,23 @@ class SemigroupCat (k :: Type -> Type -> Type) m where
 instance Semigroup m => SemigroupCat (->) m where
   appendK = uncurry (<>)
 
--- | A traced Cartesian category provides a notion of a parameterized fixed-point operator. There is
---   a weaker notion of a traced /monoidal/ category with a @trace@ operation. Currently, we can't
---   generate @trace@ during conversion, so we don't bother to separate the classes.
---
--- = references
---
--- - [nLab](https://ncatlab.org/nlab/show/traced+monoidal+category)
--- - [primary source](https://pdfs.semanticscholar.org/c232/37a187d026b8130d98c09187b8ba4f611c40.pdf) [ ](DONTLINTLINELENGTH)
--- - [primary source for Cartesian](http://www.kurims.kyoto-u.ac.jp/~hassei/papers/tlca97.pdf)
--- - [Wikipedia](https://en.wikipedia.org/wiki/Traced_monoidal_category)
-class ConCat.MProductCat k => TracedCat (k :: Type -> Type -> Type) where
-  traceK :: forall a b x. ConCat.Ok3 k a b x => ConCat.Prod k a x `k` ConCat.Prod k b x -> a `k` b
-  default traceK ::
-    forall a b x.
-    (FixedCat k, ConCat.Ok3 k a b x) =>
-    ConCat.Prod k a x `k` ConCat.Prod k b x ->
-    a `k` b
-  traceK f =
-    ConCat.exl ConCat.. f ConCat.. (ConCat.id ConCat.&&& fixK (ConCat.exr ConCat.. f))
-      ConCat.<+ ConCat.okProd @k @a @x
-      ConCat.<+ ConCat.okProd @k @b @x
-
-instance TracedCat (->) where
-  traceK = Arrow.loop
-
-instance
-  (TracedCat k, ConCat.OpSat (ConCat.Prod k) con) =>
-  TracedCat (ConCat.Constrained con k)
-  where
-  traceK (ConCat.Constrained fn) = ConCat.Constrained $ traceK fn
-
-class TracedCat k => FixedCat (k :: Type -> Type -> Type) where
+class (ConCat.MonoidalPCat k, ConCat.TracedCat k) => FixedCat (k :: Type -> Type -> Type) where
   fixK :: forall a x. ConCat.Ok2 k a x => ConCat.Prod k a x `k` x -> a `k` x
-  fixK f = traceK (f ConCat.&&& f) ConCat.<+ ConCat.okProd @k @a @x
+  fixK f = ConCat.trace (f ConCat.&&& f) ConCat.<+ ConCat.okProd @k @a @x
+
+-- | If `FixedCat` moves up stream, this should be the actual default method for `ConCat.trace`.
+defaultTrace ::
+  forall k a b x.
+  (FixedCat k, ConCat.Ok3 k a b x) =>
+  ConCat.Prod k a x `k` ConCat.Prod k b x ->
+  a `k` b
+defaultTrace f =
+  ConCat.exl ConCat.. f ConCat.. (ConCat.id ConCat.&&& fixK (ConCat.exr ConCat.. f))
+    ConCat.<+ ConCat.okProd @k @a @x
+    ConCat.<+ ConCat.okProd @k @b @x
 
 instance FixedCat (->) where
   fixK f = f . (ConCat.id Arrow.&&& fixK f)
-
-instance
-  (FixedCat k, ConCat.OpSat (ConCat.Prod k) con) =>
-  FixedCat (ConCat.Constrained con k)
-  where
-  fixK (ConCat.Constrained fn) = ConCat.Constrained $ fixK fn
 
 class RealToFracCat (k :: Type -> Type -> Type) a b where
   realToFracK :: a `k` b
@@ -276,18 +238,6 @@ instance
   isFiniteK = ConCat.Constrained isFiniteK
   isNaNK = ConCat.Constrained isNaNK
   isDenormalK = ConCat.Constrained isDenormalK
-
--- | `minimum` and `maximum` cannot be auto-interpreted (at least when the target category
--- is @C.Cat@) due to the @Ord a@ constraint (there's no @Ord (CExpr a)@). Inlining the
--- default implementation doesn't work either, because it would expose @Data.Functor.Utils.Min/Max@,
--- which are private types and we cannot write the required instances for them.
-class MinMaxCat' (k :: Type -> Type -> Type) f a where
-  minimumK :: f a `k` a
-  maximumK :: f a `k` a
-
-instance (Foldable f, Ord a) => MinMaxCat' (->) f a where
-  minimumK = minimum
-  maximumK = maximum
 
 -- | This class provides all the usual transcendental functions.  `ConCat.FloatingCat` provides the
 -- first four functions, but in order to both define a self-consistent class and not modify

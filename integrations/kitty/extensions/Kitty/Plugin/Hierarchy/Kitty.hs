@@ -103,14 +103,6 @@ hierarchy = do
     pure <$> do
       fn <- identifier' "liftA2K"
       pure (\onDict cat f a b c -> mkMethodApps onDict fn [cat, f] [a, b, c] [])
-  kmaximumV <-
-    pure <$> do
-      fn <- identifier' "maximumK"
-      pure (\onDict cat f a -> mkMethodApps onDict fn [cat, f, a] [] [])
-  kminimumV <-
-    pure <$> do
-      fn <- identifier' "minimumK"
-      pure (\onDict cat f a -> mkMethodApps onDict fn [cat, f, a] [] [])
   knativeV <-
     pure <$> do
       fn <- identifier "Kitty.Plugin.Category" "nativeK"
@@ -132,10 +124,6 @@ hierarchy = do
     pure <$> do
       fn <- identifier' "remK"
       pure (\onDict cat a -> mkMethodApps onDict fn [cat, a] [] [])
-  ksequenceAV <-
-    pure <$> do
-      fn <- identifier' "sequenceAK"
-      pure (\onDict cat t f a -> mkMethodApps onDict fn [cat, t] [f, a] [])
   ksignumV <-
     pure <$> do
       fn <- identifier' "signumK"
@@ -143,10 +131,6 @@ hierarchy = do
   ksinhV <-
     pure <$> do
       fn <- identifier' "sinhK"
-      pure (\onDict cat a -> mkMethodApps onDict fn [cat, a] [] [])
-  ksqrtV <-
-    pure <$> do
-      fn <- identifier' "sqrtK"
       pure (\onDict cat a -> mkMethodApps onDict fn [cat, a] [] [])
   ktanV <-
     pure <$> do
@@ -159,7 +143,7 @@ hierarchy = do
   ktraverseV <-
     pure <$> do
       fn <- identifier' "traverseK"
-      pure (\onDict cat t f a b -> mkMethodApps onDict fn [cat, t] [f, a, b] [])
+      pure (\onDict cat t f a b -> mkMethodApps onDict fn [cat, t, f] [a, b] [])
   kdoubleToFloatV <-
     pure <$> do
       fn <- identifier' "doubleToFloatK"
@@ -218,18 +202,14 @@ hierarchy = do
         fpIsNaNV = kfpIsNaNV,
         fpIsDenormalV = kfpIsDenormalV,
         liftA2V = kliftA2V,
-        maximumV = kmaximumV,
-        minimumV = kminimumV,
         nativeV = knativeV,
         powV = kpowV,
         powIV = kpowIV,
         quotV = kquotV,
         realToFracV = krealToFracV,
         remV = kremV,
-        sequenceAV = ksequenceAV,
         signumV = ksignumV,
         sinhV = ksinhV,
-        sqrtV = ksqrtV,
         tanV = ktanV,
         tanhV = ktanhV,
         traverseV = ktraverseV

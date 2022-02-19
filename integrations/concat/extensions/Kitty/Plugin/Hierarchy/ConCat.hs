@@ -31,7 +31,7 @@ import Kitty.Plugin.Hierarchy
 hierarchy' :: Monad f => String -> Lookup (Hierarchy f)
 hierarchy' moduleName = do
   let absV = Nothing
-  let abstCV = Nothing
+  abstCV <- pure <$> repOp "abstC"
   let acosV = Nothing
   let acoshV = Nothing
   andV <-
@@ -55,7 +55,15 @@ hierarchy' moduleName = do
     pure <$> do
       fn <- identifier' "bottomC"
       pure (\onDict cat a b -> mkMethodApps onDict fn [cat, a, b] [] [])
-  let coerceV = Nothing
+  coerceV <-
+    pure <$> do
+      -- __NB__: This uses `Kitty.Plugin.Category.unsafeCoerceK` instead of
+      --        `ConCat.Category.coerceC` because the `Coercible` constraint on the latter requires
+      --         imports for an unbounded number of @newtype@ constructors. See
+      --         https://github.com/conal/concat/issues/34 for some further discussion.
+      fn <- identifier "Kitty.Plugin.Category" "unsafeCoerceK"
+      pure $ \onDict cat from to ->
+        mkMethodApps onDict fn [Plugins.typeKind from, Plugins.typeKind to, cat, from, to] [] []
   let compareV = Nothing
   composeV <-
     pure <$> do
@@ -177,12 +185,18 @@ hierarchy' moduleName = do
     pure <$> do
       fn <- identifier' "maxC"
       pure (\onDict cat a -> mkMethodApps onDict fn [cat, a] [] [])
-  let maximumV = Nothing
+  maximumV <-
+    pure <$> do
+      fn <- identifier' "maximumC"
+      pure (\onDict cat f a -> mkMethodApps onDict fn [cat, f, a] [] [])
   minV <-
     pure <$> do
       fn <- identifier' "minC"
       pure (\onDict cat a -> mkMethodApps onDict fn [cat, a] [] [])
-  let minimumV = Nothing
+  minimumV <-
+    pure <$> do
+      fn <- identifier' "minimumC"
+      pure (\onDict cat f a -> mkMethodApps onDict fn [cat, f, a] [] [])
   minusV <-
     pure <$> do
       fn <- identifier' "subC"
@@ -233,15 +247,21 @@ hierarchy' moduleName = do
       fn <- identifier' "recipC"
       pure (\onDict cat a -> mkMethodApps onDict fn [cat, a] [] [])
   let remV = Nothing
-  let reprCV = Nothing
-  let sequenceAV = Nothing
+  reprCV <- pure <$> repOp "reprC"
+  sequenceAV <-
+    pure <$> do
+      fn <- identifier' "sequenceAC"
+      pure (\onDict cat t f a -> mkMethodApps onDict fn [cat, t, f] [a] [])
   let signumV = Nothing
   sinV <-
     pure <$> do
       fn <- identifier' "sinC"
       pure (\onDict cat a -> mkMethodApps onDict fn [cat, a] [] [])
   let sinhV = Nothing
-  let sqrtV = Nothing
+  sqrtV <-
+    pure <$> do
+      fn <- identifier' "sqrtC"
+      pure (\onDict cat a -> mkMethodApps onDict fn [cat, a] [] [])
   strengthV <-
     pure <$> do
       fn <- identifier' "strength"
@@ -268,6 +288,19 @@ hierarchy' moduleName = do
   pure Hierarchy {..}
   where
     identifier' = identifier moduleName
+    repOp ::
+      Monad f =>
+      String ->
+      Lookup
+        ( (Plugins.CoreExpr -> f Plugins.CoreExpr) ->
+          Plugins.Type ->
+          Plugins.Type ->
+          f Plugins.CoreExpr
+        )
+    repOp name = do
+      op <- identifier "Kitty.Plugin.Category" name
+      rep <- findTyCon "Kitty.Plugin.Client" "Rep"
+      pure $ \onDict cat a -> mkMethodApps onDict op [cat, a, Plugins.mkTyConApp rep [a]] [] []
 
 -- | A hierarchy using the type classes provided by Conal Eliot's @concat@ library.
 --
@@ -275,12 +308,6 @@ hierarchy' moduleName = do
 classHierarchy :: Lookup (Hierarchy CategoryStack)
 classHierarchy = do
   hierarchy <- hierarchy' moduleName
-  abstCV <- pure <$> repOp "abstC"
-  coerceV <-
-    pure <$> do
-      fn <- identifier moduleName "coerceC"
-      pure $ \onDict cat from to ->
-        mkMethodApps onDict fn [Plugins.typeKind from, Plugins.typeKind to, cat, from, to] [] []
   fromIntegerV <-
     pure <$> do
       fn <- identifier moduleName "fromIntegralC"
@@ -292,14 +319,10 @@ classHierarchy = do
       fn <- identifier moduleName "fromIntegralC"
       pure $ \onDict cat a b ->
         mkMethodApps onDict fn [Plugins.typeKind a, Plugins.typeKind b, cat, a, b] [] []
-  reprCV <- pure <$> repOp "reprC"
   pure
     hierarchy
-      { abstCV = abstCV,
-        coerceV = coerceV,
-        fromIntegerV = fromIntegerV,
-        fromIntegralV = fromIntegralV,
-        reprCV = reprCV
+      { fromIntegerV = fromIntegerV,
+        fromIntegralV = fromIntegralV
       }
   where
     moduleName = "ConCat.Category"
@@ -309,11 +332,6 @@ classHierarchy = do
 functionHierarchy :: Lookup (Hierarchy CategoryStack)
 functionHierarchy = do
   hierarchy <- hierarchy' moduleName
-  abstCV <- pure <$> repOp "abstC"
-  coerceV <-
-    pure <$> do
-      fn <- identifier moduleName "coerceC"
-      pure (\onDict cat from to -> mkFunctionApps onDict fn [cat, from, to] [])
   fromIntegerV <-
     pure <$> do
       fn <- identifier moduleName "fromIntegralC"
@@ -323,25 +341,11 @@ functionHierarchy = do
     pure <$> do
       fn <- identifier moduleName "fromIntegralC"
       pure $ \onDict cat a b -> mkMethodApps onDict fn [cat, a, b] [] []
-  reprCV <- pure <$> repOp "reprC"
   pure
     hierarchy
-      { abstCV = abstCV,
-        coerceV = coerceV,
-        fromIntegerV = fromIntegerV,
-        fromIntegralV = fromIntegralV,
-        reprCV = reprCV
+      { fromIntegerV = fromIntegerV,
+        fromIntegralV = fromIntegralV
       }
   where
     moduleName = "ConCat.AltCat"
 
-repOp ::
-  Monad f =>
-  String ->
-  Lookup
-    ((Plugins.CoreExpr -> f Plugins.CoreExpr) -> Plugins.Type -> Plugins.Type -> f Plugins.CoreExpr)
-repOp name = do
-  op <- identifier "Kitty.Plugin.Category" name
-  rep <- findTyCon "Kitty.Plugin.Client" "Rep"
-  pure $ \onDict cat a ->
-    mkMethodApps onDict op [cat, a, Plugins.mkTyConApp rep [a]] [] []
