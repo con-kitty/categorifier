@@ -9,7 +9,7 @@ on:
       - synchronize
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         ghc: ["8.10.1", "8.10.2", "8.10.4"]
@@ -36,3 +36,14 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: mrkkrp/ormolu-action@v5
+  hlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: rwe/actions-hlint-setup@v1
+        with:
+          version: '3.3.6'
+      - uses: rwe/actions-hlint-run@v2
+        with:
+          path: '["category/", "client/", "common/", "duoids/", "hedgehog/", "plugin/"]'
+          fail-on: status
