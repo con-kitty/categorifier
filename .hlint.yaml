@@ -1,0 +1,11 @@
+- ignore: {name: "Eta reduce"}
+- ignore: {name: "Evaluate"}
+- ignore: {name: "Reduce duplication"}
+- ignore: {name: "Replace case with fromMaybe"}
+- ignore: {name: "Replace case with maybe"}
+- ignore: {name: "Use ***"}
+- ignore: {name: "Use if"}
+- ignore: {name: "Use sqrt"}
+- ignore: {name: "Use uncurry"}
+- ignore: {name: "Use list comprehension"}
+- ignore: {name: "Use section"}

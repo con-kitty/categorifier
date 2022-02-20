@@ -68,7 +68,7 @@ genRepFoo a =
                 <*> Hedgehog.Gen.string (Hedgehog.Range.constant 0 100) Hedgehog.Gen.unicodeAll
             )
     )
-    (genFloating)
+    genFloating
 
 prop_fooIso :: Hedgehog.Property
 prop_fooIso =
@@ -97,7 +97,7 @@ genRepAltVecZ = pure ()
 prop_altVecZIso :: Hedgehog.Property
 prop_altVecZIso =
   let a = Hedgehog.Gen.discard
-   in iso (genAltVec @(Nat.FromGHC 0) @Double a) (genRepAltVecZ)
+   in iso (genAltVec @(Nat.FromGHC 0) @Double a) genRepAltVecZ
 
 newtype Flipped f a (b :: Nat) = Flip { unflip :: f b a }
 
