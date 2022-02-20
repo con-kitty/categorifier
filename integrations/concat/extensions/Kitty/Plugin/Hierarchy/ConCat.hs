@@ -348,4 +348,3 @@ functionHierarchy = do
       }
   where
     moduleName = "ConCat.AltCat"
-

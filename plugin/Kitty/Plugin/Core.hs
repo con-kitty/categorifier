@@ -13,18 +13,18 @@ module Kitty.Plugin.Core
 where
 
 import Bag (isEmptyBag)
-import Control.Monad ((<=<), unless)
+import Control.Monad (unless, (<=<))
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Except (ExceptT (..), runExceptT, throwE)
 import Control.Monad.Trans.RWS.Strict (RWST (..))
 import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable (toList)
 import Data.List (findIndex)
-import Data.List.NonEmpty.Extra (NonEmpty, nonEmpty, nubOrd)
 import qualified Data.List.NonEmpty as NE
-import Data.Monoid (Ap (..))
+import Data.List.NonEmpty.Extra (NonEmpty, nonEmpty, nubOrd)
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Data.Monoid (Ap (..))
 import Data.Text (Text)
 import qualified Data.Text as Text
 import qualified DynamicLoading as Dynamic
@@ -358,7 +358,8 @@ categorizeRules convert opts guts =
           traverseD
             ( \opt ->
                 maybe (throwE . pure $ IncorrectType opt ty) getParallel
-                  <=< Plugins.liftIO $ getDynamicValueSafely hscEnv opt ty
+                  <=< Plugins.liftIO
+                  $ getDynamicValueSafely hscEnv opt ty
             )
         handleAdditionalBoxers ::
           NonEmpty Plugins.Name ->
@@ -371,7 +372,8 @@ categorizeRules convert opts guts =
             . traverseD
               ( \opt ->
                   maybe (throwE . pure $ IncorrectType opt additionalBoxersTy') pure
-                    <=< Plugins.liftIO $ getDynamicValueSafely hscEnv opt additionalBoxersTy'
+                    <=< Plugins.liftIO
+                    $ getDynamicValueSafely hscEnv opt additionalBoxersTy'
               )
         handleAutoInterpreter ::
           NonEmpty Plugins.Name -> ExceptT (NonEmpty MissingSymbol) Plugins.CoreM AutoInterpreter
@@ -386,7 +388,8 @@ categorizeRules convert opts guts =
             . traverseD
               ( \opt ->
                   maybe (throwE . pure $ IncorrectType opt makerMapTy') pure
-                    <=< Plugins.liftIO $ getDynamicValueSafely hscEnv opt makerMapTy'
+                    <=< Plugins.liftIO
+                    $ getDynamicValueSafely hscEnv opt makerMapTy'
               )
     let additionalBoxers' = handleAdditionalBoxers =<\< additionalBoxersOptions
         autoInterpreter = handleAutoInterpreter =<\< autoInterpreterOptions

@@ -215,21 +215,21 @@ baseMakerMapFun
                   : v
                   : rest
                     | Plugins.eqType c properFunTy ->
-                      -- from: (\n -> {{u}} &&& {{v}}) :: n -> a -> (b1, b2)
-                      -- to:   curry (uncurry (categorizeLambda n {{u}})
-                      --         &&& uncurry (categorizeLambda n {{v}})) ::
-                      --         n `k` (a -> (b1, b2))
-                      pure . joinD $
-                        applyEnriched' [u, v] rest
-                          <$> mkFork (nameTuple a) b1 b2
-                          <*\> mkId (nameTuple a)
+                        -- from: (\n -> {{u}} &&& {{v}}) :: n -> a -> (b1, b2)
+                        -- to:   curry (uncurry (categorizeLambda n {{u}})
+                        --         &&& uncurry (categorizeLambda n {{v}})) ::
+                        --         n `k` (a -> (b1, b2))
+                        pure . joinD $
+                          applyEnriched' [u, v] rest
+                            <$> mkFork (nameTuple a) b1 b2
+                            <*\> mkId (nameTuple a)
                 _ -> Nothing
             ),
             ( '(Control.Arrow.|||),
               \case
                 Plugins.Type c : _arr : rest
                   | Plugins.eqType c properFunTy ->
-                    ($ rest) =<< Map.lookup 'Data.Either.either makerMap
+                      ($ rest) =<< Map.lookup 'Data.Either.either makerMap
                 _ -> Nothing
             ),
             ( 'Control.Arrow.arr,
@@ -242,15 +242,14 @@ baseMakerMapFun
               \case
                 Plugins.Type _ : Plugins.Type k : _category : rest
                   | Plugins.eqType k properFunTy ->
-                    ($ rest)
-                      =<< Map.lookup '(GHC.Base..) makerMap
+                      ($ rest) =<< Map.lookup '(GHC.Base..) makerMap
                 _ -> Nothing
             ),
             ( 'Control.Category.id,
               \case
                 Plugins.Type _ : Plugins.Type c : _category : rest
                   | Plugins.eqType c properFunTy ->
-                    ($ rest) =<< Map.lookup 'GHC.Base.id makerMap
+                      ($ rest) =<< Map.lookup 'GHC.Base.id makerMap
                 _ -> Nothing
             ),
             -- __TODO__: This is not partially-applicable enough
@@ -1006,12 +1005,11 @@ isHeadVarId e =
       case splitNameString $ Plugins.getName ident of
         (Just modu, "id") ->
           modu
-            `elem`
-              [ "ConCat.Category",
-                "Control.Category",
-                "Haskerwaul.Semigroupoid",
-                "Kitty.Plugin.UnconCat"
-              ]
+            `elem` [ "ConCat.Category",
+                     "Control.Category",
+                     "Haskerwaul.Semigroupoid",
+                     "Kitty.Plugin.UnconCat"
+                   ]
         (_, _) -> False
     (_, _) -> False
 

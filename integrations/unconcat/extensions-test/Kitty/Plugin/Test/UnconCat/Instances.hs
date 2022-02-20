@@ -8,8 +8,8 @@ module Kitty.Plugin.Test.UnconCat.Instances
 where
 
 import Data.Bifunctor (Bifunctor (..))
-import qualified Kitty.Plugin.UnconCat as UnconCat
 import Kitty.Plugin.Test.ConCat.Instances (Hask (..), Term (..), binaryZero, unaryZero)
+import qualified Kitty.Plugin.UnconCat as UnconCat
 
 ------------------------------------------------------------------------------
 

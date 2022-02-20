@@ -10,6 +10,7 @@ module Kitty.Plugin.Hierarchy.Categories
 where
 
 import qualified GhcPlugins as Plugins
+import Kitty.Plugin.Core.Types (CategoryStack, Lookup)
 import Kitty.Plugin.Hierarchy
   ( First (..),
     Hierarchy (..),
@@ -17,7 +18,6 @@ import Kitty.Plugin.Hierarchy
     identifier,
     mkMethodApps,
   )
-import Kitty.Plugin.Core.Types (CategoryStack, Lookup)
 
 -- | A hierarchy using the type classes available in the
 --   [@categories@](https://hackage.haskell.org/package/categories) library. This includes

@@ -63,11 +63,13 @@ class HasRep a where
   --          on (beyond the expectations provided above). Minor changes will not be considered
   --          breaking.
   type Rep a
+
   -- | Convert a value in the standard represetation to a value of the underlying type.
   --
   --  __NB__: The implementation should contain only pattern matching and data constructor
   --          application. All instances _must_ @INLINE@ this implementation.
   abst :: Rep a -> a
+
   -- | Convert a value of the underlying type to a value in the standard representation.
   --
   --  __NB__: The implementation should contain only pattern matching and data constructor
@@ -138,7 +140,7 @@ deriveHasRep name =
     explainDeriveCallFailure = \case
       GadtProcessingFailures failures ->
         "Some GADT alternatives had errors while processing:"
-          <>   mconcat (toList $ fmap (("\n- "<>) . explainGadtProcessingFailure) failures)
+          <> mconcat (toList $ fmap (("\n- " <>) . explainGadtProcessingFailure) failures)
       InvalidName info -> "expected type constructor for " <> show name <> " but got " <> show info
       MisquotedName ->
         "expected type constructor for "
@@ -152,7 +154,6 @@ explainGadtProcessingFailure = \case
       <> show ty
       <> " has no constructor name. This should be impossible."
   UnableToAlphaRename _ -> ""
-
 
 -- | Checks if two types are alpha equivalent. If so, it returns a mapping between the variable
 --   names, usable in `alphaRename`.
@@ -178,9 +179,9 @@ alphaEquiv = curry $ \case
   (TH.ConT n, TH.ConT n') -> bool Nothing (pure []) $ n == n'
   (TH.PromotedT n, TH.PromotedT n') -> bool Nothing (pure []) $ n == n'
   (TH.InfixT t n u, TH.InfixT t' n' u') ->
-     bool Nothing ((<>) <$> alphaEquiv t t' <*> alphaEquiv u u') $ n == n'
+    bool Nothing ((<>) <$> alphaEquiv t t' <*> alphaEquiv u u') $ n == n'
   (TH.UInfixT t n u, TH.UInfixT t' n' u') ->
-     bool Nothing ((<>) <$> alphaEquiv t t' <*> alphaEquiv u u') $ n == n'
+    bool Nothing ((<>) <$> alphaEquiv t t' <*> alphaEquiv u u') $ n == n'
   (TH.ParensT t, TH.ParensT t') -> alphaEquiv t t'
   (TH.TupleT i, TH.TupleT i') -> bool Nothing (pure []) $ i == i'
   (TH.UnboxedTupleT i, TH.UnboxedTupleT i') -> bool Nothing (pure []) $ i == i'
@@ -212,7 +213,7 @@ alphaRename mapping = first NE.nub . alphaRename'
       TH.ConT n -> pure $ TH.ConT n
       TH.PromotedT n -> pure $ TH.PromotedT n
       TH.InfixT t n t' -> TH.InfixT <$> alphaRename' t <*\> pure n <*\> alphaRename' t'
-      TH.UInfixT  t n t' -> TH.UInfixT <$> alphaRename' t <*\> pure n <*\> alphaRename' t'
+      TH.UInfixT t n t' -> TH.UInfixT <$> alphaRename' t <*\> pure n <*\> alphaRename' t'
       TH.ParensT t -> TH.ParensT <$> alphaRename' t
       TH.TupleT i -> pure $ TH.TupleT i
       TH.UnboxedTupleT i -> pure $ TH.UnboxedTupleT i
@@ -240,7 +241,7 @@ groupByType = foldr gbt []
                   -- match the variables in the group key.
                   maybe
                     (Any False, (t, es))
-                    (\m ->
+                    ( \m ->
                         ( Any True,
                           ( t,
                             NE.cons
@@ -261,7 +262,9 @@ groupByType = foldr gbt []
                           )
                         )
                     )
-                    $ alphaEquiv ty t) existing
+                    $ alphaEquiv ty t
+              )
+              existing
        in if hasMatched then updatedMap else (ty, pure (tq, p, e)) : updatedMap
 
 deriveHasRep' :: TH.Info -> Either DeriveCallFailure [TH.DecQ]

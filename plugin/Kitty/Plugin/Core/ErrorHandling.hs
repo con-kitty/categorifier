@@ -3,7 +3,6 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ViewPatterns #-}
 
--- |
 module Kitty.Plugin.Core.ErrorHandling
   ( displayPanic,
     showFailures,
@@ -89,7 +88,6 @@ runtimeCallStack = \case
             )
       _ -> Nothing
 
--- |
 displayPanic :: Plugins.DynFlags -> Plugins.CoreExpr -> GhcException -> Text
 displayPanic dflags calls = \case
   Panic s -> pretty (Text.pack s) Nothing

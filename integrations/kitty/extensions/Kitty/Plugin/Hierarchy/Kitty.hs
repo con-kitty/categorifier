@@ -81,7 +81,7 @@ hierarchy = do
         -- @* -> * -> *@, so this trick only needs to be applied in this one place.
         let cat'
               | Just (catTyCon, [_, _]) <- Plugins.splitTyConApp_maybe cat =
-                Plugins.mkTyConApp catTyCon [Plugins.typeKind a, Plugins.constraintKind]
+                  Plugins.mkTyConApp catTyCon [Plugins.typeKind a, Plugins.constraintKind]
               | otherwise = cat
          in -- Here we must avoid building dictionaries on the `c` constraint in
             -- @constraintK :: forall c a. c => a `k` c@ (hence the `pure`), because we are

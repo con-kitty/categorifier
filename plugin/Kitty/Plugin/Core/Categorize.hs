@@ -17,7 +17,7 @@ module Kitty.Plugin.Core.Categorize
 where
 
 import Control.Arrow (Arrow ((&&&)))
-import Control.Monad ((<=<), when)
+import Control.Monad (when, (<=<))
 import Control.Monad.Extra (loopM, unless)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Except (ExceptT (..), catchE, runExceptT, throwE, withExceptT)
@@ -33,11 +33,11 @@ import Data.Functor.Transformer (tmap)
 import Data.Generics.Uniplate.Data (transformBi, transformM, universeBi)
 import Data.List.Extra (isPrefixOf, isSuffixOf, notNull, sortOn)
 import Data.List.NonEmpty (NonEmpty ((:|)))
-import Data.Traversable (for)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe, mapMaybe)
 import qualified Data.Set as Set
+import Data.Traversable (for)
 import Data.Tuple.Extra (first3, thd3)
 import qualified ForeignCall as Plugins
 import qualified GhcPlugins as Plugins
@@ -70,10 +70,10 @@ import Kitty.Plugin.Core.Types
 import Kitty.Plugin.Hierarchy (BaseIdentifiers (..), getLast, pattern Last)
 import qualified Language.Haskell.TH as TH
 import PrelNames (leftDataConName, rightDataConName)
-import Prelude hiding (head)
 import qualified TyCoRep
 import qualified TysWiredIn
 import qualified Unique
+import Prelude hiding (head)
 
 -- Need Uniplate for traversals on GHC-provided recursive types
 {-# ANN module ("HLint: ignore Avoid restricted module" :: String) #-}
@@ -215,13 +215,13 @@ categorize
           body
             | MakeConst <- makeOrIgnoreConst,
               not (name `isFreeIn` body) ->
-              ( maybe (tryMkConst name) (mkConstFun (Plugins.varType name) . fst)
-                  . Plugins.splitFunTy_maybe
-                  . Plugins.dropForAlls
-                  $ Plugins.exprType body
-              )
-                body
-                makers
+                ( maybe (tryMkConst name) (mkConstFun (Plugins.varType name) . fst)
+                    . Plugins.splitFunTy_maybe
+                    . Plugins.dropForAlls
+                    $ Plugins.exprType body
+                )
+                  body
+                  makers
           -- "First consider the case that the abstraction body is a variable. Since our terms are
           --  closed and well-typed, there is only one possible variable choice, so we must have the
           --  identity function on /τ/: /(λx → x) ≡ id :: τ → τ/." ⸻§3
@@ -249,7 +249,7 @@ categorize
           -- level of the expression.
           e@(Plugins.App _ _)
             | Just _t2e <- PrimOp.matchTagToEnumApp e ->
-              handlePrimOps "applying `tagToEnum#'" name e $ Plugins.exprType e
+                handlePrimOps "applying `tagToEnum#'" name e $ Plugins.exprType e
           -- "Translating an application (as abstraction body) is a little more involved, involving
           --  the /Category/, /Cartesian/, and /Closed/ instances for functions" ⸻§3
           e@(Plugins.App (Plugins.collectArgs -> (head, args')) arg) ->
@@ -257,12 +257,12 @@ categorize
              in case head of
                   Plugins.Var ident
                     | ident /= name ->
-                      maybe
-                        -- If the expression is a categorical operation, translate it directly.
-                        (interpretVocabulary name e ident)
-                        (categorizeDataCon name e)
-                        (Plugins.isDataConId_maybe ident)
-                        args
+                        maybe
+                          -- If the expression is a categorical operation, translate it directly.
+                          (interpretVocabulary name e ident)
+                          (categorizeDataCon name e)
+                          (Plugins.isDataConId_maybe ident)
+                          args
                   -- This handles `Cast from co` where `from` is a dictionary, and `co` is an
                   -- `AxiomInstCo`. Such a `Cast` mostly likely comes from single-method classes
                   -- (for multi-method classes you'd get the benign `$fFoo_$cfoo` stuff). The way
@@ -273,83 +273,83 @@ categorize
                   -- with `from'`.
                   Plugins.Cast from0 TyCoRep.AxiomInstCo {}
                     | Plugins.isPredTy (Plugins.exprType from0) -> do
-                      inlined <- flip loopM from0 $ \from -> do
-                        ( \case
-                            Plugins.Cast from' _ ->
-                              if Plugins.isPredTy (Plugins.exprType from')
-                                then Left from'
-                                else Right from'
-                            other -> Left other
-                          )
-                          <$> (simplifyFun dflags [] =<\< mkInline from)
-                      categorizeLambda name
-                        =<\< simplifyFun dflags [] (Plugins.mkCoreApps inlined args)
+                        inlined <- flip loopM from0 $ \from -> do
+                          ( \case
+                              Plugins.Cast from' _ ->
+                                if Plugins.isPredTy (Plugins.exprType from')
+                                  then Left from'
+                                  else Right from'
+                              other -> Left other
+                            )
+                            <$> (simplifyFun dflags [] =<\< mkInline from)
+                        categorizeLambda name
+                          =<\< simplifyFun dflags [] (Plugins.mkCoreApps inlined args)
                   -- Convert all the arguments of an application at once.
                   _
                     | let (tyArgs, otherArgs) = spanTypes args,
                       notNull tyArgs -> do
-                      {-
-                       handleExtraArgs can only handle term args, not type args. This is because
-                       it uses mkApply, which basically creates @(a -> b, a) `k` b@. However,
-                       to apply a type arg, e.g., apply @A@ to @forall a. Maybe a@, we need to
-                       create @((a :: *) -> Maybe a, A) `k` Maybe A@. This doesn't align with
-                       mkApply.
+                        {-
+                         handleExtraArgs can only handle term args, not type args. This is because
+                         it uses mkApply, which basically creates @(a -> b, a) `k` b@. However,
+                         to apply a type arg, e.g., apply @A@ to @forall a. Maybe a@, we need to
+                         create @((a :: *) -> Maybe a, A) `k` Maybe A@. This doesn't align with
+                         mkApply.
 
-                       The approach taken here is to coerce the CoreExpr of type
-                       @forall a. Maybe a@ into type @Maybe A@.
-                       -}
-                      headCoerced <-
-                        Plugins.App
-                          <$> mkCoerce
-                            baseMakers
-                            (Plugins.exprType head)
-                            (Plugins.exprType (Plugins.mkTyApps head tyArgs))
-                          <*\> pure head
-                      handleExtraArgs makers name otherArgs =<\< categorizeLambda name headCoerced
+                         The approach taken here is to coerce the CoreExpr of type
+                         @forall a. Maybe a@ into type @Maybe A@.
+                         -}
+                        headCoerced <-
+                          Plugins.App
+                            <$> mkCoerce
+                              baseMakers
+                              (Plugins.exprType head)
+                              (Plugins.exprType (Plugins.mkTyApps head tyArgs))
+                            <*\> pure head
+                        handleExtraArgs makers name otherArgs =<\< categorizeLambda name headCoerced
                     | otherwise ->
-                      -- If we are dealing with something like
-                      --
-                      -- @
-                      --   (let ... in (let-binding, 0 or more times)
-                      --    case ... of ... -> (single-alt case, 0 or more times)
-                      --    \x y ... -> body) arg1 arg2 ...
-                      -- @
-                      --
-                      -- then instead of simply categorizing `head` and each arg, we check if we
-                      -- should perform any substitutions, i.e., substitute `arg1` for `x`, `arg2`
-                      -- for `y`, etc.
-                      --
-                      -- This is not just an optimization, but is in fact a necessary step.
-                      -- The `simplifyFun []` after inlining is supposed to perform beta-reductions.
-                      -- However, sometimes a `case` expression with a single `DEFAULT` case may
-                      -- prevent beta-reductions from being performed. As a result, here we may be
-                      -- faced with something like
-                      --
-                      -- @
-                      --    (case eq_sel ($p3(%,,%) ($d(%,,%)_aKHi `cast` <Co:25>)) of co_aKND
-                      --       { __DEFAULT -> let ...
-                      --                       in \x -> body
-                      --       }) arg
-                      -- @
-                      --
-                      -- i.e., `simplifyFun` failed to substitute `arg` for `x` here, due to the
-                      -- existence of the `case`.
-                      --
-                      -- This could cause problems. For instance, if `arg` is a constant, then an
-                      -- expression that mentions `arg` and doesn't depend on the input can be
-                      -- categorized via `mkConst`. But if we try to categorize `x -> body`,
-                      -- then since `x` is now an argument, anything in `body` that mentions `x`
-                      -- cannot be categorized via `mkConst`. Therefore, in this case, we must
-                      -- substitute `arg` for `x`.
-                      let (xs, bndrs, body) = collectNestedBinders head
-                          (newBody, remainingBndrs, remainingArgs) = substBndrs body bndrs args
-                       in if length bndrs == length remainingBndrs
-                            then handleExtraArgs makers name args =<\< categorizeLambda name head
-                            else
-                              categorizeLambda name . addLetsAndCases xs $
-                                Plugins.mkCoreApps
-                                  (Plugins.mkCoreLams remainingBndrs newBody)
-                                  remainingArgs
+                        -- If we are dealing with something like
+                        --
+                        -- @
+                        --   (let ... in (let-binding, 0 or more times)
+                        --    case ... of ... -> (single-alt case, 0 or more times)
+                        --    \x y ... -> body) arg1 arg2 ...
+                        -- @
+                        --
+                        -- then instead of simply categorizing `head` and each arg, we check if we
+                        -- should perform any substitutions, i.e., substitute `arg1` for `x`, `arg2`
+                        -- for `y`, etc.
+                        --
+                        -- This is not just an optimization, but is in fact a necessary step.
+                        -- The `simplifyFun []` after inlining is supposed to perform beta-reductions.
+                        -- However, sometimes a `case` expression with a single `DEFAULT` case may
+                        -- prevent beta-reductions from being performed. As a result, here we may be
+                        -- faced with something like
+                        --
+                        -- @
+                        --    (case eq_sel ($p3(%,,%) ($d(%,,%)_aKHi `cast` <Co:25>)) of co_aKND
+                        --       { __DEFAULT -> let ...
+                        --                       in \x -> body
+                        --       }) arg
+                        -- @
+                        --
+                        -- i.e., `simplifyFun` failed to substitute `arg` for `x` here, due to the
+                        -- existence of the `case`.
+                        --
+                        -- This could cause problems. For instance, if `arg` is a constant, then an
+                        -- expression that mentions `arg` and doesn't depend on the input can be
+                        -- categorized via `mkConst`. But if we try to categorize `x -> body`,
+                        -- then since `x` is now an argument, anything in `body` that mentions `x`
+                        -- cannot be categorized via `mkConst`. Therefore, in this case, we must
+                        -- substitute `arg` for `x`.
+                        let (xs, bndrs, body) = collectNestedBinders head
+                            (newBody, remainingBndrs, remainingArgs) = substBndrs body bndrs args
+                         in if length bndrs == length remainingBndrs
+                              then handleExtraArgs makers name args =<\< categorizeLambda name head
+                              else
+                                categorizeLambda name . addLetsAndCases xs $
+                                  Plugins.mkCoreApps
+                                    (Plugins.mkCoreLams remainingBndrs newBody)
+                                    remainingArgs
           -- "If the body of an abstraction is an abstraction, we can curry a translation of the
           --  uncurried form:" ⸻§3
           Plugins.Lam name' body -> do
@@ -412,36 +412,36 @@ categorize
               [(Plugins.DataAlt left, [a], lrhs), (Plugins.DataAlt right, [b], rrhs)]
                 | Plugins.dataConName left == leftDataConName
                     && Plugins.dataConName right == rightDataConName ->
-                  withBinder $
-                    mkEither makers (Plugins.Lam a lrhs) (Plugins.Lam b rrhs)
-                      . Plugins.Var
+                    withBinder $
+                      mkEither makers (Plugins.Lam a lrhs) (Plugins.Lam b rrhs)
+                        . Plugins.Var
               -- @if@ is represented in Core as a @case@ on `Bool`.
               [(Plugins.DataAlt false, [], rhsF), (Plugins.DataAlt true, [], rhsT)]
                 | false == Plugins.falseDataCon && true == Plugins.trueDataCon ->
-                  joinD $
-                    composeCat makers
-                      <$> mkIf makers typ
-                      <*\> joinD
-                        ( forkCat makers
-                            <$> categorizeLambda name scrut
-                            <*\> joinD
-                              ( forkCat makers
-                                  <$> categorizeLambda name rhsT
-                                  <*\> categorizeLambda name rhsF
-                              )
-                        )
+                    joinD $
+                      composeCat makers
+                        <$> mkIf makers typ
+                        <*\> joinD
+                          ( forkCat makers
+                              <$> categorizeLambda name scrut
+                              <*\> joinD
+                                ( forkCat makers
+                                    <$> categorizeLambda name rhsT
+                                    <*\> categorizeLambda name rhsF
+                                )
+                          )
               -- @Data.Constraint.Dict@ contains a constraint, so it can't have a
               -- @HasRep@ instance. Here we handle it as a special case.
               [(Plugins.DataAlt dc, [v], rhs)]
                 | isDictDataCon dc,
                   let predTy = Plugins.varType v,
                   Plugins.isPredTy predTy ->
-                  let findPred [] = liftDictionaryStack predTy scrut $ buildDictionary predTy
-                      findPred (x : xs) =
-                        findTypeInTuple makers predTy (Plugins.Var x) >>= maybe (findPred xs) pure
-                   in do
-                     expr <- findPred $ universeBi scrut
-                     categorizeLambda name $ Plugins.Let (Plugins.NonRec v expr) rhs
+                    let findPred [] = liftDictionaryStack predTy scrut $ buildDictionary predTy
+                        findPred (x : xs) =
+                          findTypeInTuple makers predTy (Plugins.Var x) >>= maybe (findPred xs) pure
+                     in do
+                          expr <- findPred $ universeBi scrut
+                          categorizeLambda name $ Plugins.Let (Plugins.NonRec v expr) rhs
 
               -- "One more transformation eliminates the unboxing __case__ scrutinees: transform
               --  an expression like “__case__ /a/ __of__ /I# x/ → ... /boxI x/ ...” to “__let__
@@ -455,7 +455,7 @@ categorize
                 -- We look for the boxing constructor for the type that this case statement
                 -- returns.
                 | con `elem` fmap snd primConMap ->
-                  handlePrimOps "unboxing" name (Plugins.Case scrut unsafeBinder typ alts) typ
+                    handlePrimOps "unboxing" name (Plugins.Case scrut unsafeBinder typ alts) typ
               -- This case handles calls to `fromInteger` and `fromIntegral` at the top level.
               -- It is separate from the preceding case because it involves reboxing rather than
               -- unboxing a primitive (the unboxing of the argument typically occurs within the
@@ -463,41 +463,41 @@ categorize
               -- with `replacePrimOps`.
               [(Plugins.DEFAULT, [], rhs)]
                 | Plugins.isCoVar unsafeBinder ->
-                  if unsafeBinder `isFreeIn` rhs
-                    then do
-                      binder <- uniquifyVarName unsafeBinder
-                      res <-
-                        categorizeLambda name $
-                          transformBi (\case v | v == unsafeBinder -> binder; other -> other) rhs
-                      -- Here we are making a `Plugins.Case`, rather than a `Plugins.Let`
-                      -- (as `withBinder` would do), because core lint complains
-                      -- "bad `let` binding" when a let-binding has a coercion type.
-                      pure $
-                        Plugins.Case
-                          scrut
-                          binder
-                          (Plugins.exprType res)
-                          [(Plugins.DEFAULT, [], res)]
-                    else categorizeLambda name rhs
+                    if unsafeBinder `isFreeIn` rhs
+                      then do
+                        binder <- uniquifyVarName unsafeBinder
+                        res <-
+                          categorizeLambda name $
+                            transformBi (\case v | v == unsafeBinder -> binder; other -> other) rhs
+                        -- Here we are making a `Plugins.Case`, rather than a `Plugins.Let`
+                        -- (as `withBinder` would do), because core lint complains
+                        -- "bad `let` binding" when a let-binding has a coercion type.
+                        pure $
+                          Plugins.Case
+                            scrut
+                            binder
+                            (Plugins.exprType res)
+                            [(Plugins.DEFAULT, [], res)]
+                      else categorizeLambda name rhs
                 -- `frominteger`
                 | Just toTy <- PrimOp.matchOnUniverse PrimOp.matchFloatFromIntegralApp scrut,
                   Just _dc <- PrimOp.matchOnUniverse (PrimOp.matchBoxingApp primConMap) rhs ->
-                  -- This is the original case at the top level of `categorizeLambda`.
-                  handlePrimOps
-                    "fromInteger"
-                    name
-                    (Plugins.Case scrut unsafeBinder typ alts)
-                    toTy
+                    -- This is the original case at the top level of `categorizeLambda`.
+                    handlePrimOps
+                      "fromInteger"
+                      name
+                      (Plugins.Case scrut unsafeBinder typ alts)
+                      toTy
                 -- `fromIntegral`
                 | Just i2iApp <- PrimOp.matchOnUniverse PrimOp.matchIntegerToIntApp scrut,
                   Just _toIApp <- PrimOp.matchOnUniverse PrimOp.matchToIntegerApp i2iApp,
                   Just _dc <- PrimOp.matchOnUniverse (PrimOp.matchBoxingApp primConMap) rhs ->
-                  -- This is the original case at the top level of `categorizeLambda`.
-                  handlePrimOps
-                    "fromIntegral"
-                    name
-                    (Plugins.Case scrut unsafeBinder typ alts)
-                    typ
+                    -- This is the original case at the top level of `categorizeLambda`.
+                    handlePrimOps
+                      "fromIntegral"
+                      name
+                      (Plugins.Case scrut unsafeBinder typ alts)
+                      typ
               -- Also need to handle the unit case.
               [(_, [], rhs)] -> withBinder $ \_binder -> pure rhs
               -- When the scrut's type is a constraint (e.g., `Num (C Double)`), we must
@@ -505,7 +505,7 @@ categorize
               -- instances. This is achieved by simplifying it with `Inline` and `Rules`.
               [_]
                 | Plugins.isPredTy (Plugins.varType unsafeBinder) ->
-                  categorizeLambda name =<\< simplifyFun dflags [Inline, Rules] caseExpr
+                    categorizeLambda name =<\< simplifyFun dflags [Inline, Rules] caseExpr
               -- "consider a __case__ expression /case scrut of { p1 → rhs1; ...; pn → rhsn }/,
               -- where (the scrutinee) /scrut/ has a non-standard type with a /HasRep/
               -- instance. Rewrite /scrut/ to /inline abst (repr scrut)/ (this time inlining
@@ -769,11 +769,11 @@ categorize
       --      would call @maker1@.
       findMaker ::
         Makers ->
-        -- | Lambda-bound var
+        -- Lambda-bound var
         Plugins.Var ->
-        -- | The var being interpreted
+        -- The var being interpreted
         Plugins.Var ->
-        -- | The expression where the var being interpreted is the head
+        -- The expression where the var being interpreted is the head
         Plugins.CoreExpr ->
         String ->
         [Plugins.CoreExpr] ->
@@ -865,124 +865,124 @@ categorize
           interpretEqSpecialized monoTy
             | rest <- dropWhile isTypeOrPred args,
               "$c==" `isSuffixOf` var = do
-              ty <-
-                maybe
-                  (throwE . pure $ NotTyConApp "interpreting $c==" monoTy)
-                  pure
-                  (extractTypeFromFunTy [ArgTy] monoTy)
-              pure <$> (maker2 rest =<\< mkEqual ty)
+                ty <-
+                  maybe
+                    (throwE . pure $ NotTyConApp "interpreting $c==" monoTy)
+                    pure
+                    (extractTypeFromFunTy [ArgTy] monoTy)
+                pure <$> (maker2 rest =<\< mkEqual ty)
             | otherwise = pure Nothing
 
           interpretFoldableSpecialized :: Plugins.Type -> CategoryStack (Maybe Plugins.CoreExpr)
           interpretFoldableSpecialized monoTy
             | rest <- dropWhile isTypeOrPred args,
               "$cmaximum" `isSuffixOf` var = do
-              (t, a) <-
-                maybe
-                  (throwE . pure $ NotTyConApp "interpreting $cmaximum" monoTy)
-                  pure
-                  (Plugins.splitAppTy_maybe =<< extractTypeFromFunTy [ArgTy] monoTy)
-              pure <$> (maker1 rest =<\< mkMaximum t a)
+                (t, a) <-
+                  maybe
+                    (throwE . pure $ NotTyConApp "interpreting $cmaximum" monoTy)
+                    pure
+                    (Plugins.splitAppTy_maybe =<< extractTypeFromFunTy [ArgTy] monoTy)
+                pure <$> (maker1 rest =<\< mkMaximum t a)
             | rest <- dropWhile isTypeOrPred args,
               "$cminimum" `isSuffixOf` var = do
-              (t, a) <-
-                maybe
-                  (throwE . pure $ NotTyConApp "interpreting $cminimum" monoTy)
-                  pure
-                  (Plugins.splitAppTy_maybe =<< extractTypeFromFunTy [ArgTy] monoTy)
-              pure <$> (maker1 rest =<\< mkMinimum t a)
+                (t, a) <-
+                  maybe
+                    (throwE . pure $ NotTyConApp "interpreting $cminimum" monoTy)
+                    pure
+                    (Plugins.splitAppTy_maybe =<< extractTypeFromFunTy [ArgTy] monoTy)
+                pure <$> (maker1 rest =<\< mkMinimum t a)
             | otherwise = pure Nothing
 
           interpretIntegralSpecialized :: Plugins.Type -> CategoryStack (Maybe Plugins.CoreExpr)
           interpretIntegralSpecialized monoTy
             | rest <- dropWhile isTypeOrPred args,
               "$cdiv" `isSuffixOf` var = do
-              ty <-
-                maybe
-                  (throwE . pure $ NotTyConApp "interpreting $cdiv" monoTy)
-                  pure
-                  (extractTypeFromFunTy [ArgTy] monoTy)
-              pure <$> (maker2 rest =<\< mkDiv ty)
+                ty <-
+                  maybe
+                    (throwE . pure $ NotTyConApp "interpreting $cdiv" monoTy)
+                    pure
+                    (extractTypeFromFunTy [ArgTy] monoTy)
+                pure <$> (maker2 rest =<\< mkDiv ty)
             | rest <- dropWhile isTypeOrPred args,
               "$cmod" `isSuffixOf` var = do
-              ty <-
-                maybe
-                  (throwE . pure $ NotTyConApp "interpreting $cmod" monoTy)
-                  pure
-                  (extractTypeFromFunTy [ArgTy] monoTy)
-              pure <$> (maker2 rest =<\< mkMod ty)
+                ty <-
+                  maybe
+                    (throwE . pure $ NotTyConApp "interpreting $cmod" monoTy)
+                    pure
+                    (extractTypeFromFunTy [ArgTy] monoTy)
+                pure <$> (maker2 rest =<\< mkMod ty)
             | otherwise = pure Nothing
 
           interpretNumSpecialized :: Plugins.Type -> CategoryStack (Maybe Plugins.CoreExpr)
           interpretNumSpecialized monoTy
             | rest <- dropWhile isTypeOrPred args,
               "$c+" `isSuffixOf` var = do
-              ty <-
-                maybe
-                  (throwE . pure $ NotTyConApp "interpreting $c+" monoTy)
-                  pure
-                  (extractTypeFromFunTy [ArgTy] monoTy)
-              pure <$> (maker2 rest =<\< mkPlus ty)
+                ty <-
+                  maybe
+                    (throwE . pure $ NotTyConApp "interpreting $c+" monoTy)
+                    pure
+                    (extractTypeFromFunTy [ArgTy] monoTy)
+                pure <$> (maker2 rest =<\< mkPlus ty)
             | rest <- dropWhile isTypeOrPred args,
               "$cfromInteger" `isSuffixOf` var = do
-              ty <-
-                maybe
-                  (throwE . pure $ NotTyConApp "interpreting $cfromInteger" monoTy)
-                  pure
-                  (extractTypeFromFunTy [ResTy] monoTy)
-              pure <$> (maker1 rest =<\< mkFromInteger ty)
+                ty <-
+                  maybe
+                    (throwE . pure $ NotTyConApp "interpreting $cfromInteger" monoTy)
+                    pure
+                    (extractTypeFromFunTy [ResTy] monoTy)
+                pure <$> (maker1 rest =<\< mkFromInteger ty)
             | otherwise = pure Nothing
 
           interpretOrdSpecialized :: Plugins.Type -> CategoryStack (Maybe Plugins.CoreExpr)
           interpretOrdSpecialized monoTy
             | rest <- dropWhile isTypeOrPred args,
               "$c<" `isSuffixOf` var = do
-              ty <-
-                maybe
-                  (throwE . pure $ NotTyConApp "interpreting $c<" monoTy)
-                  pure
-                  (extractTypeFromFunTy [ArgTy] monoTy)
-              pure <$> (maker2 rest =<\< mkLT ty)
+                ty <-
+                  maybe
+                    (throwE . pure $ NotTyConApp "interpreting $c<" monoTy)
+                    pure
+                    (extractTypeFromFunTy [ArgTy] monoTy)
+                pure <$> (maker2 rest =<\< mkLT ty)
             | rest <- dropWhile isTypeOrPred args,
               "$c>" `isSuffixOf` var = do
-              ty <-
-                maybe
-                  (throwE . pure $ NotTyConApp "interpreting $c>" monoTy)
-                  pure
-                  (extractTypeFromFunTy [ArgTy] monoTy)
-              pure <$> (maker2 rest =<\< mkGT ty)
+                ty <-
+                  maybe
+                    (throwE . pure $ NotTyConApp "interpreting $c>" monoTy)
+                    pure
+                    (extractTypeFromFunTy [ArgTy] monoTy)
+                pure <$> (maker2 rest =<\< mkGT ty)
             | rest <- dropWhile isTypeOrPred args,
               "$c<=" `isSuffixOf` var = do
-              ty <-
-                maybe
-                  (throwE . pure $ NotTyConApp "interpreting $c<=" monoTy)
-                  pure
-                  (extractTypeFromFunTy [ArgTy] monoTy)
-              pure <$> (maker2 rest =<\< mkLE ty)
+                ty <-
+                  maybe
+                    (throwE . pure $ NotTyConApp "interpreting $c<=" monoTy)
+                    pure
+                    (extractTypeFromFunTy [ArgTy] monoTy)
+                pure <$> (maker2 rest =<\< mkLE ty)
             | rest <- dropWhile isTypeOrPred args,
               "$c>=" `isSuffixOf` var = do
-              ty <-
-                maybe
-                  (throwE . pure $ NotTyConApp "interpreting $c>=" monoTy)
-                  pure
-                  (extractTypeFromFunTy [ArgTy] monoTy)
-              pure <$> (maker2 rest =<\< mkGE ty)
+                ty <-
+                  maybe
+                    (throwE . pure $ NotTyConApp "interpreting $c>=" monoTy)
+                    pure
+                    (extractTypeFromFunTy [ArgTy] monoTy)
+                pure <$> (maker2 rest =<\< mkGE ty)
             | rest <- dropWhile isTypeOrPred args,
               "$cmax" `isSuffixOf` var = do
-              ty <-
-                maybe
-                  (throwE . pure $ NotTyConApp "interpreting $cmax" monoTy)
-                  pure
-                  (extractTypeFromFunTy [ArgTy] monoTy)
-              pure <$> (maker2 rest =<\< mkMax ty)
+                ty <-
+                  maybe
+                    (throwE . pure $ NotTyConApp "interpreting $cmax" monoTy)
+                    pure
+                    (extractTypeFromFunTy [ArgTy] monoTy)
+                pure <$> (maker2 rest =<\< mkMax ty)
             | rest <- dropWhile isTypeOrPred args,
               "$cmin" `isSuffixOf` var = do
-              ty <-
-                maybe
-                  (throwE . pure $ NotTyConApp "interpreting $cmin" monoTy)
-                  pure
-                  (extractTypeFromFunTy [ArgTy] monoTy)
-              pure <$> (maker2 rest =<\< mkMin ty)
+                ty <-
+                  maybe
+                    (throwE . pure $ NotTyConApp "interpreting $cmin" monoTy)
+                    pure
+                    (extractTypeFromFunTy [ArgTy] monoTy)
+                pure <$> (maker2 rest =<\< mkMin ty)
             | otherwise = pure Nothing
 
           tryAutoInterpret' =
@@ -1027,17 +1027,17 @@ categorize
 
       mkConst' m a expr
         | Plugins.isPredTy (Plugins.exprType expr) =
-          -- First try `ConstraintCat`. Target categories like `C.Cat` can't use `ConstCat`
-          -- for constraints, because `ConstCat C.Cat a` requires `ToTargetOb a`, and there's no
-          -- `ToTargetOb a` if `a` is a constraint.
-          catchE
-            (use mkConstraint)
-            ( \case
-                -- Target categories like `Hask` doesn't have `ConstraintCat` instance, because
-                -- `Hask`'s kind is `* -> * -> *`. For such categories we need to use `ConstCat`.
-                CouldNotBuildDictionary _ _ (TypecheckFailure _ :| []) :| [] -> use mkConst
-                otherErrs -> throwE otherErrs
-            )
+            -- First try `ConstraintCat`. Target categories like `C.Cat` can't use `ConstCat`
+            -- for constraints, because `ConstCat C.Cat a` requires `ToTargetOb a`, and there's no
+            -- `ToTargetOb a` if `a` is a constraint.
+            catchE
+              (use mkConstraint)
+              ( \case
+                  -- Target categories like `Hask` doesn't have `ConstraintCat` instance, because
+                  -- `Hask`'s kind is `* -> * -> *`. For such categories we need to use `ConstCat`.
+                  CouldNotBuildDictionary _ _ (TypecheckFailure _ :| []) :| [] -> use mkConst
+                  otherErrs -> throwE otherErrs
+              )
         | otherwise = use mkConst
         where
           use mk = Plugins.App <$> mk m a (Plugins.exprType expr) <*\> pure expr
@@ -1067,11 +1067,11 @@ categorize
                 (Plugins.collectArgs -> (Plugins.Var f, spanTypes -> (recCallTyArgs, [])))
                   | f == name,
                     length recCallTyArgs == length exprTyBinders ->
-                    if all sameTyVar (zip exprTyBinders recCallTyArgs)
-                      then pure (Plugins.Var recursive)
-                      else
-                        throwE . pure $
-                          UnsupportedPolymorphicRecursion name exprTyBinders recCallTyArgs
+                      if all sameTyVar (zip exprTyBinders recCallTyArgs)
+                        then pure (Plugins.Var recursive)
+                        else
+                          throwE . pure $
+                            UnsupportedPolymorphicRecursion name exprTyBinders recCallTyArgs
                 other -> pure other
             )
             exprMono
@@ -1086,15 +1086,15 @@ categorize
         CategoryStack Plugins.CoreExpr
       maybeUnfix name tyArgs expr
         | name `isCalledIn` expr =
-          ExceptT $
-            runExceptT (unfix name tyArgs expr) <&> \case
-              Right e -> Right e
-              -- When `unfix` fails with `FailureToUnfix`, we proceed without unfixing, rather than
-              -- throwing the error, because proceeding may eventually succeed, although it may also
-              -- lead to looping.
-              -- TODO: log the errors.
-              Left (FailureToUnfix {} :| []) -> Right $ Plugins.mkTyApps expr tyArgs
-              Left other -> Left other
+            ExceptT $
+              runExceptT (unfix name tyArgs expr) <&> \case
+                Right e -> Right e
+                -- When `unfix` fails with `FailureToUnfix`, we proceed without unfixing, rather than
+                -- throwing the error, because proceeding may eventually succeed, although it may also
+                -- lead to looping.
+                -- TODO: log the errors.
+                Left (FailureToUnfix {} :| []) -> Right $ Plugins.mkTyApps expr tyArgs
+                Left other -> Left other
         | otherwise = pure $ Plugins.mkTyApps expr tyArgs
 
       -- This is the behavior for the `Plugins.BuiltinRule` defined for `GHC.Exts.inline`. We
@@ -1264,9 +1264,9 @@ findTypeInTuple makers target (id &&& Plugins.exprType -> (expr, ty))
   -- operations like `tuple3ToTuple2 :: forall a b c. (a, b, c) -> ((a, b), c)`.
   | Just (tycon, [_, _]) <- Plugins.splitTyConApp_maybe ty,
     Plugins.isBoxedTupleTyCon tycon =
-    mkFst makers expr >>= findTypeInTuple makers target >>= \case
-      Just res -> pure (Just res)
-      Nothing -> mkSnd makers expr >>= findTypeInTuple makers target
+      mkFst makers expr >>= findTypeInTuple makers target >>= \case
+        Just res -> pure (Just res)
+        Nothing -> mkSnd makers expr >>= findTypeInTuple makers target
   | otherwise = pure Nothing
 
 -- | check if the expression is `proj . proj . proj ... . proj $ var` form.

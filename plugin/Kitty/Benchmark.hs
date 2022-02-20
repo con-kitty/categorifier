@@ -54,10 +54,10 @@ billTo :: forall a r m. (MonadIO m, Ord a) => Bool -> IORef (Benchmark a) -> a -
 billTo enableDebugging ref newAccount act
   | not enableDebugging = act
   | otherwise = do
-    oldAccount <- liftIO $ switchAccount ref (Just newAccount)
-    res <- act >>= liftIO . evaluate
-    -- TODO: this should ideally be in `finally`, but `CategoryStack` is not `MonadUnliftIO`.
-    liftIO (switchAccount ref oldAccount) $> res
+      oldAccount <- liftIO $ switchAccount ref (Just newAccount)
+      res <- act >>= liftIO . evaluate
+      -- TODO: this should ideally be in `finally`, but `CategoryStack` is not `MonadUnliftIO`.
+      liftIO (switchAccount ref oldAccount) $> res
 
 -- | Like `billTo`, but keep billing to the given account even if the given
 -- action calls `billTo` or `billToUninterruptible`.
@@ -72,15 +72,15 @@ billToUninterruptible ::
 billToUninterruptible enableDebugging ref newAccount act
   | not enableDebugging = act
   | otherwise = do
-    oldAccount <- liftIO $ switchAccount ref Nothing
-    startTime <- liftIO getElapsed
-    res <- act >>= liftIO . evaluate
-    -- TODO: this should ideally be in `finally`, but `CategoryStack` is not `MonadUnliftIO`.
-    endTime <- liftIO getElapsed
-    liftIO $
-      modifyIORef' ref $ \(Benchmark account meters) ->
-        Benchmark account $ addTime (endTime - startTime) newAccount meters
-    liftIO (switchAccount ref oldAccount) $> res
+      oldAccount <- liftIO $ switchAccount ref Nothing
+      startTime <- liftIO getElapsed
+      res <- act >>= liftIO . evaluate
+      -- TODO: this should ideally be in `finally`, but `CategoryStack` is not `MonadUnliftIO`.
+      endTime <- liftIO getElapsed
+      liftIO $
+        modifyIORef' ref $ \(Benchmark account meters) ->
+          Benchmark account $ addTime (endTime - startTime) newAccount meters
+      liftIO (switchAccount ref oldAccount) $> res
 
 displayTimes :: forall a m. (MonadIO m, Show a) => IORef (Benchmark a) -> m ()
 displayTimes ref = liftIO $ do

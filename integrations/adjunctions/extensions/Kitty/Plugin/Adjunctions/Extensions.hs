@@ -18,8 +18,8 @@ import qualified Data.Map as Map
 import qualified GHC.Base
 import qualified GhcPlugins as Plugins
 import Kitty.Duoidal ((=<\<))
-import Kitty.Plugin.Core.Makers (Makers (..))
 import Kitty.Plugin.Core.MakerMap (MakerMapFun, baseMakerMapFun, makeMaker1)
+import Kitty.Plugin.Core.Makers (Makers (..))
 import Kitty.Plugin.Core.Types (CategoryStack, Lookup)
 import Kitty.Plugin.Hierarchy
   ( Hierarchy (..),

@@ -18,9 +18,9 @@ import GHC.Word (Word8)
 import qualified Hedgehog.Gen as Gen
 import Kitty.Plugin.Hedgehog (genFloating)
 import qualified Kitty.Plugin.Test.Adjunctions as Adjunctions
+import Kitty.Plugin.Test.Categories.Instances (Hask (..), Term)
 import Kitty.Plugin.Test.Data (One (..))
 import Kitty.Plugin.Test.HList (HList1 (..))
-import Kitty.Plugin.Test.Categories.Instances (Hask (..), Term)
 import Kitty.Plugin.Test.Tests
   ( TestCases (..),
     TestCategory (..),

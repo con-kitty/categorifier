@@ -8,11 +8,11 @@ module Kitty.Plugin.Test.ConCat.Instances
   )
 where
 
-import qualified Control.Arrow as Base
 import qualified ConCat.Category as ConCat
-import qualified ConCat.Rep as ConCat
 import ConCat.Circuit ((:>))
+import qualified ConCat.Rep as ConCat
 import ConCat.Syntactic (Syn, app0')
+import qualified Control.Arrow as Base
 import Data.Constraint (Dict (..), (:-) (..))
 import Kitty.Plugin.Category (RepCat (..))
 import qualified Kitty.Plugin.Client as Client
