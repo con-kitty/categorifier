@@ -1665,7 +1665,7 @@ mkNoInlinePrimIntFunctions :: Makers -> Plugins.TyCon -> Plugins.DataCon -> NoIn
 mkNoInlinePrimIntFunctions makers tc dc =
   Map.fromListWith
     const
-    -- TODO (SW-4259): add `rem` and `quot`. There's unfortunately no `Plugins.remIntName` or
+    -- TODO (#18): add `rem` and `quot`. There's unfortunately no `Plugins.remIntName` or
     -- `Plugins.quotIntName`, which makes it slightly more complicated.
     [ ( Plugins.modIntName,
         pure (([tc, tc], tc), Boxer "GHC.Real" "mod" [dc, dc] . mkMod makers $ Plugins.mkTyConTy tc)

@@ -83,7 +83,7 @@ mkTestTerms
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
-              then [] -- SW-1940
+              then [] -- #19
               else
                 [ ( ([t|Int64|], [t|Word8|]),
                     pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|])
@@ -154,7 +154,7 @@ mkTestTerms
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
-              then [] -- SW-1940
+              then [] -- #19
               else
                 [ ( ([t|Int64|], [t|Word8|]),
                     pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|])
@@ -175,7 +175,7 @@ mkTestTerms
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
-              then [] -- SW-1940
+              then [] -- #19
               else
                 [ ( ([t|Word8|], [t|Word8|], [t|Word8|]),
                     pure
@@ -213,7 +213,7 @@ mkTestTerms
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
-              then [] -- SW-1940
+              then [] -- #19
               else [(([t|Int64|], [t|Word8|]), pure ([|Gen.enumBounded|], [|show|]))]
         )
     )
@@ -221,7 +221,7 @@ mkTestTerms
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
-              then [] -- SW-1940
+              then [] -- #19
               else
                 [ ( ([t|Int64|], [t|Word8|]),
                     pure
@@ -237,7 +237,7 @@ mkTestTerms
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
-              then [] -- SW-1940
+              then [] -- #19
               else
                 [ ( ([t|Int64|], [t|Word8|]),
                     pure
@@ -253,7 +253,7 @@ mkTestTerms
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
-              then [] -- SW-1940
+              then [] -- #19
               else [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]
         )
     )
@@ -261,7 +261,7 @@ mkTestTerms
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
-              then [] -- SW-1940
+              then [] -- #19
               else
                 [ ( [t|Bool|],
                     pure
@@ -340,7 +340,7 @@ mkTestTerms
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
-              then [] -- SW-1940
+              then [] -- #19
               else [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]
         )
     )
@@ -362,7 +362,7 @@ mkTestTerms
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
-              then [] -- SW-1940
+              then [] -- #19
               else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
         )
     )
@@ -370,7 +370,7 @@ mkTestTerms
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
-              then [] -- SW-1940
+              then [] -- #19
               else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
         )
     )
@@ -378,7 +378,7 @@ mkTestTerms
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
-              then [] -- SW-1940
+              then [] -- #19
               else [([t|Int64|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
         )
     )
@@ -386,7 +386,7 @@ mkTestTerms
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
-              then [] -- SW-1940
+              then [] -- #19
               else [([t|Int64|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
         )
     )
@@ -394,7 +394,7 @@ mkTestTerms
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
-              then [] -- SW-1940
+              then [] -- #19
               else [([t|Int64|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
         )
     )
@@ -402,7 +402,7 @@ mkTestTerms
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
-              then [] -- SW-1940
+              then [] -- #19
               else [([t|Int64|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
         )
     )
@@ -410,7 +410,7 @@ mkTestTerms
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
-              then [] -- SW-1940
+              then [] -- #19
               else [([t|Int64|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
         )
     )
@@ -418,7 +418,7 @@ mkTestTerms
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
-              then [] -- SW-1940
+              then [] -- #19
               else [([t|Int64|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
         )
     )
@@ -427,7 +427,7 @@ mkTestTerms
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
-              then [] -- SW-1940
+              then [] -- #19
               else [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]
         )
     )
@@ -435,7 +435,7 @@ mkTestTerms
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
-              then [] -- SW-1940
+              then [] -- #19
               else [([t|Double|], pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]
         )
     )
@@ -443,7 +443,7 @@ mkTestTerms
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
-              then [] -- SW-1940
+              then [] -- #19
               else [([t|Double|], pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]
         )
     )
@@ -452,7 +452,7 @@ mkTestTerms
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
-              then [] -- SW-1940
+              then [] -- #19
               else [([t|Double|], pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]
         )
     )
@@ -460,7 +460,7 @@ mkTestTerms
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
-              then [] -- SW-1940
+              then [] -- #19
               else [([t|Double|], pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]
         )
     )
@@ -468,7 +468,7 @@ mkTestTerms
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
-              then [] -- SW-1940
+              then [] -- #19
               else [([t|Double|], pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]
         )
     )
@@ -480,7 +480,7 @@ mkTestTerms
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
-              then [] -- SW-1940
+              then [] -- #19
               else
                 [ ( [t|Word8|],
                     pure
@@ -495,7 +495,7 @@ mkTestTerms
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
-              then [] -- SW-1940
+              then [] -- #19
               else
                 [ ( [t|Word8|],
                     pure
@@ -510,7 +510,7 @@ mkTestTerms
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
-              then [] -- SW-1940
+              then [] -- #19
               else [([t|Double|], pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]
         )
     )
@@ -518,7 +518,7 @@ mkTestTerms
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
-              then [] -- SW-1940
+              then [] -- #19
               else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
         )
     )
@@ -526,7 +526,7 @@ mkTestTerms
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
-              then [] -- SW-1940
+              then [] -- #19
               else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
         )
     )
@@ -589,7 +589,7 @@ mkTestTerms
   . HCons1
     ( TestCases
         ( \arrow ->
-            if arrow == ''TotOrd -- SW-1940
+            if arrow == ''TotOrd -- #19
               then []
               else
                 [ ( [t|Word8|],
@@ -609,7 +609,7 @@ mkTestTerms
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
-              then [] -- SW-1940
+              then [] -- #19
               else
                 [ ( [t|Word8|],
                     pure
@@ -663,7 +663,7 @@ mkTestTerms
         ( \arrow ->
             if arrow
               `elem` [ ''Syn, -- no Strong
-                       ''TotOrd -- SW-1940
+                       ''TotOrd -- #19
                      ]
               then []
               else [([t|Word8|], pure ([|Pair <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
@@ -674,7 +674,7 @@ mkTestTerms
         ( \arrow ->
             if arrow
               `elem` [ ''Syn, -- no Strong
-                       ''TotOrd -- SW-1940
+                       ''TotOrd -- #19
                      ]
               then []
               else
@@ -689,7 +689,7 @@ mkTestTerms
         ( \arrow ->
             if arrow
               `elem` [ ''Syn, -- no Strong
-                       ''TotOrd -- SW-1940
+                       ''TotOrd -- #19
                      ]
               then []
               else [([t|Word8|], pure ([|Pair <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
@@ -708,7 +708,7 @@ mkTestTerms
         ( \arrow ->
             if arrow
               `elem` [ ''Syn, -- no Strong
-                       ''TotOrd -- SW-1940
+                       ''TotOrd -- #19
                      ]
               then []
               else
@@ -769,7 +769,7 @@ mkTestTerms
         ( \arrow ->
             if arrow
               `elem` [ ''Syn, -- no Strong
-                       ''TotOrd -- SW-1940
+                       ''TotOrd -- #19
                      ]
               then []
               else [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]
