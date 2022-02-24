@@ -1,6 +1,6 @@
 {-# LANGUAGE TupleSections #-}
 
--- | The `Categorifier.Core.Hierarchy.baseHierarchy` can support most of categorization (`arr` is a
+-- | The `Categorifier.Core.Hierarchy.baseHierarchy` can support most of categorification (`arr` is a
 --   very powerful operation), but it doesn't provide all of the appropriate functions and some of
 --   them are too complicated to encode directly in GHC Core. This module bridges the gap to make
 --   the Core definitions more tractable.

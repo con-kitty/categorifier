@@ -4,7 +4,7 @@ name:           categorifier-unconcat-category
 version:        0.1
 description:    Unconstrained versions of Conal's ConCat classes. They can be used for categories
                 that have an empty constraint (i.e., @`Ok` _ ~ `Yes1`@). These are generally much
-                faster to categorize, because of the reduced need to solve constraints. If at some
+                faster to categorify, because of the reduced need to solve constraints. If at some
                 point the performance of ConCat is comparable to this, we should eliminate this.
 homepage:       https://github.com/con-kitty/categorifier#readme
 bug-reports:    https://github.com/con-kitty/categorifier/issues

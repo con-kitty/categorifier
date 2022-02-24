@@ -9,11 +9,11 @@ various targets (e.g., [C code](https://github.com/con-kitty/categorifier-c)).
 For this plugin to work properly, you need to make some changes both to targets that use it
 directly, as well as ones that are depended on (transitively) by the ones that use it.
 
-### targets you want to use `categorize` in
+### targets you want to use `categorify` in
 
 - enable the plugin with `-fplugin=Categorifier`,
 - ensure inlining is available with `-fno-ignore-interface-pragmas` (implied by `-O` or `-O2`), and
-- import `Categorifier.Categorize` to make `categorize` available (you must import the _entire_ module,
+- import `Categorifier.Categorify` to make `categorify` available (you must import the _entire_ module,
   but it may be qualified).
 
 ### targets you depend on
@@ -43,7 +43,7 @@ will be considered for inlining.
 
 1. set both the `creation` (globally) threshold very high, say `10000`;
 2. test to see if the inlining issue goes away (if so, skip to step 5);
-3. set the `use` (in `categorize` modules) threshold to match the `creation` threshold;
+3. set the `use` (in `categorify` modules) threshold to match the `creation` threshold;
 4. do a binary search on the `use` thresholds to minimize them as much as possible;
 5. do a binary search on the `creation` thresholds to minimize them as much as possible (the lower
    bound here is probably the minimum of 750 (the default) and the `use` threshold).
@@ -64,24 +64,24 @@ some GADTS you'll currently have to write out a more direct instance.
 The plugin attempts to convert a large portion of Haskell to a category-agnostic form, however there
 are some features that aren't supported (or, not supported fully).
 
-- **`FFI`** - The plugin can not categorize arbitrary FFI calls. There is, however, support for
+- **`FFI`** - The plugin can not categorify arbitrary FFI calls. There is, however, support for
   parts of `libm`.
-- **`IO`** - The plugin can not categorize anything that operates on the `RealWorld` state. If you
-  only use `Monad` operations (etc.) on `IO`, then it should categorize fine. But then you should
+- **`IO`** - The plugin can not categorify anything that operates on the `RealWorld` state. If you
+  only use `Monad` operations (etc.) on `IO`, then it should categorify fine. But then you should
   also generalize the function to an arbitrary `Monad`.
 - **mutual recursion** - The plugin will not work with any mutually-recursive definitions. Mutually-
   recursive _types_ are fine, but operations on them can't be mutually-recursive. In some cases
   (mutually-recursive `let` or `where` bindings), the plugin can identify it and will provide a
   helpful error. However, in other cases (top-level bindings) the plugin can't identify the mutual
-  recursion and `categorize` will get stuck in a loop during compilation.
+  recursion and `categorify` will get stuck in a loop during compilation.
 - **polymorphic recursion** - The plugin does not currently work with polymorphically-recursive
   functions that need to be inlined (rather than directly interpreted).
-- **polymorphism** - We can `categorize` polymorphic functions. However, the polymorphism may only
+- **polymorphism** - We can `categorify` polymorphic functions. However, the polymorphism may only
   be constrained by operations that we can interpret directly to the target category. E.g.,
   functions with types like `forall a. Foo a -> Int` or `forall a. Ord a => Foo a -> Int` can be
-  categorized, but `forall a. MyCustomClass a => Foo a -> Int` may not be able to. (If
+  categorified, but `forall a. MyCustomClass a => Foo a -> Int` may not be able to. (If
  `MyCustomClass` simply aggregates operations from type classes in `base`, then it will still
-  categorize.)
+  categorify.)
 
 ### Limitation of BuildDictionary
 
@@ -134,7 +134,7 @@ There are a bunch of modules, this calls out the most important ones when diving
 
 - [Categorifier](./Categorifier.hs) - this is the entrypoint of the plugin, everything that hooks into
   GHC starts from here;
-- [Categorifier.Core.Categorize](./Categorifier/Core/Categorize.hs) - the high-level logic of the
+- [Categorifier.Core.Categorify](./Categorifier/Core/Categorify.hs) - the high-level logic of the
   categorical transformation as described in Conal's paper, it tries to define as clearly as
   possible the mapping from **Hask** to abstract categories;
 - [Categorifier.Hierarchy](./Categorifier/Hierarchy.hs) - the mappings from abstract
@@ -183,7 +183,7 @@ to inspect what's happening less invasively.
 #### catching missed identifier conversions
 
 The last case of `findMaker` tries to inline the identifier, which can be very useful to track but it's
-possible for this to cause a cycle with `categorizeLambda (Plugins.App ...)`. To discover if you're
+possible for this to cause a cycle with `categorifyLambda (Plugins.App ...)`. To discover if you're
 running into this, replace the `Nothing` with `error [fmt|missing: {modu}.{var} {length args}|]` and
 see if you're trying to match the correct application.
 

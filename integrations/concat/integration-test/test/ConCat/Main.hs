@@ -12,7 +12,7 @@
 -- want to test.  See "Test.TH" for the generation of these cases.
 --
 -- Many properties are generated for things where, due to the way the plugin works, we doubt a
--- priori that some inputs may fail if any input succeeds (e.g. testing how 'id' is 'categorize'd).
+-- priori that some inputs may fail if any input succeeds (e.g. testing how 'id' is 'categorify'd).
 -- They are written as properties anyway to simplify the TH implementation, which supports the
 -- general case.
 --

@@ -3,7 +3,7 @@ module Test.WithInstance
   )
 where
 
-import qualified Categorifier.Categorize as Categorize
+import qualified Categorifier.Categorify as Categorify
 import ConCat.Category (Category (..))
 import P hiding (id, (.))
 
@@ -18,4 +18,4 @@ instance Category Term where
   ZeroId . ZeroId = ZeroId
 
 test :: Term Int Int
-test = Categorize.expression id
+test = Categorify.expression id

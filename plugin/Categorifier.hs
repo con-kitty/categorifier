@@ -4,7 +4,7 @@
 -- | Create a GHC plugin that implements Conal Elliott's [Compiling to
 --   Categories](http://conal.net/papers/compiling-to-categories/compiling-to-categories.pdf).
 --
---   It replaces calls to `Categorifier.Categorize.expression` with the expression in the target
+--   It replaces calls to `Categorifier.Categorify.expression` with the expression in the target
 --   category.
 module Categorifier
   ( plugin,

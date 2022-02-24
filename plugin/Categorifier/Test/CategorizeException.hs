@@ -1,11 +1,11 @@
 {-# LANGUAGE TemplateHaskellQuotes #-}
 
-module Test.CategorizeException
+module Test.CategorifyException
   ( hprop_correctException,
   )
 where
 
-import qualified Categorifier.Categorize as Categorize
+import qualified Categorifier.Categorify as Categorify
 import Categorifier.Common.IO.Exception (evaluate, try)
 import GHC.Stack (SrcLoc (..), getCallStack)
 import qualified Hedgehog
@@ -17,17 +17,17 @@ hprop_correctException =
   Hedgehog.property $
     either
       -- __NB__: Ensures we get a `CallStack` that is useful to a user.
-      ( \(Categorize.UnconvertedCall _ calls) ->
+      ( \(Categorify.UnconvertedCall _ calls) ->
           -- __NB__: The `srcLocPackage` varies depending on the build target, so we effectively
           --         ignore it.
           fmap (fmap (\frame -> frame {srcLocPackage = ""})) (getCallStack calls)
-            Hedgehog.=== [ ( TH.nameBase 'Categorize.expression,
+            Hedgehog.=== [ ( TH.nameBase 'Categorify.expression,
                              SrcLoc
                                { srcLocPackage = "",
                                  srcLocModule =
                                    fromMaybe "" $ TH.nameModule 'hprop_correctException,
                                  srcLocFile =
-                                   "code_generation/plugin/Test/Plugin/CategorizeException.hs",
+                                   "code_generation/plugin/Test/Plugin/CategorifyException.hs",
                                  srcLocStartLine = 41,
                                  srcLocStartCol = 9,
                                  srcLocEndLine = 41,
@@ -38,4 +38,4 @@ hprop_correctException =
       )
       (const Hedgehog.failure)
       <=< Hedgehog.evalIO . try . evaluate
-      $ Categorize.expression id
+      $ Categorify.expression id

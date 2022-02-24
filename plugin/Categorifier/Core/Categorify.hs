@@ -7,9 +7,9 @@
 -- | The high-level transformation between GHC's `Plugins.CoreExpr` and the abstract categorical
 --   representation, as described in [Compiling to
 --   Categories](http://conal.net/papers/compiling-to-categories/compiling-to-categories.pdf).
-module Categorifier.Core.Categorize
+module Categorifier.Core.Categorify
   ( AutoInterpreter,
-    categorize,
+    categorify,
     applyTyAndPredArgs,
     isTypeOrPred,
     simplifyFun,
@@ -78,9 +78,9 @@ import Prelude hiding (head)
 -- Need Uniplate for traversals on GHC-provided recursive types
 {-# ANN module ("HLint: ignore Avoid restricted module" :: String) #-}
 
--- | This is named as a pun on `Categorifier.Categorize.expression`, as it's effectively the "real"
+-- | This is named as a pun on `Categorifier.Categorify.expression`, as it's effectively the "real"
 --   implementation of that pseudo-function.
-categorize ::
+categorify ::
   -- | Enable debugging
   Bool ->
   -- | Enable benchmarking
@@ -95,12 +95,12 @@ categorize ::
   AutoInterpreter ->
   MakerMapFun ->
   (Makers -> [(Plugins.CLabelString, (PrimOp.Boxer, [Plugins.Type], Plugins.Type))]) ->
-  -- | The @a -> b@ parameter from `Categorifier.Categorize.expression`.
+  -- | The @a -> b@ parameter from `Categorifier.Categorify.expression`.
   Plugins.CoreExpr ->
-  -- | The @c a b@ result of `Categorifier.Categorize.expression` (where @c@ represents the arrow of
+  -- | The @c a b@ result of `Categorifier.Categorify.expression` (where @c@ represents the arrow of
   --   the target category).
   CategoryStack Plugins.CoreExpr
-categorize
+categorify
   debug
   bench
   dflags
@@ -114,9 +114,9 @@ categorize
   additionalBoxers
   fun = do
     res0 <-
-      maybeTraceWith debug (const "---------- categorize ----------")
-        . Bench.billToUninterruptible bench Bench.Categorize
-        $ categorizeFun fun
+      maybeTraceWith debug (const "---------- categorify ----------")
+        . Bench.billToUninterruptible bench Bench.Categorify
+        $ categorifyFun fun
     -- It seems GHC simplifier's memory usage is determined by the size of the largest top level
     -- bind. Therefore, we float some local let-binds out to the top level, which reduces the
     -- size of the largest top-level bind.
@@ -165,13 +165,13 @@ categorize
         _ -> Nothing
       -- "Since we are translating function-typed terms, we can assume that we have an explicit
       --  abstraction, /λ(x :: τ) → U/ for some term /U/; otherwise, simply η-expand." ⸻§3
-      categorizeFun :: Plugins.CoreExpr -> CategoryStack Plugins.CoreExpr
-      categorizeFun =
+      categorifyFun :: Plugins.CoreExpr -> CategoryStack Plugins.CoreExpr
+      categorifyFun =
         maybeTraceWithStack debug (thump "fun") $ \case
-          Plugins.Lam x u -> categorizeLambda x u
-          -- `Plugins.Cast` at the top level is difficult. Within `categorizeLambda`, we can always
+          Plugins.Lam x u -> categorifyLambda x u
+          -- `Plugins.Cast` at the top level is difficult. Within `categorifyLambda`, we can always
           -- compose the coercion, but here we need to apply the coercion to a function, and then
-          -- categorize /that/. This currently only handles simple cases, where we can either ignore
+          -- categorify /that/. This currently only handles simple cases, where we can either ignore
           -- the coercion or separate it into coercions for the domain and codomain, which we can
           -- then compose.
           to@(Plugins.Cast from co) ->
@@ -183,31 +183,31 @@ categorize
                         composeCat makers
                           <$> mkCoerce makers b' b
                           <*\> joinD
-                            (composeCat makers <$> categorizeFun from <*\> mkCoerce makers a a')
+                            (composeCat makers <$> categorifyFun from <*\> mkCoerce makers a a')
                   )
                     <$> extractTypes from
                     <*\> extractTypes to
-              TyCoRep.Refl _ -> categorizeFun from
+              TyCoRep.Refl _ -> categorifyFun from
               TyCoRep.TransCo inner outer ->
-                categorizeFun $ Plugins.Cast (Plugins.Cast from inner) outer -- NON-INDUCTIVE
+                categorifyFun $ Plugins.Cast (Plugins.Cast from inner) outer -- NON-INDUCTIVE
               _ -> throwE . pure $ UnsupportedCast from co
             where
               extractTypes expr =
                 let eTy = Plugins.exprType expr
                  in maybe (throwE . pure . NotFunTy expr $ eTy) pure $
                       Plugins.splitFunTy_maybe eTy
-          Plugins.Tick tickish expr -> Plugins.Tick tickish <$> categorizeFun expr
+          Plugins.Tick tickish expr -> Plugins.Tick tickish <$> categorifyFun expr
           -- __NB__: `etaExpand` can result in `Plugins.Cast` and `Plugins.Tick` in addition to the
           --         expected `Plugins.Lam`, so we handle those cases here recursively.
-          e -> categorizeFun $ etaExpand 1 e -- NON-INDUCTIVE
-      categorizeLambda = categorizeLambda' MakeConst
+          e -> categorifyFun $ etaExpand 1 e -- NON-INDUCTIVE
+      categorifyLambda = categorifyLambda' MakeConst
 
-      categorizeLambda' ::
+      categorifyLambda' ::
         MakeOrIgnoreConst ->
         Plugins.Var ->
         Plugins.CoreExpr ->
         CategoryStack Plugins.CoreExpr
-      categorizeLambda' makeOrIgnoreConst name =
+      categorifyLambda' makeOrIgnoreConst name =
         maybeTraceWithStack debug (thump "lam" . Plugins.Lam name) $ \case
           Plugins.Coercion co -> throwE . pure . UnsupportedDependentType name $ Left co
           Plugins.Type ty -> throwE . pure . UnsupportedDependentType name $ pure ty
@@ -228,7 +228,7 @@ categorize
           Plugins.Var y ->
             if name == y
               then mkId makers $ Plugins.varType name
-              else categorizeLambda name =<\< mkInline (Plugins.Var y)
+              else categorifyLambda name =<\< mkInline (Plugins.Var y)
           -- `tagToEnum#` in enum comparisons
           --
           -- Typically we see `tagToEnum#` within some other primitive-related expression.
@@ -260,7 +260,7 @@ categorize
                         maybe
                           -- If the expression is a categorical operation, translate it directly.
                           (interpretVocabulary name e ident)
-                          (categorizeDataCon name e)
+                          (categorifyDataCon name e)
                           (Plugins.isDataConId_maybe ident)
                           args
                   -- This handles `Cast from co` where `from` is a dictionary, and `co` is an
@@ -282,7 +282,7 @@ categorize
                               other -> Left other
                             )
                             <$> (simplifyFun dflags [] =<\< mkInline from)
-                        categorizeLambda name
+                        categorifyLambda name
                           =<\< simplifyFun dflags [] (Plugins.mkCoreApps inlined args)
                   -- Convert all the arguments of an application at once.
                   _
@@ -305,7 +305,7 @@ categorize
                               (Plugins.exprType head)
                               (Plugins.exprType (Plugins.mkTyApps head tyArgs))
                             <*\> pure head
-                        handleExtraArgs makers name otherArgs =<\< categorizeLambda name headCoerced
+                        handleExtraArgs makers name otherArgs =<\< categorifyLambda name headCoerced
                     | otherwise ->
                         -- If we are dealing with something like
                         --
@@ -315,7 +315,7 @@ categorize
                         --    \x y ... -> body) arg1 arg2 ...
                         -- @
                         --
-                        -- then instead of simply categorizing `head` and each arg, we check if we
+                        -- then instead of simply categorifying `head` and each arg, we check if we
                         -- should perform any substitutions, i.e., substitute `arg1` for `x`, `arg2`
                         -- for `y`, etc.
                         --
@@ -337,16 +337,16 @@ categorize
                         --
                         -- This could cause problems. For instance, if `arg` is a constant, then an
                         -- expression that mentions `arg` and doesn't depend on the input can be
-                        -- categorized via `mkConst`. But if we try to categorize `x -> body`,
+                        -- categorified via `mkConst`. But if we try to categorify `x -> body`,
                         -- then since `x` is now an argument, anything in `body` that mentions `x`
-                        -- cannot be categorized via `mkConst`. Therefore, in this case, we must
+                        -- cannot be categorified via `mkConst`. Therefore, in this case, we must
                         -- substitute `arg` for `x`.
                         let (xs, bndrs, body) = collectNestedBinders head
                             (newBody, remainingBndrs, remainingArgs) = substBndrs body bndrs args
                          in if length bndrs == length remainingBndrs
-                              then handleExtraArgs makers name args =<\< categorizeLambda name head
+                              then handleExtraArgs makers name args =<\< categorifyLambda name head
                               else
-                                categorizeLambda name . addLetsAndCases xs $
+                                categorifyLambda name . addLetsAndCases xs $
                                   Plugins.mkCoreApps
                                     (Plugins.mkCoreLams remainingBndrs newBody)
                                     remainingArgs
@@ -362,7 +362,7 @@ categorize
               traverseD
                 sequenceD
                 [(name, mkFst makers (Plugins.Var pair)), (name', mkSnd makers (Plugins.Var pair))]
-            curryCat makers =<\< categorizeLambda pair (subst sub body)
+            curryCat makers =<\< categorifyLambda pair (subst sub body)
           -- The @unsafeBinder@ and @unsafeAlts@ are unsafe because they are not necessarily unique.
           --
           -- The lack of uniqueness of @unsafeBinder@ can be observed by building
@@ -391,7 +391,7 @@ categorize
                     if any (isFreeIn unsafeBinder . thd3) alts
                       then pure unsafeBinder
                       else uniquifyVarName unsafeBinder
-                  categorizeLambda name . Plugins.Let (Plugins.NonRec binder scrut) =<\< f binder
+                  categorifyLambda name . Plugins.Let (Plugins.NonRec binder scrut) =<\< f binder
 
             case alts of
               -- "For __case__ expressions, suppose the scrutinee expression has a product type"
@@ -422,11 +422,11 @@ categorize
                         <$> mkIf makers typ
                         <*\> joinD
                           ( forkCat makers
-                              <$> categorizeLambda name scrut
+                              <$> categorifyLambda name scrut
                               <*\> joinD
                                 ( forkCat makers
-                                    <$> categorizeLambda name rhsT
-                                    <*\> categorizeLambda name rhsF
+                                    <$> categorifyLambda name rhsT
+                                    <*\> categorifyLambda name rhsF
                                 )
                           )
               -- @Data.Constraint.Dict@ contains a constraint, so it can't have a
@@ -440,7 +440,7 @@ categorize
                           findTypeInTuple makers predTy (Plugins.Var x) >>= maybe (findPred xs) pure
                      in do
                           expr <- findPred $ universeBi scrut
-                          categorizeLambda name $ Plugins.Let (Plugins.NonRec v expr) rhs
+                          categorifyLambda name $ Plugins.Let (Plugins.NonRec v expr) rhs
 
               -- "One more transformation eliminates the unboxing __case__ scrutinees: transform
               --  an expression like “__case__ /a/ __of__ /I# x/ → ... /boxI x/ ...” to “__let__
@@ -466,7 +466,7 @@ categorize
                       then do
                         binder <- uniquifyVarName unsafeBinder
                         res <-
-                          categorizeLambda name $
+                          categorifyLambda name $
                             transformBi (\case v | v == unsafeBinder -> binder; other -> other) rhs
                         -- Here we are making a `Plugins.Case`, rather than a `Plugins.Let`
                         -- (as `withBinder` would do), because core lint complains
@@ -477,11 +477,11 @@ categorize
                             binder
                             (Plugins.exprType res)
                             [(Plugins.DEFAULT, [], res)]
-                      else categorizeLambda name rhs
+                      else categorifyLambda name rhs
                 -- `frominteger`
                 | Just toTy <- PrimOp.matchOnUniverse PrimOp.matchFloatFromIntegralApp scrut,
                   Just _dc <- PrimOp.matchOnUniverse (PrimOp.matchBoxingApp primConMap) rhs ->
-                    -- This is the original case at the top level of `categorizeLambda`.
+                    -- This is the original case at the top level of `categorifyLambda`.
                     handlePrimOps
                       "fromInteger"
                       name
@@ -491,7 +491,7 @@ categorize
                 | Just i2iApp <- PrimOp.matchOnUniverse PrimOp.matchIntegerToIntApp scrut,
                   Just _toIApp <- PrimOp.matchOnUniverse PrimOp.matchToIntegerApp i2iApp,
                   Just _dc <- PrimOp.matchOnUniverse (PrimOp.matchBoxingApp primConMap) rhs ->
-                    -- This is the original case at the top level of `categorizeLambda`.
+                    -- This is the original case at the top level of `categorifyLambda`.
                     handlePrimOps
                       "fromIntegral"
                       name
@@ -504,7 +504,7 @@ categorize
               -- instances. This is achieved by simplifying it with `Inline` and `Rules`.
               [_]
                 | Plugins.isPredTy (Plugins.varType unsafeBinder) ->
-                    categorizeLambda name =<\< simplifyFun dflags [Inline, Rules] caseExpr
+                    categorifyLambda name =<\< simplifyFun dflags [Inline, Rules] caseExpr
               -- "consider a __case__ expression /case scrut of { p1 → rhs1; ...; pn → rhsn }/,
               -- where (the scrutinee) /scrut/ has a non-standard type with a /HasRep/
               -- instance. Rewrite /scrut/ to /inline abst (repr scrut)/ (this time inlining
@@ -542,7 +542,7 @@ categorize
                 -- NON-INDUCTIVE
                 -- Here we expect `simplifyFun` to apply the `let`-substitution, case-of-case,
                 -- and case-of-known-constructor transformations.
-                categorizeLambda name <=\< simplifyFun dflags [CaseOfCase] $
+                categorifyLambda name <=\< simplifyFun dflags [CaseOfCase] $
                   Plugins.Case (Plugins.App abst (Plugins.App repr scrut)) unsafeBinder typ alts
           Plugins.Let bind expr -> case bind of
             Plugins.NonRec v rhs ->
@@ -558,23 +558,23 @@ categorize
                 then -- Float bindings outside of lambdas when possible. This is an optimization,
                 --      but more importantly it prevents us from trying to inline type class
                 --      dictionaries (which GHC does not want to do) by moving them outside the term
-                --      being categorized. E.g.,
+                --      being categorified. E.g.,
                 --
-                --    > categorize $ \x -> let $pIsPrimitive = ... in myFun $pIsPrimitive x
+                --    > categorify $ \x -> let $pIsPrimitive = ... in myFun $pIsPrimitive x
                 --
                 --      becomes
                 --
-                --    > let $pIsPrimitive = ... in categorize $ \x -> myFun $pIsPrimitive x
+                --    > let $pIsPrimitive = ... in categorify $ \x -> myFun $pIsPrimitive x
                 --
                 --      rather than
                 --
-                --    > categorize $ \x' -> (\(x, $pIsPrimitive) -> myFun $pIsPrimitive x) (x', ...)
+                --    > categorify $ \x' -> (\(x, $pIsPrimitive) -> myFun $pIsPrimitive x) (x', ...)
                 --
-                --      This also stores the binding in case we need to look it up and categorize it
+                --      This also stores the binding in case we need to look it up and categorify it
                 --      later (e.g., in the case of join points).
 
                   fmap (Plugins.Let bind) . tmap (local (Map.insert v rhs)) $
-                    categorizeLambda name expr
+                    categorifyLambda name expr
                 else -- Either substitute the @rhs@ in @expr@, or rewrite as a lambda.
                 -- Whether substituting or rewriting is determined by the number of occurrence of
                 -- `v` in `expr`, which we can obtain from `OccInfo` or by whether `expr` consists
@@ -602,7 +602,7 @@ categorize
                         || any isDictOrBarbiesDictTyCon (universeBi (Plugins.varType v))
                         || Plugins.isForAllTy (Plugins.varType v)
                         then
-                          categorizeLambda name
+                          categorifyLambda name
                             =<\< bool
                               pure
                               -- If `v` has a polymorphic type, we run the simplifier
@@ -611,19 +611,19 @@ categorize
                               (Plugins.isForAllTy (Plugins.varType v))
                               (subst [(v, rhs)] expr)
                         else
-                          categorizeLambda
+                          categorifyLambda
                             name
                             (Plugins.App (Plugins.Lam v expr) rhs) -- NON-INDUCTIVE
             Plugins.Rec [(v, rhs)] -> do
               nonRec <- Plugins.NonRec v <$> unfix v [] rhs
-              categorizeLambda name $ Plugins.Let nonRec expr
+              categorifyLambda name $ Plugins.Let nonRec expr
             Plugins.Rec binds -> throwE . pure $ UnsupportedMutuallyRecursiveLetBindings binds
           to@(Plugins.Cast from _) ->
             joinD $
               composeCat makers
                 <$> mkCoerce makers (Plugins.exprType from) (Plugins.exprType to)
-                <*\> categorizeLambda name from
-          Plugins.Tick tickish body -> Plugins.Tick tickish <$> categorizeLambda name body
+                <*\> categorifyLambda name from
+          Plugins.Tick tickish body -> Plugins.Tick tickish <$> categorifyLambda name body
           -- This case is covered by "constant as abstraction body", but hard to convince GHC of
           -- that, so we duplicate the relevant logic here.
           Plugins.Lit lit -> mkConst' makers (Plugins.varType name) (Plugins.Lit lit)
@@ -641,23 +641,23 @@ categorize
         substBndrs (subst [(bndr, Plugins.Var arg)] body) bndrs args
       substBndrs body bndrs args = (body, bndrs, args)
 
-      categorizeDataCon ::
+      categorifyDataCon ::
         Plugins.Var ->
         Plugins.CoreExpr ->
         Plugins.DataCon ->
         [Plugins.CoreExpr] ->
         CategoryStack Plugins.CoreExpr
-      categorizeDataCon name e dc args =
+      categorifyDataCon name e dc args =
         case (splitNameString $ Plugins.dataConName dc, args) of
           -- Handle the data constructors expected in `Categorifier.Client.Rep` terms.
           ((Just "Data.Constraint", "Dict"), [Plugins.Type _, constraint]) ->
             mkConst' makers (Plugins.varType name) constraint
           ((Just "Data.Either", "Left"), Plugins.Type a : Plugins.Type b : rest) ->
-            makeMaker1 makers (categorizeLambda name) rest =<\< mkInl makers a b
+            makeMaker1 makers (categorifyLambda name) rest =<\< mkInl makers a b
           ((Just "Data.Either", "Right"), Plugins.Type a : Plugins.Type b : rest) ->
-            makeMaker1 makers (categorizeLambda name) rest =<\< mkInr makers a b
+            makeMaker1 makers (categorifyLambda name) rest =<\< mkInr makers a b
           ((Just "GHC.Tuple", "(,)"), Plugins.Type a : Plugins.Type b : rest) ->
-            makeMaker2 makers (categorizeLambda name) e rest
+            makeMaker2 makers (categorifyLambda name) e rest
               <=\< mkId makers
               $ Plugins.mkBoxedTupleTy [a, b]
           -- "Given a saturated constructor application /Con e1...en/, rewrite it to /abst (inline
@@ -674,7 +674,7 @@ categorize
             -- NON-INDUCTIVE
             -- Here we expect `simplifyFun` to apply the `let`-substitution and
             -- case-of-known-constructor transformations.
-            categorizeLambda name
+            categorifyLambda name
               <=\< simplifyFun dflags [] . Plugins.mkLams binds . Plugins.App abst
               $ Plugins.App repr body
       -- `HasRep` is special to the plugin. We need to ensure the operations /don't/ inline in some
@@ -747,7 +747,7 @@ categorize
                 maybeTraceWith debug (thump "interpreting" . WithIdInfo) name
          in findMaker makers n name expr varName args moduleName
 
-      handleExtraArgs m = handleAdditionalArgs m . categorizeLambda
+      handleExtraArgs m = handleAdditionalArgs m . categorifyLambda
 
       thump :: Plugins.Outputable a => Plugins.SDoc -> a -> String
       thump label term =
@@ -783,12 +783,12 @@ categorize
           ( -- If we can't find a matching case to interpret, we fall back through a few cases:
             --
             -- 1. try to interpret a specialized version
-            -- 2. look for a separate categorization of the function
+            -- 2. look for a separate categorification of the function
             -- 3. auto-interpret
             -- 4. inline the function
             maybe
-              ( -- the checks whether we're categorizing this exact function. If so, we can't take
-                -- advantage of `mkNative'` for separate categorization  because it'll loop.
+              ( -- the checks whether we're categorifying this exact function. If so, we can't take
+                -- advantage of `mkNative'` for separate categorification  because it'll loop.
                 if funName /= Just var
                   then
                     withExceptT getLast $
@@ -804,13 +804,13 @@ categorize
                               --            However, if we /don't/ simplify here, then we get
                               --            complaints about missing dictionaries elsewhere.
 
-                              (categorizeLambda n =<\< simplifyFun dflags [] =<\< mkInline expr)
+                              (categorifyLambda n =<\< simplifyFun dflags [] =<\< mkInline expr)
                               (maker1 (dropWhile isTypeOrPred args))
                               =<\< tryAutoInterpret'
                           )
                   else
                     maybe
-                      (categorizeLambda n =<\< simplifyFun dflags [] =<\< mkInline expr)
+                      (categorifyLambda n =<\< simplifyFun dflags [] =<\< mkInline expr)
                       (maker1 (dropWhile isTypeOrPred args))
                       =<\< tryAutoInterpret'
               )
@@ -833,11 +833,11 @@ categorize
               var
               args
               modu
-              categorizeFun
-              (categorizeLambda n)
+              categorifyFun
+              (categorifyLambda n)
 
-          maker1 = makeMaker1 m (categorizeLambda n)
-          maker2 = makeMaker2 m (categorizeLambda n) expr
+          maker1 = makeMaker1 m (categorifyLambda n)
+          maker2 = makeMaker2 m (categorifyLambda n) expr
 
           mkNative' = do
             let tagTy = TyCoRep.LitTy . TyCoRep.StrTyLit . Plugins.mkFastString $ modu <> "." <> var
@@ -997,25 +997,25 @@ categorize
       dbg = renderSDoc dflags . Plugins.ppr
 
       -- Try `mkConst'`. If the required `ConstCat` instance doesn't exist, retry
-      -- `categorizeLambda'` with `IgnoreConst`.
+      -- `categorifyLambda'` with `IgnoreConst`.
       --
-      -- The reason to do this is because sometimes we try to categorize things like
+      -- The reason to do this is because sometimes we try to categorify things like
       -- `\name -> (x :: ManualGains (C Double -> C Double))`. Here the type of
       -- `x` doesn't have a `ConstCat` instance because it contains a function type, so
-      -- we retry categorizing it normally rather than via `const`.
+      -- we retry categorifying it normally rather than via `const`.
       tryMkConst name expr m =
         ExceptT $
           runExceptT (mkConst' m (Plugins.varType name) expr) >>= \case
             Right res -> pure (Right res)
             Left (CouldNotBuildDictionary _ _ (TypecheckFailure _ :| []) :| []) ->
-              runExceptT $ categorizeLambda' IgnoreConst name expr
+              runExceptT $ categorifyLambda' IgnoreConst name expr
             Left otherErrs -> pure (Left otherErrs)
 
       -- §3: @constFun f = curry (f . exr)@
       mkConstFun ::
         Plugins.Type -> Plugins.Type -> Plugins.CoreExpr -> Makers -> CategoryStack Plugins.CoreExpr
       mkConstFun ignored a f m =
-        curryCat m =<\< joinD (composeCat m <$> categorizeFun f <*\> mkExr m ignored a)
+        curryCat m =<\< joinD (composeCat m <$> categorifyFun f <*\> mkExr m ignored a)
       primConMap = PrimOp.mkConMap $ baseIntConstructors baseIdentifiers
       -- Creates a new `Plugins.Id` of `Plugins.Type` that is unique in the `Plugins.VarSet` and is
       -- prefixed with `String`.
@@ -1122,7 +1122,7 @@ categorize
           -- `Plugins.Var` being a method, so we need it to specialize to allow it to be inlined.
           ( const
               -- If the simplified one isn't a `Plugins.App` of a `Plugins.Var`, at least we
-              -- know the expression has changed, so we can continue trying to categorize it.
+              -- know the expression has changed, so we can continue trying to categorify it.
               . ( go onMissingUnfolding pure lets
                     . uncurry Plugins.mkCoreApps
                     <=\< bitraverse (simplifyFun dflags [Rules]) pure
@@ -1164,7 +1164,7 @@ categorize
               debug
               (\x -> "primitive> " <> label <> ": " <> dbg x)
               boxedOps
-        categorizeLambda name boxedOps
+        categorifyLambda name boxedOps
 
 data MakeOrIgnoreConst = MakeConst | IgnoreConst
 

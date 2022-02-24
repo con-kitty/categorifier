@@ -49,7 +49,7 @@ class ForeignFunCallCat k i a b where
   ffcall :: i -> Maybe (a -> b) -> a `k` b
 
 -- | This class provides a backdoor for a user to provide a custom @findMaker@ entry
--- to interpret something that the user doesn't want to or cannot categorize.
+-- to interpret something that the user doesn't want to or cannot categorify.
 --
 -- We use @tag@ instead of @Proxy tag@ here, so that @findMaker@ doesn't have to
 -- obtain the @Proxy@ tycon.

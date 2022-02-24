@@ -343,7 +343,7 @@ haskMakers dflags inScope guts hscEnv HaskOps {..} Hierarchy {..} cat =
     {-
     Like `Plugins.splitFunTy_maybe`, but only returns `Just` if the argument is invisible.
 
-    When applying `categorizeLambda` to `\(x :: X) -> ($fFoo :: Foo Bar)` where
+    When applying `categorifyLambda` to `\(x :: X) -> ($fFoo :: Foo Bar)` where
     `Foo` is a typeclass and `$fFoo` is its dictionary, the plugin would invoke
     `mkConst' X (Foo Bar)`, which ends up applying `onDicts` to
 

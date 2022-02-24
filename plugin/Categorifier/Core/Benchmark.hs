@@ -14,7 +14,7 @@ import System.IO.Unsafe (unsafePerformIO)
 
 data Account
   = BuildDictionary
-  | Categorize
+  | Categorify
   deriving (Eq, Ord, Show)
 
 ref :: IORef (Benchmark.Benchmark Account)

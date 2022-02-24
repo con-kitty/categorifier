@@ -7,7 +7,7 @@
 
 -- |
 -- This module contains TH that generates terms to be invoked with the
--- 'Categorifier.Categorize.expression' plugin-runner.  This is done so that new arrows can be tested
+-- 'Categorifier.Categorify.expression' plugin-runner.  This is done so that new arrows can be tested
 -- easily.
 --
 -- The HLint warnings for 'id' and 'const' are disabled because we want to test how the plugin
@@ -177,7 +177,7 @@ pluginTestTerms =
 --   come from functions we interpret, but others are introduced by particular Core expressions.
 --
 --  __TODO__: Split this into @builtinTestTerms@ (for expressions handled directly by the
---           `Categorifier.Core.Categorize.categorize` logic) and @defaultTestTerms@ (for
+--           `Categorifier.Core.Categorify.categorify` logic) and @defaultTestTerms@ (for
 --            expressions handled by the included @findMaker@ map, which may be omitted by plugin
 --            users).
 baseTestTerms :: TestTerms _

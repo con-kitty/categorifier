@@ -32,7 +32,7 @@ import Test.Tests
 {-# ANN module ("HLint: ignore Avoid restricted extensions" :: String) #-}
 
 -- The first stage of testing is just that the transformation happens at all (and doesn't fail at
--- build time). That only requires that the call to `Categorifier.Categorize.expression` happens in
+-- build time). That only requires that the call to `Categorifier.Categorify.expression` happens in
 -- a module imported somewhere in this binary. Referring to them in `main` is mostly just to not
 -- have linters complain that we have an unused import.
 

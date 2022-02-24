@@ -204,9 +204,9 @@ buildDictionary env dflags guts inScope goalTy =
        in Core.isEvVar v
             &&
             -- Here we remove all the "cccDict" vars from the `inScope`. Why? Because when there
-            -- are multiple functions (say `foo` and `bar`) being categorized in parallel, a
-            -- dictionary var `cccDict_...` created during categorizing `foo` may show up in the
-            -- `inScope` when categorizing `bar`. We don't want to use this var when building
+            -- are multiple functions (say `foo` and `bar`) being categorified in parallel, a
+            -- dictionary var `cccDict_...` created during categorifying `foo` may show up in the
+            -- `inScope` when categorifying `bar`. We don't want to use this var when building
             -- dictionaries for `bar`, because it is out of scope in the result of `bar`.
             not (name `isPrefixOf` varName)
             &&

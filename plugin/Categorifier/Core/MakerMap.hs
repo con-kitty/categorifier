@@ -12,7 +12,7 @@ module Categorifier.Core.MakerMap
     baseMakerMapFun,
     adjunctionsMakerMapFun,
 
-    -- * Helper functions for combining categorized expressions
+    -- * Helper functions for combining categorified expressions
     applyCat,
     composeCat,
     forkCat,
@@ -98,9 +98,9 @@ type MakerMapFun =
   [Plugins.CoreExpr] ->
   -- | The module of the var being interpreted
   String ->
-  -- | A function for categorizing functions
+  -- | A function for categorifying functions
   (Plugins.CoreExpr -> CategoryStack Plugins.CoreExpr) ->
-  -- | A function for categorizing lambdas
+  -- | A function for categorifying lambdas
   (Plugins.CoreExpr -> CategoryStack Plugins.CoreExpr) ->
   MakerMap
 
@@ -122,8 +122,8 @@ adjunctionsMakerMapFun
   var
   args
   modu
-  categorizeFun
-  categorizeLambda =
+  categorifyFun
+  categorifyLambda =
     Map.fromListWith
       const
       [ ( 'Data.Functor.Rep.apRep,
@@ -182,9 +182,9 @@ adjunctionsMakerMapFun
           var
           args
           modu
-          categorizeFun
-          categorizeLambda
-      maker1 = makeMaker1 m categorizeLambda
+          categorifyFun
+          categorifyLambda
+      maker1 = makeMaker1 m categorifyLambda
 
 baseMakerMapFun :: MakerMapFun
 baseMakerMapFun
@@ -197,8 +197,8 @@ baseMakerMapFun
   _var
   _args
   _modu
-  categorizeFun
-  categorizeLambda =
+  categorifyFun
+  categorifyLambda =
     makerMap
     where
       makerMap =
@@ -216,8 +216,8 @@ baseMakerMapFun
                   : rest
                     | Plugins.eqType c properFunTy ->
                         -- from: (\n -> {{u}} &&& {{v}}) :: n -> a -> (b1, b2)
-                        -- to:   curry (uncurry (categorizeLambda n {{u}})
-                        --         &&& uncurry (categorizeLambda n {{v}})) ::
+                        -- to:   curry (uncurry (categorifyLambda n {{u}})
+                        --         &&& uncurry (categorifyLambda n {{v}})) ::
                         --         n `k` (a -> (b1, b2))
                         pure . joinD $
                           applyEnriched' [u, v] rest
@@ -235,7 +235,7 @@ baseMakerMapFun
             ( 'Control.Arrow.arr,
               \case
                 Plugins.Type c : _arrow : Plugins.Type _a : Plugins.Type _b : fn : rest
-                  | Plugins.eqType c properFunTy -> pure $ maker1 rest =<\< categorizeFun fn
+                  | Plugins.eqType c properFunTy -> pure $ maker1 rest =<\< categorifyFun fn
                 _ -> Nothing
             ),
             ( '(Control.Category..),
@@ -259,11 +259,11 @@ baseMakerMapFun
                       <$> mkIf a
                       <*\> joinD
                         ( forkCat m
-                            <$> categorizeLambda test
+                            <$> categorifyLambda test
                             <*\> joinD
                               ( forkCat m
-                                  <$> categorizeLambda true
-                                  <*\> categorizeLambda false
+                                  <$> categorifyLambda true
+                                  <*\> categorifyLambda false
                               )
                         )
                 _ -> Nothing
@@ -301,12 +301,12 @@ baseMakerMapFun
               \case
                 Plugins.Type a : u : rest ->
                   -- from: (\n -> fix {{u}}) :: n -> a
-                  -- to:   fix (uncurry (categorizeLambda n {{u}})) :: n `k` a
+                  -- to:   fix (uncurry (categorifyLambda n {{u}})) :: n `k` a
                   pure $
                     handleExtraArgs rest
                       =<\< ( Plugins.App
                                <$> mkFix (Plugins.varType n) a
-                               <*\> (uncurryCat m =<\< categorizeLambda u)
+                               <*\> (uncurryCat m =<\< categorifyLambda u)
                            )
                 _ -> Nothing
             ),
@@ -339,7 +339,7 @@ baseMakerMapFun
               \case
                 Plugins.Type a1 : Plugins.Type a2 : Plugins.Type b : u : rest ->
                   -- from: (\n -> curry {{u}}) :: n -> a1 -> a2 -> b
-                  -- to:   curry (curry (uncurry (categorize n {{u}}) . assoc))
+                  -- to:   curry (curry (uncurry (categorify n {{u}}) . assoc))
                   --         :: n `k` (a1 -> a2 -> b)
                   pure . joinD $
                     applyEnriched rest
@@ -348,7 +348,7 @@ baseMakerMapFun
                       <*\> sequenceA
                         [ joinD $
                             composeCat m
-                              <$> (uncurryCat m =<\< categorizeLambda u)
+                              <$> (uncurryCat m =<\< categorifyLambda u)
                               <*\> mkRAssoc (Plugins.varType n) a1 a2
                         ]
                 _ -> Nothing
@@ -374,7 +374,7 @@ baseMakerMapFun
               \case
                 Plugins.Type a1 : Plugins.Type a2 : Plugins.Type b : u : rest ->
                   -- from: (\n -> uncurry {{u}}) :: n -> (a1, a2) -> b
-                  -- to:   curry (uncurry (uncurry (categorize n {{u}})) . unassoc)
+                  -- to:   curry (uncurry (uncurry (categorify n {{u}})) . unassoc)
                   --         :: n `k` ((a1, a2) -> b)
                   pure . joinD $
                     applyEnriched' [u] rest
@@ -396,25 +396,25 @@ baseMakerMapFun
                       -- from: (\n -> {{u}} . {{v}}) :: n -> a -> c
                       -- to:   curry
                       --         (compose
-                      --           (uncurry (categorize n {{u}}))
-                      --           (exl &&& uncurry (categorize n {{v}})))
+                      --           (uncurry (categorify n {{u}}))
+                      --           (exl &&& uncurry (categorify n {{v}})))
                       --         :: n `k` (a -> c)
                       joinD $
                         applyEnriched rest
                           <$> mkCompose (nameTuple a) (nameTuple b) c
                           <*\> mkId (nameTuple a)
                           <*\> sequenceA
-                            [ uncurryCat m =<\< categorizeLambda f,
+                            [ uncurryCat m =<\< categorifyLambda f,
                               joinD $
                                 forkCat m
                                   <$> mkExl (Plugins.varType n) a
-                                  <*\> (uncurryCat m =<\< categorizeLambda g)
+                                  <*\> (uncurryCat m =<\< categorifyLambda g)
                             ]
                     Just fn ->
                       handleExtraArgs rest
                         =<\< joinD
-                          ( fn (Plugins.varType n) b c a <$> categorizeLambda f
-                              <*\> categorizeLambda g
+                          ( fn (Plugins.varType n) b c a <$> categorifyLambda f
+                              <*\> categorifyLambda g
                           )
                 _ -> Nothing
             ),
@@ -448,10 +448,10 @@ baseMakerMapFun
                   -- __NB__: this doesn't use `applyEnriched` because @u@ isn't a function.
                   --
                   -- from: (\n -> const {{u}}) :: n -> a -> b
-                  -- to:   curry (categorize n {{u}} . exl) :: n `k` (a -> b)
+                  -- to:   curry (categorify n {{u}} . exl) :: n `k` (a -> b)
                   pure $
                     handleExtraArgs rest <=\< curryCat m <=\< joinD $
-                      composeCat m <$> categorizeLambda u <*\> mkExl (Plugins.varType n) a
+                      composeCat m <$> categorifyLambda u <*\> mkExl (Plugins.varType n) a
                 _ -> Nothing
             ),
             ( 'GHC.Base.fmap,
@@ -477,7 +477,7 @@ baseMakerMapFun
               \case
                 Plugins.Type a : Plugins.Type b : u : rest ->
                   -- from: (\n -> map {{u}}) :: n -> [a] -> [b]
-                  -- to:   curry (map (uncurry (categorizeLambda n {{u}})) . strength)
+                  -- to:   curry (map (uncurry (categorifyLambda n {{u}})) . strength)
                   --         :: n `k` ([a] -> [b])
                   let f = Plugins.mkTyConTy Plugins.listTyCon
                    in pure . joinD $
@@ -773,11 +773,11 @@ baseMakerMapFun
                 _ -> Nothing
             )
           ]
-      maker1 = makeMaker1 m categorizeLambda
-      maker2 = makeMaker2 m categorizeLambda expr
-      handleExtraArgs = handleAdditionalArgs m categorizeLambda
+      maker1 = makeMaker1 m categorifyLambda
+      maker2 = makeMaker2 m categorifyLambda expr
+      handleExtraArgs = handleAdditionalArgs m categorifyLambda
       -- from: (\n -> liftA2 {{u}}) :: n -> f a -> f b -> f c
-      -- to:   curry (curry (liftA2 (uncurry (uncurry (categorize n {{u}})))) . strength) ::
+      -- to:   curry (curry (liftA2 (uncurry (uncurry (categorify n {{u}})))) . strength) ::
       --         n `k` (f a -> f b -> f c)
       mkLiftA2' f a b c u rest =
         handleExtraArgs rest
@@ -789,14 +789,14 @@ baseMakerMapFun
                                  <$> mkLiftA2 f (nameTuple a) b c
                                  <*\> ( uncurryCat m
                                           =<\< uncurryCat m
-                                          =<\< categorizeLambda u
+                                          =<\< categorifyLambda u
                                       )
                              )
                     )
                 <*\> mkStrength f (Plugins.varType n) a
             )
       -- from: (\n -> fmap {{u}}) :: n -> f a -> f b
-      -- to:   curry (fmap (uncurry (categorizeLambda n {{u}})) . strength) ::
+      -- to:   curry (fmap (uncurry (categorifyLambda n {{u}})) . strength) ::
       --         n `k` (f a -> f b)
       mkMap' f a b u rest =
         joinD $
@@ -804,15 +804,15 @@ baseMakerMapFun
             <$> mkMap f (nameTuple a) b
             <*\> mkStrength f (Plugins.varType n) a
       -- from: (\n -> traverse {{u}}) :: n -> t a -> f (t b)
-      -- to:   curry (traverse (uncurry (categorizeLambda n {{u}})) . strength) ::
+      -- to:   curry (traverse (uncurry (categorifyLambda n {{u}})) . strength) ::
       --         n `k` (t a -> f (t b))
       mkTraverse' t f a b u rest =
         joinD $
           applyEnriched' [u] rest
             <$> mkTraverse t f (nameTuple a) b
             <*\> mkStrength t (Plugins.varType n) a
-      applyEnriched = applyEnrichedCat m categorizeLambda
-      applyEnriched' = applyEnrichedCat' m categorizeLambda
+      applyEnriched = applyEnrichedCat m categorifyLambda
+      applyEnriched' = applyEnrichedCat' m categorifyLambda
       nameTuple = makeTupleTyWithVar n
 
 applyCat ::
@@ -908,8 +908,8 @@ handleAdditionalArgs ::
   [Plugins.CoreExpr] ->
   Plugins.CoreExpr ->
   CategoryStack Plugins.CoreExpr
-handleAdditionalArgs m categorizeLambda xs core =
-  foldlM (\x -> applyCat m x <=\< categorizeLambda) core xs
+handleAdditionalArgs m categorifyLambda xs core =
+  foldlM (\x -> applyCat m x <=\< categorifyLambda) core xs
 
 makeMaker1 ::
   Makers ->
@@ -917,11 +917,11 @@ makeMaker1 ::
   [Plugins.CoreExpr] ->
   Plugins.CoreExpr ->
   CategoryStack Plugins.CoreExpr
-makeMaker1 m categorizeLambda rest op =
+makeMaker1 m categorifyLambda rest op =
   case rest of
     [] -> pure op
     (v : xs) ->
-      handleAdditionalArgs m categorizeLambda xs =<\< composeCat m op =<\< categorizeLambda v
+      handleAdditionalArgs m categorifyLambda xs =<\< composeCat m op =<\< categorifyLambda v
 
 makeMaker2 ::
   Makers ->
@@ -930,14 +930,14 @@ makeMaker2 ::
   [Plugins.CoreExpr] ->
   Plugins.CoreExpr ->
   CategoryStack Plugins.CoreExpr
-makeMaker2 m categorizeLambda e rest op =
+makeMaker2 m categorifyLambda e rest op =
   case rest of
     [] -> curryCat m op
-    [_] -> categorizeLambda $ etaExpand 1 e -- NON-INDUCTIVE
+    [_] -> categorifyLambda $ etaExpand 1 e -- NON-INDUCTIVE
     (u : v : xs) ->
-      handleAdditionalArgs m categorizeLambda xs
+      handleAdditionalArgs m categorifyLambda xs
         =<\< composeCat m op
-        =<\< joinD (forkCat m <$> categorizeLambda u <*\> categorizeLambda v)
+        =<\< joinD (forkCat m <$> categorifyLambda u <*\> categorifyLambda v)
 
 -- | The general pattern for applying a morphism in the enriching category. There is an
 -- example at the very end of §8 in the paper:
@@ -954,7 +954,7 @@ makeMaker2 m categorizeLambda e rest op =
 -- and @leftAssoc@ for @uncurry@. There are some cases where the @uncurry@ needs to be
 -- handled differently, however.
 --
--- __NB__: The provided @morphs@ should be pre-categorized, since in some cases (e.g.,
+-- __NB__: The provided @morphs@ should be pre-categorified, since in some cases (e.g.,
 --         @compose@) they need to be processed a bit more than this function does. see
 --        `applyEnrichedCat'` for a helper.
 applyEnrichedCat ::
@@ -965,8 +965,8 @@ applyEnrichedCat ::
   Plugins.CoreExpr ->
   [Plugins.CoreExpr] ->
   CategoryStack Plugins.CoreExpr
-applyEnrichedCat m categorizeLambda rest op dist morphs =
-  handleAdditionalArgs m categorizeLambda rest
+applyEnrichedCat m categorifyLambda rest op dist morphs =
+  handleAdditionalArgs m categorifyLambda rest
     =<\< curryCat m
     =<\< composeCat m (Plugins.mkCoreApps op morphs) dist
 
@@ -978,9 +978,9 @@ applyEnrichedCat' ::
   Plugins.CoreExpr ->
   Plugins.CoreExpr ->
   CategoryStack Plugins.CoreExpr
-applyEnrichedCat' m categorizeLambda morphs rest op dist =
-  applyEnrichedCat m categorizeLambda rest op dist
-    =<\< traverseD (uncurryCat m <=\< categorizeLambda) morphs
+applyEnrichedCat' m categorifyLambda morphs rest op dist =
+  applyEnrichedCat m categorifyLambda rest op dist
+    =<\< traverseD (uncurryCat m <=\< categorifyLambda) morphs
 
 makeTupleTyWithVar :: Plugins.Var -> Plugins.Type -> Plugins.Type
 makeTupleTyWithVar n a = TysWiredIn.mkBoxedTupleTy [Plugins.varType n, a]

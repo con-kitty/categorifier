@@ -3,7 +3,7 @@
 
 -- |
 -- This module contains TH that generates terms to be invoked with the
--- 'Categorifier.Categorize.expression' plugin-runner. This is done so that new arrows can be tested
+-- 'Categorifier.Categorify.expression' plugin-runner. This is done so that new arrows can be tested
 -- easily.
 --
 -- The HLint warnings for 'id' and 'const' are disabled because we want to test how the plugin
@@ -22,7 +22,7 @@ module Categorifier.Test.TH
   )
 where
 
-import qualified Categorifier.Categorize as Categorize
+import qualified Categorifier.Categorify as Categorify
 import Categorifier.Common.IO.Exception (SomeException, evaluate, try)
 import Categorifier.Hedgehog (floatingEq)
 import Categorifier.Test.HList (HList1 (..), zipLowerWith)
@@ -107,14 +107,14 @@ expectMatch display gen calcExpected i (TestConfig arrowTy funName' post) testTy
       [e|
         do
           input <- Hedgehog.forAllWith $display $gen
-          let retval = $post ($arrowCallExpr (Categorize.expression $calcExpected :: $testTy)) input
+          let retval = $post ($arrowCallExpr (Categorify.expression $calcExpected :: $testTy)) input
               expected = $post $calcExpected input
           floatingEq retval expected
         |]
     propBody CheckCompileOnly =
       [e|
         do
-          _ <- pure (Categorize.expression $calcExpected :: $testTy)
+          _ <- pure (Categorify.expression $calcExpected :: $testTy)
           Hedgehog.success
         |]
 
@@ -133,7 +133,7 @@ expectBuildFailure calcExpected i (TestConfig arrowTy funName' _) testTy =
                 (const Hedgehog.success :: SomeException -> Hedgehog.PropertyT IO ())
                 (const Hedgehog.failure)
                 <=< Hedgehog.evalIO . try
-                $ evaluate (Categorize.expression $calcExpected :: $testTy)
+                $ evaluate (Categorify.expression $calcExpected :: $testTy)
             )
         |]
   )

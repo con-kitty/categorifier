@@ -6,9 +6,9 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 -- | The only module that should be needed by code that is in the dependency graph of calls to
---  `Categorifier.Categorize.expression`. If the module actually /calls/
---  `Categorifier.Categorize.expression`, then it will also need to
---   @import qualified "Categorifier.Categorize" as Categorize@.
+--  `Categorifier.Categorify.expression`. If the module actually /calls/
+--  `Categorifier.Categorify.expression`, then it will also need to
+--   @import qualified "Categorifier.Categorify" as Categorify@.
 module Categorifier.Client
   ( HasRep (..),
     deriveHasRep,

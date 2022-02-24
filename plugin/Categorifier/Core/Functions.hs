@@ -1,7 +1,7 @@
 -- | Various functions that are used internally for the plugin conversion.
 --
 --   The @INLINE@ pragmas on these are very delicate. We need to ensure that these functions aren't
---   accidentally inlined before or during categorization. The need to be either /explicitly/
+--   accidentally inlined before or during categorification. The need to be either /explicitly/
 --   inlined by the plugin or preserved until we can map them to morphisms in the target
 --   category. We use @INLINE [0]@ instead of @NOINLINE@ so that the unfoldings are still created
 --   for our manual inlining, but they should never persist long enough to be inlined by the
