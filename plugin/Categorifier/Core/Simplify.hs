@@ -27,7 +27,7 @@ import SimplMonad (SimplM, initSmpl)
 import Simplify (simplExpr)
 
 -- | This is the simplifier we apply surgically to expressions that should be re-written before
---   continuing categorization.
+--   continuing categorification.
 --
 --   These are passes that we have control of in the simplifier.
 data Transformation = CaseOfCase | EtaExpand | Inline | Rules
@@ -55,7 +55,7 @@ simplifyExpr dflags trans uniqS expr =
           Plugins.sm_dflags = dflags,
           Plugins.sm_eta_expand = EtaExpand `member` trans,
           Plugins.sm_inline = Inline `member` trans,
-          Plugins.sm_names = ["categorize internal"],
+          Plugins.sm_names = ["categorify internal"],
           Plugins.sm_phase = Plugins.Phase 1,
           Plugins.sm_rules = Rules `member` trans -- this improves specialisation
         }

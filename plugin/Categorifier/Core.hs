@@ -13,11 +13,11 @@ module Categorifier.Core
 where
 
 import Bag (isEmptyBag)
-import qualified Categorifier.Categorize
+import qualified Categorifier.Categorify
 import Categorifier.CommandLineOptions (OptionGroup (..))
 import Categorifier.Common.IO.Exception (SomeException, handle, throwIOAsException)
 import qualified Categorifier.Core.BuildDictionary as BuildDictionary
-import Categorifier.Core.Categorize (categorize)
+import Categorifier.Core.Categorify (categorify)
 import qualified Categorifier.Core.ErrorHandling as Errors
 import Categorifier.Core.MakerMap (MakerMapFun, baseMakerMapFun, combineMakerMapFuns)
 import Categorifier.Core.Makers (Makers, haskMakers)
@@ -72,13 +72,13 @@ import System.IO.Unsafe (unsafePerformIO)
 
 -- | The name of the pseudo-function that triggers the execution of our simplifier rule.
 conversionFunction :: TH.Name
-conversionFunction = 'Categorifier.Categorize.expression
+conversionFunction = 'Categorifier.Categorify.expression
 
 -- | Our Core plugin does four things,
 --
--- 1. run a simplifier to get as many calls to `Categorifier.Categorize.expression` into a
+-- 1. run a simplifier to get as many calls to `Categorifier.Categorify.expression` into a
 --    recognizable state,
--- 2. add the rules that rewrite `Categorifier.Categorize.expression` (this doesn't do any rewriting
+-- 2. add the rules that rewrite `Categorifier.Categorify.expression` (this doesn't do any rewriting
 --    itself, just allows later simplifiers to trigger the rewrites),
 -- 3. run a simplifier that actually triggers the rewrite rules, and finally
 -- 4. remove the rules we added so they don't end up in the module's interface file.
@@ -97,16 +97,16 @@ install opts todos = do
   convert <-
     either (throwIOAsException $ prettyMissingSymbols dflags) pure <=< runExceptT . getParallel $
       idFromTHName conversionFunction
-  let allOurTodos = categorizeTodos <> [postsimplifier convert dflags, removeCategorize]
-      categorizeTodos =
+  let allOurTodos = categorifyTodos <> [postsimplifier convert dflags, removeCategorify]
+      categorifyTodos =
         [ presimplifier convert dflags,
           Plugins.CoreDoPluginPass ("add " <> Plugins.getOccString convert <> " rules") $
-            addCategorizeRules dflags convert opts
+            addCategorifyRules dflags convert opts
         ]
-      removeCategorize =
+      removeCategorify =
         Plugins.CoreDoPluginPass ("remove " <> Plugins.getOccString convert <> " rules") $
           removeBuiltinRules ruleNames
-      -- __TODO__: extract these from `addCategorizeRules`
+      -- __TODO__: extract these from `addCategorifyRules`
       ruleNames = [Plugins.getOccFS convert, Plugins.getOccFS convert <> " $"]
   pure
     . maybe
@@ -115,7 +115,7 @@ install opts todos = do
       -- piggy-back on an existing simplifier rather than add our own
       ( \i ->
           let (before, after) = splitAt i todos
-           in before <> categorizeTodos <> after <> [removeCategorize]
+           in before <> categorifyTodos <> after <> [removeCategorify]
       )
     $ findIndex isSimplifier todos
   where
@@ -128,7 +128,7 @@ removeBuiltinRules names = pure . mapModGutsRules (filter (not . ruleMatches))
   where
     ruleMatches r = Plugins.isBuiltinRule r && Plugins.ru_name r `elem` names
 
--- | A simplifier run before we add our pass, to make sure calls to `categorize` are in the right
+-- | A simplifier run before we add our pass, to make sure calls to `categorify` are in the right
 --   form to be successfully transformed.
 --
 --  __TODO__: We may be able to add this conditionally, based on whether another suitable
@@ -148,11 +148,11 @@ presimplifier convert dflags =
         Plugins.sm_rules = False
       }
 
--- | A simplifer run after we add our pass, to make sure `categorize` calls are expanded regardless
+-- | A simplifer run after we add our pass, to make sure `categorify` calls are expanded regardless
 --   of what other passes exist.
 --
 --   This is the most minimal simplifier possible, as we try not to affect whatever else the user
---   wants, we only need a pass so that categorization is performed. If there is already a
+--   wants, we only need a pass so that categorification is performed. If there is already a
 --   simplifier in the pipeline, we should prefer that to adding our own.
 postsimplifier :: Plugins.Id -> Plugins.DynFlags -> Plugins.CoreToDo
 postsimplifier convert dflags =
@@ -187,17 +187,17 @@ prettyMissingSymbols dflags =
             [fmt|\n  - type constructor {name} in {Plugins.moduleNameString modu}|]
       )
 
--- | A plugin pass that adds our `categorize` rule to the list of simplifier rules to be run.
+-- | A plugin pass that adds our `categorify` rule to the list of simplifier rules to be run.
 --
 --  __NB__: We're forced to fold our failures into `IO` here.
-addCategorizeRules ::
+addCategorifyRules ::
   Plugins.DynFlags ->
   Plugins.Id ->
   Map OptionGroup [Text] ->
   Plugins.CorePluginPass
-addCategorizeRules dflags convert opts guts =
+addCategorifyRules dflags convert opts guts =
   either (throwIOAsException $ prettyMissingSymbols dflags) (\r -> pure (mapModGutsRules (r <>) guts))
-    =<< categorizeRules convert opts guts
+    =<< categorifyRules convert opts guts
 
 -- | Given the arguments for a `Plugins.BuiltinRule`, this builds a list of rules that try to handle
 --   partial application of the original rule. One caveat is that the provided `Plugins.RuleFun` has
@@ -244,7 +244,7 @@ partialAppRules app fn nargs try =
       _ -> Nothing
 
 -- | This generates an expression representing a @throw@. The first two arguments provide looked-up
---   identifiers and the rest match the arguments to `Categorifier.Categorize.expression`.
+--   identifiers and the rest match the arguments to `Categorifier.Categorify.expression`.
 deferFailures ::
   -- | `GHC.Base.error`
   Plugins.Id ->
@@ -260,7 +260,7 @@ deferFailures ::
   Plugins.CoreExpr ->
   Plugins.CoreExpr
 deferFailures throw str cat a b calls =
-  let convertFn = 'Categorifier.Categorize.expression
+  let convertFn = 'Categorifier.Categorify.expression
    in Plugins.App
         ( Plugins.App
             ( Plugins.mkTyApps
@@ -326,12 +326,12 @@ makerMapTy :: Lookup Plugins.Type
 makerMapTy = Plugins.exprType . Plugins.Var <$> idFromTHName 'baseMakerMapFun
 
 -- | Wiring our function into a `Plugins.BuiltInRule` for the plugin system.
-categorizeRules ::
+categorifyRules ::
   Plugins.Id ->
   Map OptionGroup [Text] ->
   Plugins.ModGuts ->
   Plugins.CoreM (Either (NonEmpty MissingSymbol) [Plugins.CoreRule])
-categorizeRules convert opts guts =
+categorifyRules convert opts guts =
   runExceptT $ do
     -- __TODO__: This @do@ block currently has monadic semantics, but it should have duoidal
     --           ones. It's a bit complicated to get it to applicative with manual duoidal handling
@@ -410,7 +410,7 @@ categorizeRules convert opts guts =
            in if ident == convert
                 then
                   unsafePerformIO $
-                    applyCategorize
+                    applyCategorify
                       convert
                       hierarchyOptions'
                       ( if Map.member DeferFailuresOption opts
@@ -420,7 +420,7 @@ categorizeRules convert opts guts =
                       dflags
                       uniqS
                       ( \cat ->
-                          categorize
+                          categorify
                             (Map.member DebugOption opts)
                             (Map.member BenchmarkOption opts)
                             dflags
@@ -476,14 +476,14 @@ runStack hierarchyOptions defer dflags uniqS calls f =
 -- | __HIC SUNT DRACONES__
 --
 --   We use `unsafePerformIO` here because the build should fail if we can't eliminate a call to
---  `Categorifier.Categorize.expression` (otherwise, that call will simply fail itself at runtime).
+--  `Categorifier.Categorify.expression` (otherwise, that call will simply fail itself at runtime).
 --   Ideally this function would allow us to return errors in /some/ context, at /least/ `IO`, but
 --   it until then, we're reduced to this.
 --
 --   The `Maybe` indicates whether or not the `Plugins.CoreExpr` was rewritten, but in our case, not
 --   re-writing means the code is unusable at runtime, so we always return `Just` (assuming we
 --   haven't failed in `IO`).
-applyCategorize ::
+applyCategorify ::
   Plugins.Id ->
   NonEmpty Plugins.Name ->
   Maybe (Plugins.Type -> Plugins.Type -> Plugins.Type -> Plugins.CoreExpr -> Plugins.CoreExpr) ->
@@ -492,7 +492,7 @@ applyCategorize ::
   (Plugins.Type -> Plugins.CoreExpr -> CategoryStack Plugins.CoreExpr) ->
   [Plugins.CoreExpr] ->
   IO (Maybe Plugins.CoreExpr)
-applyCategorize convert hierarchyOptions defer dflags uniqS f = \case
+applyCategorify convert hierarchyOptions defer dflags uniqS f = \case
   (Plugins.Type cat : Plugins.Type a : Plugins.Type b : calls : function : extraArgs) ->
     if null extraArgs
       then
@@ -515,19 +515,19 @@ Categorifier: GHC somehow called `{Plugins.getOccString convert}` with too many
 |]
           )
           extraArgs
-  -- The next few cases are partial applications of `categorize` that we ignore and hope finish
+  -- The next few cases are partial applications of `categorify` that we ignore and hope finish
   -- application later (see `applyApply`).
   [Plugins.Type _cat, Plugins.Type _a, Plugins.Type _b, _callStack] -> pure Nothing
   [Plugins.Type _cat, Plugins.Type _a, Plugins.Type _b] -> pure Nothing
   [Plugins.Type _cat, Plugins.Type _a] -> pure Nothing
   [Plugins.Type _cat] -> pure Nothing
   [] -> pure Nothing
-  -- And ... if we can't identify this as a valid call to `categorize`, we error.
+  -- And ... if we can't identify this as a valid call to `categorify`, we error.
   args ->
     throwIOAsException
       ( \as ->
           [fmt|
-Categorifier: GHC failed to invoke the categorize rule correctly. It was called with
+Categorifier: GHC failed to invoke the categorify rule correctly. It was called with
            the following arguments:
            {Plugins.showPpr dflags as}
 |]

@@ -34,7 +34,7 @@ module Categorifier.Hierarchy
     --
     -- Many things are not built into the compiler, but sometimes (especially in connection with
     -- @baseMakers@ / `Categorifier.Core.PrimOp.replace`), we need to recognize these things.  The
-    -- `Lookup` monad run outside the call to `Categorifier.Core.Categorize.categorize` is where we
+    -- `Lookup` monad run outside the call to `Categorifier.Core.Categorify.categorify` is where we
     -- can query the compiler for this information.
     BaseIdentifiers (..),
     getBaseIdentifiers,

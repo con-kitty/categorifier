@@ -17,9 +17,9 @@ library
       Categorifier
       -- __NB__: Only public for runtime lookup
       Categorifier.Core.Base
-      Categorifier.Categorize
-      -- __TODO__: move ...Categorize to other-modules
-      Categorifier.Core.Categorize
+      Categorifier.Categorify
+      -- __TODO__: move ...Categorify to other-modules
+      Categorifier.Core.Categorify
       -- __TODO__: move ...Functions to other-modules
       Categorifier.Core.Functions
       Categorifier.Core.MakerMap

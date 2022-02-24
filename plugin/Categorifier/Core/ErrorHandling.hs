@@ -98,9 +98,9 @@ displayPanic dflags calls = \case
 
 prettyPanic :: Plugins.DynFlags -> Plugins.CoreExpr -> Text -> Maybe Plugins.SDoc -> Text
 prettyPanic dflags calls msg stack =
-  [fmt|The categorize plugin should never panic. However, it is difficult to avoid the
+  [fmt|The categorify plugin should never panic. However, it is difficult to avoid the
 myriad panics that exist in the GHC API. You just found one. Sorry about that.
-Please report the following information to the categorize plugin maintainers:
+Please report the following information to the categorify plugin maintainers:
 - panicking function: {msg}
 - additional context: {maybe "" (renderSDoc dflags) stack}
 - call site {formattedStack}|]
@@ -113,13 +113,13 @@ Please report the following information to the categorize plugin maintainers:
 
 showWarnings :: Plugins.DynFlags -> WarningMessages -> Text
 showWarnings dflags warns =
-  [fmt|warnings during categorization:
+  [fmt|warnings during categorification:
 {renderSDoc dflags . Plugins.vcat $ pprErrMsgBagWithLoc warns}|]
 
 showFailures ::
   Plugins.DynFlags -> NonEmpty Plugins.Name -> Plugins.CoreExpr -> NonEmpty CategoricalFailure -> Text
 showFailures dflags hierarchyOptions f =
-  ( [fmt|Categorifier failed to categorize the following expression:
+  ( [fmt|Categorifier failed to categorify the following expression:
 {Plugins.showPpr dflags f}|]
       <>
   )
@@ -228,14 +228,14 @@ showFailure dflags hierarchyOptions = \case
     identifier is an unspecialized type class method (methods never have
     unfoldings), a name used for `RebindableSyntax`, or that the unfolding
     somehow didn't get from the definition point to the module that called
-   `categorize`. There are a few things you can check. Is the definition in the
+   `categorify`. There are a few things you can check. Is the definition in the
     base library? If so, report this as a bug against the plugin. Does the
     definition expose an unfolding? The module containing the definition to be
     inlined should be compiled with `-fno-omit-interface-pragmas` (this is
     implied by `-O`). That _may_ be enough, but if not, try adding an
    `inlinable` pragma to the definition or compiling with
    `-fexpose-all-unfoldings` to make _every_ operation inlinable. It's also
-    important that the module containing the call to `categorize` is compiled
+    important that the module containing the call to `categorify` is compiled
     with `-fno-ignore-interface-pragmas` (also implied by `-O`). If the
     unfolding that's missing is for `$j` (GHC-internal join points), you may
     need to bump `-funfolding-creation-threshold` on the modules you're

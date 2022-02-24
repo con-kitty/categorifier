@@ -5,7 +5,7 @@
 --  `(->)` to some target category.
 --
 --  __NB__: This module is expected to be imported qualified.
-module Categorifier.Categorize
+module Categorifier.Categorify
   ( UnconvertedCall (..),
     expression,
     function,
@@ -17,7 +17,7 @@ where
 
 import Categorifier.Category (NativeCat (..))
 -- The instances from "Categorifier.Client" aren't used in this module, but must be in scope for
--- much of categorization to succeed.
+-- much of categorification to succeed.
 import Categorifier.Client ()
 import Categorifier.Common.IO.Exception (Exception)
 import qualified Categorifier.Common.IO.Exception as Exception
@@ -45,7 +45,7 @@ pluginModule =
 --   @CartesianClosedCategory@ or what. The categorical transformation will identify the needed
 --   classes and ensure they're satisified.
 --
---  __NB__: While it may be possible to categorize a particular function using a fairly weak set of
+--  __NB__: While it may be possible to categorify a particular function using a fairly weak set of
 --          constraints, different optimizations may change the exact transformation that
 --          happens. We currently make no guarantee that we find the minimal requirements, nor that
 --          the conversion will be the same regardless of optimizations. Finally, the plugin doesn't
@@ -72,7 +72,7 @@ instance Show UnconvertedCall where
         "  | without the " <> pluginModule <> " plugin enabled. Ensure that you're",
         "  | configuring it properly for your build process. E.g., passing",
         "  | `-fplugin=" <> pluginModule <> "` to GHC directly, or adding",
-        "  | `plugins = [\"//code_generation/category:categorize\"]` to your Bazel target.",
+        "  | `plugins = [\"//code_generation/category:categorify\"]` to your Bazel target.",
         "  |",
         "  | It's also possible that some other plugin that you've enabled has interfered",
         "  | with this one. If you've enabled other plugins, try permuting the order of",
@@ -103,7 +103,7 @@ generateResultName name _k _tys = pure $ "wrap_" <> TH.nameBase name
 -- | Shorthand for `expression` when you're applying it to a named function. Makes it more robust
 --   against types changing.
 function ::
-  -- | The name of the function being categorized
+  -- | The name of the function being categorified
   TH.Name ->
   -- | The target category type
   TH.TypeQ ->
@@ -114,15 +114,15 @@ function name k tys = do
   newName <- generateResultName name k tys
   functionAs newName name k tys
 
--- | Like `function`, but allows you to choose an explict name for the categorized result.
+-- | Like `function`, but allows you to choose an explict name for the categorified result.
 --
 --   One reason to use this is that it keeps names more stable. If the name of the function to
---   categorize changes, `function` would force you to update every caller of the categorized
+--   categorify changes, `function` would force you to update every caller of the categorified
 --   result, but with `functionAs`, those call sites can be left untouched.
 functionAs ::
-  -- | The name to use for the categorized result
+  -- | The name to use for the categorified result
   String ->
-  -- | The name of the function being categorized
+  -- | The name of the function being categorified
   TH.Name ->
   -- | The target category type
   TH.TypeQ ->
@@ -141,15 +141,15 @@ functionAs' newName oldName _vs ctx k input output =
       TH.funD newName [TH.clause [] (TH.normalB [|expression $(TH.varE oldName)|]) []]
     ]
 
--- | Generates a `NativeCat` instance that allows us to categorize this function separately from a
+-- | Generates a `NativeCat` instance that allows us to categorify this function separately from a
 --   larger expression that calls it.
 --
---   This also exposes the same name that `function` does, to avoid categorizing the same
+--   This also exposes the same name that `function` does, to avoid categorifying the same
 --   definition multiple times.
 --
 --  __NB__: THis currently requires the type to specialize any constrained vars.
 separately ::
-  -- | The name of the function being categorized
+  -- | The name of the function being categorified
   TH.Name ->
   -- | The target category type
   TH.TypeQ ->
@@ -160,11 +160,11 @@ separately name k tys = do
   newName <- generateResultName name k tys
   separatelyAs newName name k tys
 
--- | Like `separately`, but allows you to choose an explict name for the categorized result.
+-- | Like `separately`, but allows you to choose an explict name for the categorified result.
 separatelyAs ::
-  -- | The name to use for the categorized result
+  -- | The name to use for the categorified result
   String ->
-  -- | The name of the function being categorized
+  -- | The name of the function being categorified
   TH.Name ->
   -- | The target category type
   TH.TypeQ ->

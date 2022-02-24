@@ -63,8 +63,8 @@ makerMapFun
   var
   args
   modu
-  categorizeFun
-  categorizeLambda =
+  categorifyFun
+  categorifyLambda =
     Map.fromListWith
       const
       [ ( 'Data.Functor.Rep.apRep,
@@ -123,6 +123,6 @@ makerMapFun
           var
           args
           modu
-          categorizeFun
-          categorizeLambda
-      maker1 = makeMaker1 m categorizeLambda
+          categorifyFun
+          categorifyLambda
+      maker1 = makeMaker1 m categorifyLambda

@@ -338,8 +338,8 @@ checkForUnboxedVars rhs =
       Plugins.Var v -> Just v
       _ -> Nothing
 
--- | This contains all the data we need to get from `Categorifier.Core.categorizeLambda`.  It gets
--- computed once in `replace` and reused across recursive calls in @replacePrimOps@.
+-- | This contains all the data we need to get from `Categorifier.Core.Categorify.categorifyLambda`.
+--   It gets computed once in `replace` and reused across recursive calls in @replacePrimOps@.
 data ReplacePrimOpsContext = ReplacePrimOpsContext
   { rpoCtxDynFlags :: Plugins.DynFlags,
     rpoCtxDebugPrint :: forall a. Plugins.Outputable a => a -> String,
@@ -357,8 +357,8 @@ data ReplacePrimOpsContext = ReplacePrimOpsContext
   }
 
 -- | Dual-purpose `Reader.Reader` monad. The context provides all the information available from
---  `Categorifier.Core.categorizeLambda` that we use in replacement. The map lets us look up the
---   boxed replacements for unboxed variables as we come across them.
+--  `Categorifier.Core.Categorify.categorifyLambda` that we use in replacement. The map lets us look
+--   up the boxed replacements for unboxed variables as we come across them.
 type PrimOpT = ReaderT (ReplacePrimOpsContext, Map Plugins.Var Plugins.Var)
 
 -- | Replace all primitive operations, unboxed variables etc. in the given expression with their
@@ -1012,7 +1012,7 @@ mkBoxedVarFrom pfx ty v = do
   where
     varName = pfx <> "_" <> getName v
     errString =
-      "<Categorifier.Core.Categorize: unboxing `case` transformation var>"
+      "<Categorifier.Core.Categorify: unboxing `case` transformation var>"
     getName = Plugins.occNameString . Plugins.nameOccName . Plugins.varName
     mkVar nm vt u =
       Plugins.mkLocalVar
