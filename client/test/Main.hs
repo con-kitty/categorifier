@@ -7,11 +7,13 @@
 {-# LANGUAGE TypeFamilies #-}
 
 -- | Tests various properties of `Client.HasRep` instances. This tries to cover all of
---  `Client.deriveHasRep`, so users of @kitty-cat-client@ shouldn't need to test their own derived
+--  `Client.deriveHasRep`, so users of @categorifier-client@ shouldn't need to test their own derived
 --   instances, but manual `Client.HasRep` instances /should/ be tested similar to the instances
 --   here.
 module Main (main) where
 
+import qualified Categorifier.Client as Client
+import Categorifier.Hedgehog (genFloating)
 import Data.Constraint (Dict (..))
 import Data.Functor.Compose (Compose (..))
 import Data.Proxy (Proxy (..))
@@ -21,8 +23,6 @@ import qualified Hedgehog
 import qualified Hedgehog.Gen
 import qualified Hedgehog.Main as Hedgehog
 import qualified Hedgehog.Range
-import qualified Kitty.Plugin.Client as Client
-import Kitty.Plugin.Hedgehog (genFloating)
 
 -- | Ensures that for a type the `Client.HasRep` instance forms an ismorphism between it and its
 --  `Client.Rep`.

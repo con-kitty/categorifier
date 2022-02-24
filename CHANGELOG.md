@@ -1,4 +1,4 @@
-# Revision history for kitty-cat-c
+# Revision history for categorifier
 
 ## 0.1.0.0 -- YYYY-mm-dd
 

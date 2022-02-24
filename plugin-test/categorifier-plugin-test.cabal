@@ -1,0 +1,142 @@
+cabal-version:  2.4
+
+name:           categorifier-plugin-test
+version:        0.1
+description:    Framework for testing integration to the plugin.
+homepage:       https://github.com/con-kitty/categorifier#readme
+bug-reports:    https://github.com/con-kitty/categorifier/issues
+build-type:     Simple
+tested-with:    GHC==8.10.1, GHC==8.10.2, GHC==8.10.4
+
+source-repository head
+  type: git
+  location: https://github.com/con-kitty/categorifier
+
+common options
+  ghc-options:
+    -- make it possible to inline almost anything
+    -fexpose-all-unfoldings
+    -- ensure unfoldings are available
+    -fno-omit-interface-pragmas
+    -Wall
+
+library
+  exposed-modules:
+      Categorifier.Test.Data
+      Categorifier.Test.HList
+      Categorifier.Test.Hask
+      Categorifier.Test.Term
+      Categorifier.Test.Tests
+      Categorifier.Test.TH
+  other-modules:
+      Paths_categorifier_plugin_test
+  autogen-modules:
+      Paths_categorifier_plugin_test
+  ghc-options:
+    -O2
+    -Wall
+  build-depends:
+    , adjunctions
+    , base
+    , categorifier-category
+    , categorifier-client
+    , categorifier-common
+    , categorifier-hedgehog
+    , categorifier-plugin
+    , distributive
+    , extra
+    , fin
+    , ghc-prim
+    , hedgehog
+    , template-haskell
+    , text
+    , vec
+  default-language: Haskell2010
+  default-extensions:
+      InstanceSigs
+    , ScopedTypeVariables
+    , TypeApplications
+    , FlexibleContexts
+    , FlexibleInstances
+    , FunctionalDependencies
+    , LambdaCase
+    , NoStarIsType
+    , TypeOperators
+    , BangPatterns
+    , StandaloneDeriving
+    , DeriveGeneric
+    , DeriveDataTypeable
+    , DeriveFunctor
+    , DeriveFoldable
+    , DeriveTraversable
+    , DerivingStrategies
+
+-- run without any explicit integration (uses only bits from base
+test-suite default-plugin
+  import: options
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is: Base/Main.hs
+  ghc-options:
+    -fplugin Categorifier
+    -fplugin-opt Categorifier:defer-failures
+    -O0
+  build-depends:
+    , adjunctions
+    , base
+    , categorifier-category
+    , categorifier-client
+    , categorifier-hedgehog
+    , categorifier-plugin
+    , categorifier-plugin-test
+    , either
+    , ghc-prim
+    , hedgehog
+    , template-haskell
+
+test-suite base-hierarchy
+  import: options
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is: Base/Main.hs
+  ghc-options:
+    -fplugin Categorifier
+    -fplugin-opt Categorifier:defer-failures
+    -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.baseHierarchy
+    -O0
+  build-depends:
+    , adjunctions
+    , base
+    , categorifier-category
+    , categorifier-client
+    , categorifier-hedgehog
+    , categorifier-plugin
+    , categorifier-plugin-test
+    , either
+    , ghc-prim
+    , hedgehog
+    , template-haskell
+
+test-suite base-hierarchy-optimized
+  import: options
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is: Base/Main.hs
+  ghc-options:
+    -fplugin Categorifier
+    -fplugin-opt Categorifier:defer-failures
+    -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.baseHierarchy
+    -O2
+    -fignore-interface-pragmas
+  build-depends:
+    , adjunctions
+    , base
+    , categorifier-category
+    , categorifier-client
+    , categorifier-hedgehog
+    , categorifier-plugin
+    , categorifier-plugin-test
+    , either
+    , ghc-prim
+    , hedgehog
+    , template-haskell

@@ -1,0 +1,48 @@
+cabal-version:  2.4
+
+name:           categorifier-unconcat-category
+version:        0.1
+description:    Unconstrained versions of Conal's ConCat classes. They can be used for categories
+                that have an empty constraint (i.e., @`Ok` _ ~ `Yes1`@). These are generally much
+                faster to categorize, because of the reduced need to solve constraints. If at some
+                point the performance of ConCat is comparable to this, we should eliminate this.
+homepage:       https://github.com/con-kitty/categorifier#readme
+bug-reports:    https://github.com/con-kitty/categorifier/issues
+build-type:     Simple
+tested-with:    GHC==8.10.1, GHC==8.10.2, GHC==8.10.4
+
+source-repository head
+  type: git
+  location: https://github.com/con-kitty/categorifier
+
+library
+  exposed-modules:
+      Categorifier.UnconCat
+  other-modules:
+      Paths_categorifier_unconcat_category
+  autogen-modules:
+      Paths_categorifier_unconcat_category
+  ghc-options:
+    -O2
+    -Wall
+  build-depends:
+    , base
+  default-language: Haskell2010
+  default-extensions:
+      InstanceSigs
+    , ScopedTypeVariables
+    , TypeApplications
+    , FlexibleContexts
+    , FlexibleInstances
+    , FunctionalDependencies
+    , LambdaCase
+    , NoStarIsType
+    , TypeOperators
+    , BangPatterns
+    , StandaloneDeriving
+    , DeriveGeneric
+    , DeriveDataTypeable
+    , DeriveFunctor
+    , DeriveFoldable
+    , DeriveTraversable
+    , DerivingStrategies

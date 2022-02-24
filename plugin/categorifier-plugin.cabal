@@ -1,0 +1,91 @@
+cabal-version:  2.4
+
+name:           categorifier-plugin
+version:        0.1
+description:    GHC plugin for Compiling to Categories
+homepage:       https://github.com/con-kitty/categorifier#readme
+bug-reports:    https://github.com/con-kitty/categorifier/issues
+build-type:     Simple
+tested-with:    GHC==8.10.1, GHC==8.10.2, GHC==8.10.4
+
+source-repository head
+  type: git
+  location: https://github.com/con-kitty/categorifier
+
+library
+  exposed-modules:
+      Categorifier
+      -- __NB__: Only public for runtime lookup
+      Categorifier.Core.Base
+      Categorifier.Categorize
+      -- __TODO__: move ...Categorize to other-modules
+      Categorifier.Core.Categorize
+      -- __TODO__: move ...Functions to other-modules
+      Categorifier.Core.Functions
+      Categorifier.Core.MakerMap
+      Categorifier.Core.Makers
+      -- __TODO__: move ...PrimOp to other-modules
+      Categorifier.Core.PrimOp
+      -- __TODO__: move ...Simplify to other-modules
+      Categorifier.Core.Simplify
+      Categorifier.Core.Types
+      Categorifier.Hierarchy
+  other-modules:
+      Categorifier.Benchmark
+      Categorifier.CommandLineOptions
+      Categorifier.Core
+      Categorifier.Core.Benchmark
+      Categorifier.Core.BuildDictionary
+      Categorifier.Core.ErrorHandling
+      Categorifier.Core.Trace
+      Categorifier.TH
+      Paths_categorifier_plugin
+  autogen-modules:
+      Paths_categorifier_plugin
+  ghc-options:
+    -O2
+    -fignore-interface-pragmas
+    -Wall
+  build-depends:
+    , PyF
+    , adjunctions
+    , barbies
+    , base
+    , bytestring
+    , categorifier-category
+    , categorifier-client
+    , categorifier-common
+    , categorifier-duoids
+    , containers
+    , either
+    , extra
+    , ghc
+    , ghc-prim
+    , semialign
+    , semigroupoids
+    , syb
+    , template-haskell
+    , text
+    , these
+    , transformers
+    , uniplate
+    , yaya
+  default-language: Haskell2010
+  default-extensions:
+      InstanceSigs
+    , ScopedTypeVariables
+    , TypeApplications
+    , FlexibleContexts
+    , FlexibleInstances
+    , FunctionalDependencies
+    , LambdaCase
+    , NoStarIsType
+    , TypeOperators
+    , BangPatterns
+    , StandaloneDeriving
+    , DeriveGeneric
+    , DeriveDataTypeable
+    , DeriveFunctor
+    , DeriveFoldable
+    , DeriveTraversable
+    , DerivingStrategies
