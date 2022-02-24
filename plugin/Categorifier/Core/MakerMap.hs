@@ -722,6 +722,11 @@ baseMakerMapFun
                 Plugins.Type ty : _integral : rest -> pure $ maker2 rest =<\< mkDiv ty
                 _ -> Nothing
             ),
+            ( 'GHC.Real.even,
+              \case
+                Plugins.Type a : _integral : rest -> pure $ maker1 rest =<\< mkEven a
+                _ -> Nothing
+            ),
             ( 'GHC.Real.fromIntegral,
               \case
                 Plugins.Type a : Plugins.Type b : _real : _frac : rest ->
@@ -731,6 +736,11 @@ baseMakerMapFun
             ( 'GHC.Real.mod,
               \case
                 Plugins.Type ty : _integral : rest -> pure $ maker2 rest =<\< mkMod ty
+                _ -> Nothing
+            ),
+            ( 'GHC.Real.odd,
+              \case
+                Plugins.Type a : _integral : rest -> pure $ maker1 rest =<\< mkOdd a
                 _ -> Nothing
             ),
             ( 'GHC.Real.quot,

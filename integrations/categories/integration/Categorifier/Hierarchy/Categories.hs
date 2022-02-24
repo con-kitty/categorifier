@@ -74,6 +74,7 @@ hierarchy' = do
   let divideV = Nothing
   let doubleToFloatV = Nothing
   let equalV = Nothing
+  let evenV = Nothing
   exlV <-
     pure <$> do
       op <- identifier "Control.Category.Cartesian" "fst"
@@ -137,6 +138,7 @@ hierarchy' = do
   let tabulateV = Nothing
   let notV = Nothing
   let notEqualV = Nothing
+  let oddV = Nothing
   let orV = Nothing
   let plusV = Nothing
   let pointV = Nothing

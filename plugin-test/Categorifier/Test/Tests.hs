@@ -464,4 +464,6 @@ baseTestTerms =
           (\(t, a) -> ([t|$t $a|], [t|[$a]|]))
           [|Data.Foldable.toList|]
       )
+    . HCons1 (mkExprTest (mkUnaryTestConfig "Even") (\a -> (a, [t|Bool|])) [|even|])
+    . HCons1 (mkExprTest (mkUnaryTestConfig "Odd") (\a -> (a, [t|Bool|])) [|odd|])
     $ HNil1

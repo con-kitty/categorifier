@@ -461,6 +461,7 @@ mkTestTerms defaultTestTerms [TestCategory ''Term [t|Term|] "term" CheckCompileO
   . HCons1 (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HCons1 (TestCases (const []))
   . HCons1 (TestCases (const []))
+  . HCons1 (TestCases (const []))
   $ HNil1
 
 main :: IO ()

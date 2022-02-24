@@ -137,14 +137,20 @@ instance (NumCat' k a, con a) => NumCat' (ConCat.Constrained con k) a where
 
 -- | Extension of `ConCat.Category.IntegralCat`.
 class IntegralCat' (k :: Type -> Type -> Type) a where
+  evenK :: a `k` Bool
+  oddK :: a `k` Bool
   quotK :: ConCat.Prod k a a `k` a
   remK :: ConCat.Prod k a a `k` a
 
 instance Integral a => IntegralCat' (->) a where
+  evenK = even
+  oddK = odd
   quotK = uncurry quot
   remK = uncurry rem
 
 instance (IntegralCat' k a, con a) => IntegralCat' (ConCat.Constrained con k) a where
+  evenK = ConCat.Constrained evenK
+  oddK = ConCat.Constrained oddK
   quotK = ConCat.Constrained quotK
   remK = ConCat.Constrained remK
 

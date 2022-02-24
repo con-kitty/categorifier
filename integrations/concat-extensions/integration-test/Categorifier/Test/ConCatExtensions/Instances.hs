@@ -39,6 +39,8 @@ instance PowICat Term a where
   powIK _ = ZeroId
 
 instance IntegralCat' Term a where
+  evenK = ZeroId
+  oddK = ZeroId
   quotK = ZeroId
   remK = ZeroId
 
@@ -127,6 +129,8 @@ instance NumCat' (->) m => NumCat' Hask m where
   signumK = Hask signumK
 
 instance Integral a => IntegralCat' Hask a where
+  evenK = Hask evenK
+  oddK = Hask oddK
   quotK = Hask quotK
   remK = Hask remK
 
@@ -219,6 +223,8 @@ instance Num a => NumCat' TotOrd a where
   signumK = TotOrd $ ConCat.Constrained signum
 
 instance Integral a => IntegralCat' TotOrd a where
+  evenK = TotOrd evenK
+  oddK = TotOrd oddK
   quotK = TotOrd quotK
   remK = TotOrd remK
 

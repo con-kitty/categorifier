@@ -762,6 +762,8 @@ mkTestTerms
   . HCons1 (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HCons1 (TestCases (const [])) -- can only work with specialization
   . HCons1 (TestCases (const [])) -- can only work with specialization
+  . HCons1 (TestCases (const []))
+  . HCons1 (TestCases (const []))
   -- adjunctions
   . HCons1 (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HCons1
