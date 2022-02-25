@@ -91,6 +91,10 @@ hierarchy = do
     pure <$> do
       fn <- identifier' "coshK"
       pure (\onDict cat a -> mkMethodApps onDict fn [cat, a] [] [])
+  kevenV <-
+    pure <$> do
+      fn <- identifier' "evenK"
+      pure (\onDict cat a -> mkMethodApps onDict fn [cat, a] [] [])
   kfixV <-
     pure <$> do
       op <- identifier' "fixK"
@@ -108,6 +112,10 @@ hierarchy = do
       fn <- identifier "Categorifier.Category" "nativeK"
       pure $ \onDict cat tag a b ->
         mkMethodApps onDict fn [Plugins.typeKind a, Plugins.typeKind b, cat, tag, a, b] [] []
+  koddV <-
+    pure <$> do
+      fn <- identifier' "oddK"
+      pure (\onDict cat a -> mkMethodApps onDict fn [cat, a] [] [])
   kpowV <-
     pure <$> do
       fn <- identifier' "powK"
@@ -193,6 +201,7 @@ hierarchy = do
         constraintV = kconstraintV,
         coshV = kcoshV,
         doubleToFloatV = kdoubleToFloatV,
+        evenV = kevenV,
         fixV = kfixV,
         floatToDoubleV = kfloatToDoubleV,
         fmodV = kfmodV,
@@ -203,6 +212,7 @@ hierarchy = do
         fpIsDenormalV = kfpIsDenormalV,
         liftA2V = kliftA2V,
         nativeV = knativeV,
+        oddV = koddV,
         powV = kpowV,
         powIV = kpowIV,
         quotV = kquotV,

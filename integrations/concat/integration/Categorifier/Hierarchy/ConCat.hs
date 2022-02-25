@@ -101,6 +101,7 @@ hierarchy' moduleName = do
     pure <$> do
       fn <- identifier' "equal"
       pure (\onDict cat a -> mkMethodApps onDict fn [cat, a] [] [])
+  let evenV = Nothing
   exlV <-
     pure <$> do
       fn <- identifier' "exl"
@@ -218,6 +219,7 @@ hierarchy' moduleName = do
     pure <$> do
       fn <- identifier' "notEqual"
       pure (\onDict cat a -> mkMethodApps onDict fn [cat, a] [] [])
+  let oddV = Nothing
   orV <-
     pure <$> do
       fn <- identifier' "orC"

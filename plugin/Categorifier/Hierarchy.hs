@@ -244,6 +244,8 @@ data Hierarchy f = Hierarchy
     doubleToFloatV :: Maybe ((CoreExpr -> f CoreExpr) -> Type -> f CoreExpr),
     -- | @forall cat a. cat (Prod a a) Bool@
     equalV :: Maybe ((CoreExpr -> f CoreExpr) -> Type -> Type -> f CoreExpr),
+    -- | @forall cat a. cat a Bool@
+    evenV :: Maybe ((CoreExpr -> f CoreExpr) -> Type -> Type -> f CoreExpr),
     -- | @forall cat a b. cat (Prod a b) a@
     exlV :: Maybe ((CoreExpr -> f CoreExpr) -> Type -> Type -> Type -> f CoreExpr),
     -- | @forall cat a. cat a a@
@@ -330,6 +332,8 @@ data Hierarchy f = Hierarchy
     notV :: Maybe ((CoreExpr -> f CoreExpr) -> Type -> f CoreExpr),
     -- | @forall cat a. cat (Prod a a) Bool@
     notEqualV :: Maybe ((CoreExpr -> f CoreExpr) -> Type -> Type -> f CoreExpr),
+    -- | @forall cat a. cat a Bool@
+    oddV :: Maybe ((CoreExpr -> f CoreExpr) -> Type -> Type -> f CoreExpr),
     -- | @forall cat. cat (Prod Bool Bool) Bool@
     orV :: Maybe ((CoreExpr -> f CoreExpr) -> Type -> f CoreExpr),
     -- | @forall cat a. Semiring a. cat (Prod a a) a@
@@ -435,6 +439,7 @@ instance Semigroup (First (Hierarchy f)) where
           divideV = divideV a <|> divideV b,
           doubleToFloatV = doubleToFloatV a <|> doubleToFloatV b,
           equalV = equalV a <|> equalV b,
+          evenV = evenV a <|> evenV b,
           exlV = exlV a <|> exlV b,
           expV = expV a <|> expV b,
           exrV = exrV a <|> exrV b,
@@ -474,6 +479,7 @@ instance Semigroup (First (Hierarchy f)) where
           tabulateV = tabulateV a <|> tabulateV b,
           notV = notV a <|> notV b,
           notEqualV = notEqualV a <|> notEqualV b,
+          oddV = oddV a <|> oddV b,
           orV = orV a <|> orV b,
           plusV = plusV a <|> plusV b,
           pointV = pointV a <|> pointV b,
@@ -544,6 +550,7 @@ emptyHierarchy =
       divideV = Nothing,
       doubleToFloatV = Nothing,
       equalV = Nothing,
+      evenV = Nothing,
       exlV = Nothing,
       expV = Nothing,
       exrV = Nothing,
@@ -583,6 +590,7 @@ emptyHierarchy =
       nativeV = Nothing,
       notV = Nothing,
       notEqualV = Nothing,
+      oddV = Nothing,
       orV = Nothing,
       plusV = Nothing,
       pointV = Nothing,
@@ -877,6 +885,7 @@ baseHierarchy = do
       op <- identifier "GHC.Float" "double2Float"
       pure (\onDict cat -> mkMethodApps onDict arr [cat] [Plugins.doubleTy, Plugins.floatTy] [op])
   equalV <- binaryRel "GHC.Classes" "=="
+  evenV <- unaryRel "GHC.Real" "even"
   exlV <-
     pure <$> do
       arr <- identifier "Control.Arrow" "arr"
@@ -990,6 +999,7 @@ baseHierarchy = do
       op <- identifier "Data.Bool" "not"
       pure (\onDict cat -> mkMethodApps onDict arr [cat] [Plugins.boolTy, Plugins.boolTy] [op])
   notEqualV <- binaryRel "GHC.Classes" "/="
+  oddV <- unaryRel "GHC.Real" "odd"
   orV <-
     pure <$> do
       arr <- identifier "Control.Arrow" "arr"
