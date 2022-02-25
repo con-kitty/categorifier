@@ -588,7 +588,7 @@ categorify
                 -- So here we instead substitute the bound term in some cases, most notably when
                 -- the term consists only of projections from @name@.
 
-                -- TODO (SW-3488): currently the v's `OccInfo` is always `ManyOccs`, probably
+                -- TODO (#22): currently the v's `OccInfo` is always `ManyOccs`, probably
                 -- because we forget to `zapIdOccInfo` somewhere. If the `OccInfo` is accurate,
                 -- we can obtain `isManyOccs` from it rather than manually counting.
 
@@ -1158,7 +1158,7 @@ categorify
             resultType
             $ maybeTraceWith debug (\x -> "going primitive> " <> label <> ": " <> dbg x) expr
         _ <-
-          -- __FIXME__: In some cases this check should not be performed; see SW-3416
+          -- __FIXME__: In some cases this check should not be performed; see #23
           PrimOp.checkForUnboxedVars boxedOps $
             maybeTraceWith
               debug
@@ -1229,7 +1229,7 @@ isDictDataCon dc = modu == Just "Data.Constraint" && occ == "Dict"
 --       But in current implementation, this subt/no subst decision should happen earlier than
 --       inlining representation, we need to deal with Barbies.Internal.Dicts. Later, we will
 --       seek for a better treatment for such module re-exports in subst decision.
---       See SW-3418.
+--       See #24.
 isDictOrBarbiesDictTyCon :: Plugins.TyCon -> Bool
 isDictOrBarbiesDictTyCon tc =
   (modu == Just "Barbies.Internal.Dicts" || modu == Just "Data.Constraint") && occ == "Dict"

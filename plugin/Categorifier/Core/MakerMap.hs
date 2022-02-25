@@ -859,7 +859,7 @@ composeCat m f g = do
   (a, _b') <- getMorphismType g
   -- TODO(ian): As we apply more rules for simplification, the rules should be
   --            organized in a separate function and managed by a structured map.
-  --            See: https://kitty-hawk.atlassian.net/browse/SW-3371
+  --            See #25
   -- __FIXME__: This _should_ check @`Plugins.eqType` b b'@ and fail with `TypeMismatch`
   --            otherwise, but `Plugins.eqType` doesn't see through all synonyms somehow
   --            (maybe limited to associated types?), so it fails in some cases where the
@@ -1000,7 +1000,7 @@ makeTupleTyWithVar n a = TysWiredIn.mkBoxedTupleTy [Plugins.varType n, a]
 --            made id function using @mkId@ and check both function and module name.
 --            However, Such temporary creation incurs pretty high performance cost
 --            in bulidDictionary. So we do this in an ad hoc way for now.
---            See: https://kitty-hawk.atlassian.net/browse/SW-3434
+--            See #26
 --
 -- NOTE:      CoreExpr for id is always of the form
 --            @id (Type:Cat) $fCategoryCat (TYPE:Double)@.
