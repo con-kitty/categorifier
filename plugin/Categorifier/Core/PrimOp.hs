@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
@@ -404,6 +405,16 @@ withNewBinding ::
 withNewBinding unboxedBinder boxedBinder =
   Reader.local $ fmap (Map.insert unboxedBinder boxedBinder)
 
+-- | This is only extracted in order to work with Ormolu's CPP support.
+extractCallSpecTarget :: Plugins.IdDetails -> Maybe Plugins.CCallTarget
+#if MIN_VERSION_GLASGOW_HASKELL(8,10,7,0)
+extractCallSpecTarget (Plugins.FCallId (Plugins.CCall (Plugins.CCallSpec target _ _ _ _))) =
+  pure target
+#else
+extractCallSpecTarget (Plugins.FCallId (Plugins.CCall (Plugins.CCallSpec target _ _))) = pure target
+#endif
+extractCallSpecTarget _ = Nothing
+
 -- | @replacePrimOps@ is responsible for replacing occurrences of primitive operations with their
 -- non-primitive counterparts.  Here are the situations in which this can occur, each of which needs
 -- to be handled in its own way:
@@ -726,8 +737,7 @@ replacePrimOps resultType replaceExpr = do
           -- lookup as well.
           | [(_alt, [_realWorld, conBind], e)] <- alts,
             (Plugins.Var f, arguments) <- Plugins.collectArgs sc,
-            Plugins.FCallId (Plugins.CCall (Plugins.CCallSpec target _conv _safe)) <-
-              Plugins.idDetails f,
+            Just target <- extractCallSpecTarget $ Plugins.idDetails f,
             Plugins.StaticTarget _source functionName _cUnit True <- target,
             Just (Boxer _mod _name _dcs boxedFun, ccallArgTypes, ccallResultType) <-
               findCCallBoxer additionalBoxers makers dflags debug functionName ->
