@@ -25,19 +25,33 @@ import qualified Data.List.Extra as List
 import Data.Maybe (fromMaybe, listToMaybe)
 import qualified Data.Set as Set
 import Debug.Trace (trace, traceM)
+#if MIN_VERSION_ghc(9, 0, 0)
+import GHC.Plugins ((<+>))
+import qualified GHC.Plugins as Plugins
+import qualified GHC.Core.TyCo.Rep as TyCoRep
+#else
 import GhcPlugins ((<+>))
 import qualified GhcPlugins as Plugins
+import qualified TyCoRep
+#endif
 import PyF (fmt)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Time.Extra (Seconds, offsetTime)
-import qualified TyCoRep
+
+renderWithStyle :: Plugins.DynFlags -> Plugins.PrintUnqualified -> Plugins.SDoc -> String
+#if MIN_VERSION_ghc(9, 0, 0)
+renderWithStyle dflags =
+  Plugins.renderWithStyle . Plugins.initSDocContext dflags . Plugins.mkDumpStyle
+#else
+renderWithStyle dflags qual sdoc =
+  Plugins.renderWithStyle dflags sdoc (Plugins.mkDumpStyle dflags qual)
+#endif
 
 -- | Like 'Plugins.showSDoc', but qualifies some ambiguous names, and also shortens
 -- large output.
 renderSDoc :: Plugins.DynFlags -> Plugins.SDoc -> String
-renderSDoc dflags sdoc = takeLines 20 20 $ Plugins.renderWithStyle dflags sdoc style
+renderSDoc dflags sdoc = takeLines 20 20 $ renderWithStyle dflags qual sdoc
   where
-    style = Plugins.mkDumpStyle dflags qual
     qual =
       Plugins.neverQualify
         { Plugins.queryQualifyName = \modu name ->
@@ -151,7 +165,12 @@ instance Plugins.Outputable (Unpretty Plugins.Coercion) where
     TyCoRep.AppCo co coN -> "AppCo" <+> nestedCo co <+> nestedCo coN
     TyCoRep.ForAllCo tyCoVar kCo co ->
       "ForAllCo" <+> Plugins.ppr tyCoVar <+> nestedCo kCo <+> nestedCo co
+#if MIN_VERSION_ghc(9, 0, 0)
+    TyCoRep.FunCo role coN co co' ->
+      "FunCo" <+> Plugins.ppr role <+> nestedCo coN <+> nestedCo co <+> nestedCo co'
+#else
     TyCoRep.FunCo role co co' -> "FunCo" <+> Plugins.ppr role <+> nestedCo co <+> nestedCo co'
+#endif
     TyCoRep.CoVarCo coVar -> "CoVarCo" <+> Plugins.ppr coVar
     TyCoRep.AxiomInstCo coA brI coes ->
       "AxiomInstCo" <+> Plugins.ppr coA <+> Plugins.ppr brI <+> Plugins.ppr (Unpretty <$> coes)

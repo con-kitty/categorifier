@@ -1,4 +1,5 @@
 {-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE StrictData #-}
 
 -- | Defines various mappings between categorical representations and the plugin, allowing us to
@@ -16,7 +17,11 @@ import Categorifier.Hierarchy
     mkMethodApps,
     mkMethodApps',
   )
+#if MIN_VERSION_ghc(9, 0, 0)
+import qualified GHC.Plugins as Plugins
+#else
 import qualified GhcPlugins as Plugins
+#endif
 
 -- | Some locally-defined classes, mostly to add missing pieces to ConCat.
 hierarchy :: Lookup (Hierarchy CategoryStack)

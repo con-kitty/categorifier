@@ -61,18 +61,28 @@ import Categorifier.Duoidal (Parallel (..))
 import Control.Applicative (Alternative (..))
 import Control.Monad ((<=<))
 import Control.Monad.Trans.Except (ExceptT (..))
-import CoreMonad (CoreM, getHscEnv, liftIO)
 import Data.Bits (FiniteBits (..))
 import Data.Functor.Identity (Identity (..))
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Dual (..))
-import DynamicLoading (lookupRdrNameInModuleForPlugins)
 import GHC (Id, ModuleName, Name, RdrName (..), mkModuleName)
+#if MIN_VERSION_ghc(9, 0, 0)
+import qualified GHC.Builtin.PrimOps as PrimOp
+import GHC.Core.Opt.Monad (CoreM, getHscEnv, liftIO)
+import GHC.Driver.Types (lookupDataCon, lookupId, lookupTyCon)
+import GHC.Plugins (CoreExpr, Type)
+import qualified GHC.Plugins as Plugins
+import GHC.Runtime.Loader (lookupRdrNameInModuleForPlugins)
+import qualified GHC.Types.Unique as Unique
+#else
+import CoreMonad (CoreM, getHscEnv, liftIO)
+import DynamicLoading (lookupRdrNameInModuleForPlugins)
 import GhcPlugins (CoreExpr, Type)
 import qualified GhcPlugins as Plugins
 import HscTypes (lookupDataCon, lookupId, lookupTyCon)
 import qualified PrimOp
 import qualified Unique
+#endif
 import Prelude hiding (mod)
 
 lookupRdrNameInModuleForPlugins' :: Plugins.HscEnv -> ModuleName -> RdrName -> IO (Maybe Name)
@@ -86,13 +96,27 @@ lookupRdrNameInModuleForPlugins' = lookupRdrNameInModuleForPlugins
 -- | This is the type for @(->)@ when you want to apply it to types of kind `Data.Kind.Type`. It's
 --   easy to build this incorrectly and Core won't tell you that you have, so use this instead.
 properFunTy :: Type
+#if MIN_VERSION_ghc(9, 0, 0)
+properFunTy =
+  Plugins.mkTyConApp
+    Plugins.funTyCon
+    [Plugins.manyDataConTy, Plugins.liftedRepDataConTy, Plugins.liftedRepDataConTy]
+#else
 properFunTy =
   Plugins.mkTyConApp Plugins.funTyCon [Plugins.liftedRepDataConTy, Plugins.liftedRepDataConTy]
+#endif
 
 -- | Similar to `properFunTy`, but fully-applied, inferring the kind arguments from the kinds of the
 --   provided types.
 funTy :: Type -> Type -> Type
+#if MIN_VERSION_ghc(9, 0, 0)
+funTy a b =
+  Plugins.mkTyConApp
+    Plugins.funTyCon
+    [Plugins.manyDataConTy, Plugins.typeKind a, Plugins.typeKind b, a, b]
+#else
 funTy a b = Plugins.mkTyConApp Plugins.funTyCon [Plugins.typeKind a, Plugins.typeKind b, a, b]
+#endif
 
 -- | These are operations that we need to use in __Hask__, rather than in the target category.
 data HaskOps f = HaskOps
@@ -862,7 +886,11 @@ baseHierarchy = do
         \onDict cat a b ->
           -- Builds a lambda expecting the expression we want to return before applying `arr`. I.e.,
           -- @\bang -> arr (const bang) :: b -> cat a b@.
+#if MIN_VERSION_ghc(9, 0, 0)
+          let v = Plugins.mkSysLocal (Plugins.fsLit "bang") (Unique.mkBuiltinUnique 17) b b
+#else
           let v = Plugins.mkSysLocal (Plugins.fsLit "bang") (Unique.mkBuiltinUnique 17) b
+#endif
            in Plugins.Lam v
                 <$> ( mkMethodApps onDict arr [cat] [a, b] . pure
                         =<< mkFunctionApps onDict op [b, a] [Plugins.Var v]

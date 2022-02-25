@@ -25,16 +25,23 @@ module Categorifier.Core.Types
   )
 where
 
-import qualified Bag
 import Categorifier.Duoidal (Parallel)
 import Control.Monad.Trans.Except (ExceptT (..), mapExceptT)
 import Control.Monad.Trans.RWS.Strict (RWST (..), withRWST)
-import CoreMonad (CoreM)
 import Data.Bifunctor (Bifunctor (..))
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
+#if MIN_VERSION_ghc(9, 0, 0)
+import GHC.Core.Opt.Monad (CoreM)
+import qualified GHC.Data.Bag as Bag
+import qualified GHC.Plugins as Plugins
+import GHC.Utils.Error (ErrorMessages, WarningMessages)
+#else
+import qualified Bag
+import CoreMonad (CoreM)
 import ErrUtils (ErrorMessages, WarningMessages)
 import qualified GhcPlugins as Plugins
+#endif
 import PyF (fmt)
 
 -- | Need this instance to use a `Bag.Bag` as the output of @RWST@.

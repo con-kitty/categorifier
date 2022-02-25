@@ -21,11 +21,17 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Text (Text)
 import qualified Data.Text as Text
+#if MIN_VERSION_ghc(9, 0, 0)
+import qualified GHC.Plugins as Plugins
+import GHC.Utils.Error (ErrorMessages, WarningMessages, pprErrMsgBagWithLoc)
+import GHC.Utils.Panic (GhcException (..))
+#else
 import ErrUtils (ErrorMessages, WarningMessages, pprErrMsgBagWithLoc)
-import GHC.Stack (CallStack, SrcLoc (..), fromCallSiteList, prettyCallStack)
 import qualified GhcPlugins as Plugins
-import Numeric.Natural (Natural)
 import Panic (GhcException (..))
+#endif
+import GHC.Stack (CallStack, SrcLoc (..), fromCallSiteList, prettyCallStack)
+import Numeric.Natural (Natural)
 import PyF (fmt)
 
 -- | Deduplicates a structure, maintaining a count for each element.
@@ -78,7 +84,12 @@ runtimeCallStack = \case
                 Plugins.App _ (Plugins.Lit (Plugins.MachStr modu)),
                 Plugins.App _ (Plugins.Lit (Plugins.MachStr file)),
 #endif
-#if MIN_VERSION_ghc(8, 6, 0)
+#if MIN_VERSION_ghc(9, 0, 0)
+                Plugins.App _ (Plugins.Lit (Plugins.LitNumber _ startLine)),
+                Plugins.App _ (Plugins.Lit (Plugins.LitNumber _ startCol)),
+                Plugins.App _ (Plugins.Lit (Plugins.LitNumber _ endLine)),
+                Plugins.App _ (Plugins.Lit (Plugins.LitNumber _ endCol))
+#elif MIN_VERSION_ghc(8, 6, 0)
                 Plugins.App _ (Plugins.Lit (Plugins.LitNumber _ startLine _)),
                 Plugins.App _ (Plugins.Lit (Plugins.LitNumber _ startCol _)),
                 Plugins.App _ (Plugins.Lit (Plugins.LitNumber _ endLine _)),

@@ -1,12 +1,12 @@
 cabal-version:  2.4
 
-name:           categorifier-common
+name:           categorifier-th
 version:        0.1
-description:    Common library for the categorifier plugin
+description:    template-haskell extensions for Categorifier
 homepage:       https://github.com/con-kitty/categorifier#readme
 bug-reports:    https://github.com/con-kitty/categorifier/issues
 build-type:     Simple
-tested-with:    GHC==8.4.1, GHC==8.6.1, GHC==8.8.1, GHC==8.10.1, GHC==8.10.7, GHC==9.0.1
+tested-with:    GHC==8.10.1, GHC==8.10.2, GHC==8.10.4, GHC==8.10.7, GHC==9.0.1
 
 source-repository head
   type: git
@@ -14,16 +14,23 @@ source-repository head
 
 library
   exposed-modules:
-      Categorifier.Common.IO.Exception
-  other-modules:
-      Paths_categorifier_common
+      Categorifier.TH
+      Paths_categorifier_th
   autogen-modules:
-      Paths_categorifier_common
-  ghc-options: -Wall
+      Paths_categorifier_th
+  ghc-options:
+    -O2
+    -fignore-interface-pragmas
+    -Wall
   build-depends:
     , PyF
     , base
-    , unliftio
+    , categorifier-common
+    , containers
+    , semialign
+    , template-haskell
+    , these
+    , transformers
   default-language: Haskell2010
   default-extensions:
       InstanceSigs

@@ -1,4 +1,5 @@
 {-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
 
@@ -18,7 +19,11 @@ import Categorifier.Hierarchy
     mkFunctionApps,
     mkMethodApps,
   )
+#if MIN_VERSION_ghc(9, 0, 0)
+import qualified GHC.Plugins as Plugins
+#else
 import qualified GhcPlugins as Plugins
+#endif
 
 -- | ConCat effectively provides us with two hierarchies. One is standard type classes, the other
 --   lowers all of the methods from those classes to functions. These should behave the same for our

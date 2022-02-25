@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -50,8 +51,6 @@ import Control.Monad.Extra (loopM, unless)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Except (ExceptT (..), catchE, runExceptT, throwE, withExceptT)
 import Control.Monad.Trans.RWS.Strict (ask, gets, local, modify)
-import CoreArity (etaExpand)
-import CoreStats (exprSize)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Bitraversable (bitraverse)
 import Data.Bool (bool)
@@ -67,13 +66,26 @@ import Data.Maybe (fromMaybe, mapMaybe)
 import qualified Data.Set as Set
 import Data.Traversable (for)
 import Data.Tuple.Extra (first3, thd3)
+#if MIN_VERSION_ghc(9, 0, 0)
+import GHC.Builtin.Names (leftDataConName, rightDataConName)
+import qualified GHC.Builtin.Types as TysWiredIn
+import GHC.Core.Opt.Arity (etaExpand)
+import GHC.Core.Stats (exprSize)
+import qualified GHC.Core.TyCo.Rep as TyCoRep
+import qualified GHC.Plugins as Plugins
+import qualified GHC.Types.ForeignCall as Plugins
+import qualified GHC.Types.Unique as Unique
+#else
+import CoreArity (etaExpand)
+import CoreStats (exprSize)
 import qualified ForeignCall as Plugins
 import qualified GhcPlugins as Plugins
-import qualified Language.Haskell.TH as TH
 import PrelNames (leftDataConName, rightDataConName)
 import qualified TyCoRep
 import qualified TysWiredIn
 import qualified Unique
+#endif
+import qualified Language.Haskell.TH as TH
 import Prelude hiding (head)
 import PyF (fmt)
 
@@ -197,7 +209,7 @@ categorify
               extractTypes expr =
                 let eTy = Plugins.exprType expr
                  in maybe (throwE . pure . NotFunTy expr $ eTy) pure $
-                      Plugins.splitFunTy_maybe eTy
+                      PrimOp.splitFunTy_maybe eTy
           Plugins.Tick tickish expr -> Plugins.Tick tickish <$> categorifyFun expr
           -- __NB__: `etaExpand` can result in `Plugins.Cast` and `Plugins.Tick` in addition to the
           --         expected `Plugins.Lam`, so we handle those cases here recursively.
@@ -218,7 +230,7 @@ categorify
             | MakeConst <- makeOrIgnoreConst,
               not (name `isFreeIn` body) ->
                 ( maybe (tryMkConst name) (mkConstFun (Plugins.varType name) . fst)
-                    . Plugins.splitFunTy_maybe
+                    . PrimOp.splitFunTy_maybe
                     . Plugins.dropForAlls
                     $ Plugins.exprType body
                 )
@@ -842,7 +854,7 @@ binder type: {dbg bt}
                 f = fst $ applyTyAndPredArgs Plugins.Var (Plugins.Var target) args
             (argTy, resTy) <-
               maybe (throwE . pure $ NotFunTy f (Plugins.exprType f)) pure $
-                Plugins.splitFunTy_maybe (Plugins.exprType f)
+                PrimOp.splitFunTy_maybe (Plugins.exprType f)
             maker1 (dropWhile isTypeOrPred args) =<\< mkNative tagTy argTy resTy
 
           interpretSpecialized :: CategoryStack (Maybe Plugins.CoreExpr)
@@ -1018,9 +1030,13 @@ binder type: {dbg bt}
       -- Creates a new `Plugins.Id` of `Plugins.Type` that is unique in the `Plugins.VarSet` and is
       -- prefixed with `String`.
       freshId :: Plugins.VarSet -> String -> Plugins.Type -> Plugins.Id
-      freshId used nm =
-        Plugins.uniqAway (Plugins.mkInScopeSet used)
-          . Plugins.mkSysLocal (Plugins.fsLit nm) (Unique.mkBuiltinUnique 17)
+      freshId used nm ty =
+        Plugins.uniqAway (Plugins.mkInScopeSet used) $
+#if MIN_VERSION_ghc(9, 0, 0)
+          Plugins.mkSysLocal (Plugins.fsLit nm) (Unique.mkBuiltinUnique 17) ty ty
+#else
+          Plugins.mkSysLocal (Plugins.fsLit nm) (Unique.mkBuiltinUnique 17)ty
+#endif
 
       mkConst' m a expr
         | Plugins.isPredTy (Plugins.exprType expr) =
@@ -1212,7 +1228,11 @@ simplifyFun dflags trans e0 = do
 -- Replaces all occurences of each `Plugins.Id` with the corresponding `Plugins.CoreExpr`.
 subst :: [(Plugins.Id, Plugins.CoreExpr)] -> Plugins.CoreExpr -> Plugins.CoreExpr
 subst =
+#if MIN_VERSION_ghc(9, 0, 0)
+  Plugins.substExpr
+#else
   Plugins.substExpr (Plugins.text "subst")
+#endif
     . foldr add Plugins.emptySubst
     . filter (not . Plugins.isDeadBinder . fst)
   where
@@ -1303,7 +1323,7 @@ data Direction = ArgTy | ResTy
 extractTypeFromFunTy :: [Direction] -> Plugins.Type -> Maybe Plugins.Type
 extractTypeFromFunTy [] ty = pure ty
 extractTypeFromFunTy (d : ds) ty = do
-  (argTy, resTy) <- Plugins.splitFunTy_maybe ty
+  (argTy, resTy) <- PrimOp.splitFunTy_maybe ty
   case d of
     ArgTy -> extractTypeFromFunTy ds argTy
     ResTy -> extractTypeFromFunTy ds resTy
