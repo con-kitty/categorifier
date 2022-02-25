@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -39,7 +40,6 @@ import Categorifier.Hierarchy (properFunTy)
 import qualified Control.Arrow
 import qualified Control.Category
 import Control.Monad.Trans.Except (throwE)
-import CoreArity (etaExpand)
 import Data.Bitraversable (bitraverse)
 import qualified Data.Bool
 import qualified Data.Coerce
@@ -61,9 +61,16 @@ import qualified GHC.Float
 import qualified GHC.Num
 import qualified GHC.Real
 import qualified GHC.Word
+#if MIN_VERSION_ghc(9, 0, 0)
+import qualified GHC.Builtin.Types as TysWiredIn
+import GHC.Core.Opt.Arity (etaExpand)
+import qualified GHC.Plugins as Plugins
+#else
+import CoreArity (etaExpand)
 import qualified GhcPlugins as Plugins
-import qualified Language.Haskell.TH as TH
 import qualified TysWiredIn
+#endif
+import qualified Language.Haskell.TH as TH
 import qualified Unsafe.Coerce
 
 -- For Unsafe.Coerce

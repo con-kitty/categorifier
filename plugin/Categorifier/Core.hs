@@ -13,7 +13,6 @@ module Categorifier.Core
   )
 where
 
-import Bag (isEmptyBag)
 import qualified Categorifier.Categorify
 import Categorifier.CommandLineOptions (OptionGroup (..))
 import Categorifier.Common.IO.Exception (SomeException, handle, throwIOAsException)
@@ -57,11 +56,20 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Text (Text)
 import qualified Data.Text as Text
+import qualified GHC.CString
+#if MIN_VERSION_ghc(9, 0, 0)
+import GHC.Data.Bag (isEmptyBag)
+import qualified GHC.Plugins as Plugins
+import qualified GHC.Runtime.Loader as Dynamic
+import qualified GHC.Types.ForeignCall as Plugins
+import GHC.Utils.Error (WarningMessages)
+#else
+import Bag (isEmptyBag)
 import qualified DynamicLoading as Dynamic
 import ErrUtils (WarningMessages)
 import qualified ForeignCall as Plugins
-import qualified GHC.CString
 import qualified GhcPlugins as Plugins
+#endif
 import qualified Language.Haskell.TH as TH
 import PyF (fmt)
 import System.IO (hPutStrLn, stderr)
@@ -175,7 +183,7 @@ addCategorifyRules ::
   Plugins.CoreM Plugins.ModGuts
 addCategorifyRules dflags convert opts guts =
   either (throwIOAsException $ prettyMissingSymbols dflags) (\r -> pure (mapModGutsRules (r <>) guts))
-    =<< categorifyRules convert opts guts
+    =<< categorifyRules dflags convert opts guts
 
 -- | Given the arguments for a `Plugins.BuiltinRule`, this builds a list of rules that try to handle
 --   partial application of the original rule. One caveat is that the provided `Plugins.RuleFun` has
@@ -309,11 +317,12 @@ makerMapTy = Plugins.exprType . Plugins.Var <$> idFromTHName 'baseMakerMapFun
 
 -- | Wiring our function into a `Plugins.BuiltInRule` for the plugin system.
 categorifyRules ::
+  Plugins.DynFlags ->
   Plugins.Id ->
   Map OptionGroup [Text] ->
   Plugins.ModGuts ->
   Plugins.CoreM (Either (NonEmpty MissingSymbol) [Plugins.CoreRule])
-categorifyRules convert opts guts =
+categorifyRules dflags convert opts guts =
   runExceptT $ do
     -- __TODO__: This @do@ block currently has monadic semantics, but it should have duoidal
     --           ones. It's a bit complicated to get it to applicative with manual duoidal handling
@@ -387,7 +396,7 @@ categorifyRules convert opts guts =
     hierarchyOptions' <- hierarchyOptions
     pure $
       partialAppRules apply (Plugins.varName convert) 5 $
-        \dflags inScope ident exprs ->
+        \_ inScope ident exprs ->
           let baseArrowMakers = haskMakers dflags inScope guts hscEnv hask bh properFunTy
            in if ident == convert
                 then

@@ -22,7 +22,11 @@ import Data.Foldable (toList)
 import Data.Map (Map)
 import Data.Text (Text)
 import qualified Data.Text as Text
+#if MIN_VERSION_ghc(9, 0, 0)
+import qualified GHC.Plugins as GhcPlugins
+#else
 import qualified GhcPlugins
+#endif
 import PyF (fmt)
 
 -- | The required plugin entry-point. See [the GHC User's Guide section on Compiler

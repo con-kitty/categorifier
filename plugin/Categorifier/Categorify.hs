@@ -101,7 +101,13 @@ instance Show UnconvertedCall where
 
 instance Exception UnconvertedCall
 
-splitTy :: TH.Type -> TH.Q (([TH.TyVarBndr], TH.Cxt), (TH.Type, TH.Type))
+#if MIN_VERSION_template_haskell(2, 17, 0)
+type TyVarBndr = TH.TyVarBndr TH.Specificity
+#else
+type TyVarBndr = TH.TyVarBndr
+#endif
+
+splitTy :: TH.Type -> TH.Q (([TyVarBndr], TH.Cxt), (TH.Type, TH.Type))
 splitTy (TH.AppT (TH.AppT TH.ArrowT inp) outp) = pure (mempty, (inp, outp))
 splitTy (TH.ForallT vs ctx t) = first ((vs, ctx) <>) <$> splitTy t
 #if MIN_VERSION_template_haskell(2, 16, 0)
@@ -152,7 +158,7 @@ functionAs newName oldName k tys = do
   functionAs' (TH.mkName newName) oldName vs ctx k input output
 
 functionAs' ::
-  TH.Name -> TH.Name -> [TH.TyVarBndr] -> TH.Cxt -> TH.TypeQ -> TH.Type -> TH.Type -> TH.DecsQ
+  TH.Name -> TH.Name -> [TyVarBndr] -> TH.Cxt -> TH.TypeQ -> TH.Type -> TH.Type -> TH.DecsQ
 functionAs' newName oldName _vs ctx k input output =
   sequenceA
     [ TH.sigD newName $ TH.forallT [] (pure ctx) [t|$k $(pure input) $(pure output)|],

@@ -26,9 +26,14 @@ import Data.Bifunctor (Bifunctor (..))
 import Data.Bitraversable (Bitraversable (..))
 import Data.Either.Extra (maybeToEither)
 import Data.Generics.Uniplate.Data (universeBi)
+#if MIN_VERSION_ghc(9, 0, 0)
+import qualified GHC.Core.TyCo.Rep as TyCoRep
+import qualified GHC.Plugins as Plugins
+#else
 import qualified GhcPlugins as Plugins
 #if MIN_VERSION_ghc(8, 10, 0)
 import qualified TyCoRep
+#endif
 #endif
 
 -- Need Uniplate for traversals on GHC-provided recursive types
@@ -365,7 +370,11 @@ haskMakers dflags inScope guts hscEnv HaskOps {..} Hierarchy {..} cat =
 #if MIN_VERSION_ghc(8, 10, 0)
     invisFunArg = \case
       ty | Just ty' <- Plugins.coreView ty -> invisFunArg ty'
+#if MIN_VERSION_ghc(9, 0, 0)
+      TyCoRep.FunTy Plugins.InvisArg _ arg _ -> Just arg
+#else
       TyCoRep.FunTy Plugins.InvisArg arg _ -> Just arg
+#endif
       _ -> Nothing
 #else
     invisFunArg =

@@ -30,6 +30,8 @@ module Categorifier.Core.PrimOp
     -- * Constructor map table construction
     defaultConMap,
     mkConMap,
+
+    splitFunTy_maybe,
   )
 where
 
@@ -61,16 +63,34 @@ import qualified Data.Map as Map
 import Data.Maybe (listToMaybe, mapMaybe)
 import Data.Monoid (Any (..))
 import qualified Data.Tuple as Tuple (swap)
+#if MIN_VERSION_ghc(9, 0, 0)
+import qualified GHC.Builtin.Names as Plugins
+import qualified GHC.Builtin.PrimOps as PrimOp
+import qualified GHC.Builtin.Types.Prim as TysPrim
+import qualified GHC.Core.TyCo.Rep as TyCoRep
+import qualified GHC.Data.Pair as Pair
+import qualified GHC.Plugins as Plugins
+import qualified GHC.Types.ForeignCall as Plugins
+#else
 import qualified ForeignCall as Plugins
 import qualified GhcPlugins as Plugins
 import qualified Pair
 import qualified PrelNames as Plugins
 import qualified PrimOp
-import PyF (fmt)
 import qualified TysPrim
+#endif
+import PyF (fmt)
 
 -- Need Uniplate for traversals on GHC-provided recursive types
 {-# ANN module ("HLint: ignore Avoid restricted module" :: String) #-}
+
+{-# ANN splitFunTy_maybe ("HLint: ignore Use camelCase" :: String) #-}
+splitFunTy_maybe :: Plugins.Type -> Maybe (Plugins.Type, Plugins.Type)
+#if MIN_VERSION_ghc(9, 0, 0)
+splitFunTy_maybe = fmap (\(_, b, c) -> (b, c)) . Plugins.splitFunTy_maybe
+#else
+splitFunTy_maybe = Plugins.splitFunTy_maybe
+#endif
 
 data Boxer = Boxer
   { _modu :: String,
@@ -130,10 +150,17 @@ ensureUnique elems = case List.nub elems of
   _ -> empty
 
 fromIntegralNames :: [(Plugins.Name, Plugins.Type)]
+#if MIN_VERSION_ghc(9, 0, 0)
+fromIntegralNames =
+  [ (Plugins.integerToDoubleName, Plugins.doubleTy),
+    (Plugins.integerToFloatName, Plugins.floatTy)
+  ]
+#else
 fromIntegralNames =
   [ (Plugins.doubleFromIntegerName, Plugins.doubleTy),
     (Plugins.floatFromIntegerName, Plugins.floatTy)
   ]
+#endif
 
 -- | If the given primitive operation always corresponds to a fixed result type, return that type.
 getInvariantResultType ::
@@ -402,7 +429,7 @@ withNewBinding unboxedBinder boxedBinder =
 
 -- | This is only extracted in order to work with Ormolu's CPP support.
 extractCallSpecTarget :: Plugins.IdDetails -> Maybe Plugins.CCallTarget
-#if MIN_VERSION_ghc(8, 10, 7)
+#if MIN_VERSION_ghc(8, 10, 7) && !MIN_VERSION_ghc(9, 0, 0)
 extractCallSpecTarget (Plugins.FCallId (Plugins.CCall (Plugins.CCallSpec target _ _ _ _))) =
   pure target
 #else
@@ -626,7 +653,11 @@ replacePrimOps resultType replaceExpr = do
           -- and this case removes the second step in the original conversion.
           | [(Plugins.DataAlt con, [_unb], Plugins.App (Plugins.Var si) _unbv)] <- alts,
             con `elem` fmap snd boxers,
+#if MIN_VERSION_ghc(9, 0, 0)
+            Plugins.varName si == Plugins.integerFromInt64Name ->
+#else
             Plugins.varName si == Plugins.smallIntegerName ->
+#endif
               pure sc
           -- This is a case statement that unboxes an existing variable.  Replace it with a
           -- `let`-binding, extend the replacement table and continue descending.
@@ -669,7 +700,9 @@ replacePrimOps resultType replaceExpr = do
           -}
           | Plugins.boolTy `Plugins.eqType` newScTy,
             [(Plugins.DEFAULT, [], falseExpr), (Plugins.LitAlt one, [], trueExpr)] <- alts,
-#if MIN_VERSION_ghc(8, 6, 0)
+#if MIN_VERSION_ghc(9, 0, 0)
+            Plugins.LitNumber _litCoreTy 1 <- one ->
+#elif MIN_VERSION_ghc(8, 6, 0)
             Plugins.LitNumber _litCoreTy 1 _litHsTy <- one ->
 #else
             Plugins.LitInteger 1 _litHsTy <- one ->
@@ -702,7 +735,9 @@ replacePrimOps resultType replaceExpr = do
               alts,
             Plugins.varType bndr `Plugins.eqType` TysPrim.intPrimTy,
             ty `Plugins.eqType` Plugins.boolTy,
-#if MIN_VERSION_ghc(8, 6, 0)
+#if MIN_VERSION_ghc(9, 0, 0)
+            Plugins.LitNumber _litCoreTy 0 <- zero,
+#elif MIN_VERSION_ghc(8, 6, 0)
             Plugins.LitNumber _litCoreTy 0 _litHsTy <- zero,
 #else
             Plugins.LitInteger 0 _litHsTy <- zero,
@@ -782,15 +817,17 @@ replacePrimOps resultType replaceExpr = do
                           -- __TODO__: We've run into Core Lint complaints here when dealing with
                           -- negative literals (e.g., @-1# :: Int32@), but we've managed to avoid them
                           -- by interpreting operations where they occur.
-#if MIN_VERSION_ghc(8, 6, 0)
+#if MIN_VERSION_ghc(9, 0, 0)
+                          (Plugins.LitAlt (Plugins.LitNumber nt i), _binds, litExpr) ->
+                            Right . (Plugins.LitNumber nt i,)
+#elif MIN_VERSION_ghc(8, 6, 0)
                           (Plugins.LitAlt (Plugins.LitNumber nt i _oldTy), _binds, litExpr) ->
                             Right . (Plugins.LitNumber nt i t,)
-                              <$> replacePrimOps resultType litExpr
 #else
                           (Plugins.LitAlt (Plugins.LitInteger i _oldTy), _binds, litExpr) ->
                             Right . (Plugins.LitInteger i t,)
-                              <$> replacePrimOps resultType litExpr
 #endif
+                              <$> replacePrimOps resultType litExpr
                           (Plugins.LitAlt x, _binds, _e) ->
                             lift . throwE . pure $ UnsupportedPrimitiveLiteral x caseExpr
                           (Plugins.DataAlt dc, _binds, _e) ->
@@ -943,7 +980,7 @@ replacePrimOps resultType replaceExpr = do
       where
         fThenX = do
           f' <- replacePrimOps Nothing f
-          let argTy = fmap fst . Plugins.splitFunTy_maybe $ Plugins.exprType f'
+          let argTy = fmap fst . splitFunTy_maybe $ Plugins.exprType f'
           Plugins.App f' <$> replacePrimOps argTy x
         xThenF = do
           x' <- replacePrimOps Nothing x
@@ -980,7 +1017,7 @@ replacePrimOps resultType replaceExpr = do
           rpoLabel "13c" lam . Plugins.Lam binder <$> replacePrimOps resTy body
       where
         bt, resTy :: Maybe Plugins.Type
-        (bt, resTy) = NonEmpty.unzip $ Plugins.splitFunTy_maybe =<< resultType
+        (bt, resTy) = NonEmpty.unzip $ splitFunTy_maybe =<< resultType
         predictedBinderBoxedType = deduceEBTFrom boxers binder $ universe body
         bindTy' = bt <|> predictedBinderBoxedType
     -- TODO(MP): Here we assume the types are already boxed.
@@ -1027,6 +1064,9 @@ mkBoxedVarFrom pfx ty v = do
         ( Plugins.mkInternalName u (Plugins.mkVarOcc nm) $
             Plugins.mkGeneralSrcSpan errString
         )
+#if MIN_VERSION_ghc(9, 0, 0)
+        vt
+#endif
         vt
         Plugins.vanillaIdInfo
 
@@ -1118,7 +1158,8 @@ scanForBinderEBTViaReboxing boxers binder = \case
   _ -> Nothing
 
 setLiteralType :: Plugins.Type -> Plugins.Literal -> Plugins.Literal
-#if MIN_VERSION_ghc(8, 6, 0)
+#if MIN_VERSION_ghc(9, 0, 0)
+#elif MIN_VERSION_ghc(8, 6, 0)
 setLiteralType toType (Plugins.LitNumber litNumTy litNumVal _oldType) =
   Plugins.LitNumber litNumTy litNumVal toType
 #else
@@ -1132,7 +1173,11 @@ containsPrimitiveType :: Plugins.Type -> Bool
 containsPrimitiveType ty
   | Plugins.isFunTy ty,
     (args, res) <- Plugins.splitFunTys ty =
+#if MIN_VERSION_ghc(9, 0, 0)
+      any containsPrimitiveType (res : (TyCoRep.scaledThing <$> args))
+#else
       any containsPrimitiveType (res : args)
+#endif
   | otherwise = Plugins.isPrimitiveType ty
 
 replacePrimOpFunCall ::

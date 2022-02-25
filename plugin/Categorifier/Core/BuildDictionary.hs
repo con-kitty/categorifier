@@ -18,7 +18,6 @@
 -- Adaptation of HERMIT's buildDictionaryT via ConCat's BuildDictonary
 module Categorifier.Core.BuildDictionary (buildDictionary) where
 
-import qualified Bag
 import qualified Categorifier.Core.Benchmark as Bench
 import Categorifier.Core.Trace (pprTrace')
 import Categorifier.Core.Types
@@ -30,9 +29,6 @@ import Categorifier.Core.Types
     writerT,
   )
 import Categorifier.Duoidal ((<\*))
-#if MIN_VERSION_ghc(8, 10, 0)
-import qualified Constraint as Typechecker
-#endif
 import Control.Arrow (Arrow (..))
 import Control.Monad ((<=<))
 import Control.Monad.Extra (filterM)
@@ -47,6 +43,34 @@ import Data.List.NonEmpty (NonEmpty (..), nonEmpty)
 import qualified Data.List.NonEmpty as NonEmpty
 import qualified Data.Map.Strict as Map
 import Data.Monoid (Any (..))
+#if MIN_VERSION_ghc(9, 0, 0)
+import qualified GHC.Core.Predicate as Core
+import GHC.Core.Opt.Pipeline (simplifyExpr)
+import qualified GHC.Data.Bag as Bag
+import GHC.Driver.Finder (FindResult (..), findExposedPackageModule)
+import GHC.HsToCore.Binds (dsEvBinds)
+import GHC.HsToCore.Monad (initDsTc)
+import GHC.Plugins ((<+>))
+import qualified GHC.Plugins as Plugins
+import qualified GHC.Tc.Errors as Typechecker
+import qualified GHC.Tc.Module as Typechecker
+import qualified GHC.Tc.Solver as Typechecker
+import qualified GHC.Tc.Solver.Interact as Typechecker
+import qualified GHC.Tc.Solver.Monad as Typechecker
+import qualified GHC.Tc.Types as Typechecker
+import qualified GHC.Tc.Types.Constraint as Typechecker
+import qualified GHC.Tc.Types.Evidence as Typechecker
+import qualified GHC.Tc.Types.Origin as Typechecker
+import qualified GHC.Tc.Utils.Monad as Typechecker
+import qualified GHC.Tc.Utils.Zonk as Typechecker
+import GHC.Types.Unique (mkUniqueGrimily)
+import qualified GHC.Types.Unique.Set as NonDetSet
+import GHC.Utils.Error (WarningMessages)
+#else
+import qualified Bag
+#if MIN_VERSION_ghc(8, 10, 0)
+import qualified Constraint as Typechecker
+#endif
 import DsBinds (dsEvBinds)
 import DsMonad (initDsTc)
 import ErrUtils (WarningMessages)
@@ -58,7 +82,6 @@ import qualified Predicate as Core
 #else
 import qualified Id as Core
 #endif
-import PyF (fmt)
 import SimplCore (simplifyExpr)
 import qualified TcErrors as Typechecker
 import qualified TcEvidence as Typechecker
@@ -73,6 +96,8 @@ import qualified TcSMonad as Typechecker
 import qualified TcSimplify as Typechecker
 import qualified UniqSet as NonDetSet
 import Unique (mkUniqueGrimily)
+#endif
+import PyF (fmt)
 import Yaya.Functor (hmap)
 
 emptyZonkEnv :: Typechecker.TcM _
@@ -241,7 +266,11 @@ buildDictionary env dflags guts inScope goalTy =
                   --         terms of the `Plugins.CompilerPhase` they run in (this is
                   --        `Plugins.InitialPhase` vs @`Plugins.Phase` 0@ in Conal's. AFAICT, that
                   --         shouldn't matter, but if it does, come back here.
+#if MIN_VERSION_ghc(9, 0, 0)
+                  . ( lift . simplifyExpr env
+#else
                   . ( lift . simplifyExpr dflags
+#endif
                         &&& ExceptT
                           . pure
                           . traverse_ (Left . pure . FreeIds)
@@ -280,8 +309,13 @@ hasCoercionHole = getAny . everything (<>) (mkQ mempty (Any . isHole))
 
 -- | Make a unique identifier for a specified type, using a provided name.
 localId :: Plugins.InScopeEnv -> String -> Plugins.Type -> Plugins.Id
+#if MIN_VERSION_ghc(9, 0, 0)
+localId (inScopeSet, _) str ty =
+  Plugins.uniqAway inScopeSet $ Plugins.mkLocalId (stringToName str) ty ty
+#else
 localId (inScopeSet, _) str =
   Plugins.uniqAway inScopeSet . Plugins.mkLocalId (stringToName str)
+#endif
 
 stringToName :: String -> Plugins.Name
 stringToName str =
@@ -318,7 +352,11 @@ cacheDict goalTy dict = lift . modify $ \(CategoryState uniqS idx cache) -> case
         name =
           Plugins.mkInternalName u (Plugins.mkVarOcc "cccDict") $
             Plugins.mkGeneralSrcSpan "oops"
+#if MIN_VERSION_ghc(9, 0, 0)
+        v = Plugins.mkLocalVar (Plugins.DFunId False) name goalTy goalTy Plugins.vanillaIdInfo
+#else
         v = Plugins.mkLocalVar (Plugins.DFunId False) name goalTy Plugins.vanillaIdInfo
+#endif
      in CategoryState uniqS' (idx + 1) $
           Map.insert (cacheKey goalTy) (DictCacheEntry goalTy v dict (Just idx)) cache
 

@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 -- | The GHC API doesn't give very much control over the simplifier. The only way to use it is to
 --   trampoline out of your plugin pass to let an external `Plugins.CoreToDo` simplify for you or to
 --   call `SimplCore.simplifyExpr`, which doesn't give you even the same control that the
@@ -17,14 +19,24 @@ module Categorifier.Core.Simplify
 where
 
 import Control.Monad ((<=<))
-import CoreStats (exprSize)
 import Data.Set (Set, member)
+#if MIN_VERSION_ghc(9, 0, 0)
+import GHC.Core.Stats (exprSize)
+import GHC.Core.FamInstEnv (emptyFamInstEnvs)
+import GHC.Core.Opt.OccurAnal (occurAnalyseExpr)
+import GHC.Core.Opt.Simplify.Env (mkSimplEnv)
+import GHC.Core.Opt.Simplify.Monad (SimplM, initSmpl)
+import GHC.Core.Opt.Simplify (simplExpr)
+import qualified GHC.Plugins as Plugins
+#else
+import CoreStats (exprSize)
 import FamInstEnv (emptyFamInstEnvs)
 import qualified GhcPlugins as Plugins
 import OccurAnal (occurAnalyseExpr)
 import SimplEnv (mkSimplEnv)
 import SimplMonad (SimplM, initSmpl)
 import Simplify (simplExpr)
+#endif
 
 -- | This is the simplifier we apply surgically to expressions that should be re-written before
 --   continuing categorification.

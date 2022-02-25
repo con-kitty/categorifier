@@ -5,6 +5,7 @@
 module Categorifier.TH
   ( nameQualified,
     specializeT,
+    tyVarBndrName,
   )
 where
 
@@ -21,6 +22,16 @@ import Data.Maybe (catMaybes, fromMaybe)
 import Data.These (These (..))
 import qualified Language.Haskell.TH as TH
 import PyF (fmt)
+
+#if MIN_VERSION_template_haskell(2, 17, 0)
+tyVarBndrName :: TH.TyVarBndr flag -> TH.Name
+tyVarBndrName (TH.KindedTV n _ _) = n
+tyVarBndrName (TH.PlainTV n _) = n
+#else
+tyVarBndrName :: TH.TyVarBndr -> TH.Name
+tyVarBndrName (TH.KindedTV n _) = n
+tyVarBndrName (TH.PlainTV n) = n
+#endif
 
 -- | It generates the fully-qualified name.
 nameQualified :: TH.Name -> String
@@ -69,12 +80,11 @@ specializeT typ typs = do
         then typ
         else liftIO $ Exception.throwIOAsException prettySpecializationFailure NotAParameterizedType
   where
-    nameOfBinder :: TH.TyVarBndr -> TH.Name
-    nameOfBinder = \case
-      TH.PlainTV n -> n
-      TH.KindedTV n _ -> n
     go :: TH.Type -> StateT (Map TH.Name TH.TypeQ) TH.Q TH.Type
     go = \case
+#if MIN_VERSION_template_haskell(2, 17, 0)
+      TH.MulArrowT -> pure TH.MulArrowT
+#endif
 #if MIN_VERSION_template_haskell(2, 16, 0)
       TH.ForallVisT bs t -> TH.ForallVisT bs <$> go t
 #endif
@@ -114,7 +124,7 @@ specializeT typ typs = do
                     This v -> (Just v, Nothing, Nothing)
                     That a -> (Nothing, Nothing, Just a)
                     These v Nothing -> (Just v, Nothing, Nothing)
-                    These v (Just a) -> (Nothing, Just (nameOfBinder v, a), Nothing)
+                    These v (Just a) -> (Nothing, Just (tyVarBndrName v, a), Nothing)
                 )
                 bs
                 args
@@ -134,6 +144,9 @@ specializeT typ typs = do
             $ nonEmpty remainingArgs
 
 hasVarT :: TH.Type -> Bool
+#if MIN_VERSION_template_haskell(2, 17, 0)
+hasVarT TH.MulArrowT = False
+#endif
 #if MIN_VERSION_template_haskell(2, 16, 0)
 hasVarT (TH.ForallVisT _ _) = True
 #endif

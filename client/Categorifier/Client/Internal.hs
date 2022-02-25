@@ -16,6 +16,7 @@ where
 import qualified Categorifier.Common.IO.Exception as Exception
 import Categorifier.Duoidal (Parallel (..), traverseD, (<*\>))
 import Categorifier.Duoidal.Either (noteAccum)
+import qualified Categorifier.TH as TH
 import Data.Bifunctor (Bifunctor (..))
 import Data.Bool (bool)
 import Data.Constraint (Dict (..))
@@ -164,6 +165,9 @@ alphaEquiv :: TH.Type -> TH.Type -> Maybe [(TH.Name, TH.Name)]
 alphaEquiv = curry alphaEquiv'
 
 alphaEquiv' :: (TH.Type, TH.Type) -> Maybe [(TH.Name, TH.Name)]
+#if MIN_VERSION_template_haskell(2, 17, 0)
+alphaEquiv' (TH.MulArrowT, TH.MulArrowT) = pure []
+#endif
 #if MIN_VERSION_template_haskell(2, 16, 0)
 alphaEquiv' (TH.ForallVisT b t, TH.ForallVisT b' t') =
   -- __TODO__: Ensure that the kinds of @b@ match, and that those names are added to the map
@@ -213,6 +217,9 @@ alphaRename :: [(TH.Name, TH.Name)] -> TH.Type -> Either (NonEmpty TH.Name) TH.T
 alphaRename mapping = first NE.nub . alphaRename'
   where
     alphaRename' = \case
+#if MIN_VERSION_template_haskell(2, 17, 0)
+      TH.MulArrowT -> pure TH.MulArrowT
+#endif
 #if MIN_VERSION_template_haskell(2, 16, 0)
       TH.ForallVisT b t -> TH.ForallVisT b <$> alphaRename' t
 #endif
@@ -289,9 +296,7 @@ deriveHasRep' = \case
     first GadtProcessingFailures $ hasReps (applyType name tyVarBndrs) ctx $ pure dataCon
   info -> Left $ InvalidName info
   where
-    applyType name = foldl' TH.AppT (TH.ConT name) . fmap (TH.VarT . nameOfBinder)
-    nameOfBinder (TH.PlainTV n) = n
-    nameOfBinder (TH.KindedTV n _) = n
+    applyType name = foldl' TH.AppT (TH.ConT name) . fmap (TH.VarT . TH.tyVarBndrName)
 
     -- Produces one or more `HasRep` instances for the given `TH.Type`. It can be more than one in
     -- the case of GADTs.

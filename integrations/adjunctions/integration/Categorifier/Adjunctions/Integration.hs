@@ -1,4 +1,5 @@
 {-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -28,7 +29,11 @@ import Categorifier.Hierarchy
 import qualified Data.Functor.Rep
 import qualified Data.Map as Map
 import qualified GHC.Base
+#if MIN_VERSION_ghc(9, 0, 0)
+import qualified GHC.Plugins as Plugins
+#else
 import qualified GhcPlugins as Plugins
+#endif
 
 hierarchy :: Lookup (Hierarchy CategoryStack)
 hierarchy = do
