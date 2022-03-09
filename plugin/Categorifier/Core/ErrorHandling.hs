@@ -189,8 +189,8 @@ showFailure dflags hierarchyOptions = \case
 
     Please file an issue against the plugin.|]
   MissingCategoricalRepresentation name ->
-    [fmt|There is no categorical representation defined for "{name} when using the
-    following hierarchies: {showP $ toList hierarchyOptions}". You can try using a
+    [fmt|There is no categorical representation defined for `{name}` when using the
+    following hierarchies: {showP $ toList hierarchyOptions}. You can try using a
     different category hierarchy, or modify the existing hierarchy definition to
     support additional operations.|]
   NotEnoughTypeArgs loc expr ty args ->
