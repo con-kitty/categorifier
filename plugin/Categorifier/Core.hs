@@ -74,17 +74,15 @@ import System.IO.Unsafe (unsafePerformIO)
 conversionFunction :: TH.Name
 conversionFunction = 'Categorifier.Categorify.expression
 
--- | Our Core plugin does four things,
+-- | Our Core plugin does three things,
 --
--- 1. run a simplifier to get as many calls to `Categorifier.Categorify.expression` into a
---    recognizable state,
--- 2. add the rules that rewrite `Categorifier.Categorify.expression` (this doesn't do any rewriting
+-- 1. add the rules that rewrite `Categorifier.Categorify.expression` (this doesn't do any rewriting
 --    itself, just allows later simplifiers to trigger the rewrites),
--- 3. run a simplifier that actually triggers the rewrite rules, and finally
--- 4. remove the rules we added so they don't end up in the module's interface file.
+-- 2. run a simplifier that actually triggers the rewrite rules, and finally
+-- 3. remove the rules we added so they don't end up in the module's interface file.
 --
 --   When possible, we use an existing simplifier in the incoming @CoreToDo@ list rather than adding
---   one of our own for step 3. When we do this, we install the rewrite rules immediately before the
+--   one of our own for step 2. When we do this, we install the rewrite rules immediately before the
 --   simplifier we borrowed. This reduces the chance that other plugins can shadow or otherwise
 --   affect our rules. The rules can be removed any time after the simplifier, but they /must/ be
 --   removed.
@@ -97,12 +95,11 @@ install opts todos = do
   convert <-
     either (throwIOAsException $ prettyMissingSymbols dflags) pure <=< runExceptT . getParallel $
       idFromTHName conversionFunction
-  let allOurTodos = categorifyTodos <> [postsimplifier convert dflags, removeCategorify]
-      categorifyTodos =
-        [ presimplifier convert dflags,
-          Plugins.CoreDoPluginPass ("add " <> Plugins.getOccString convert <> " rules") $
-            addCategorifyRules dflags convert opts
-        ]
+  -- TODO: support partial application of `Categorify.expression` (#33).
+  let allOurTodos = [categorifyTodo, postsimplifier convert dflags, removeCategorify]
+      categorifyTodo =
+        Plugins.CoreDoPluginPass ("add " <> Plugins.getOccString convert <> " rules") $
+          addCategorifyRules dflags convert opts
       removeCategorify =
         Plugins.CoreDoPluginPass ("remove " <> Plugins.getOccString convert <> " rules") $
           removeBuiltinRules ruleNames
@@ -115,7 +112,7 @@ install opts todos = do
       -- piggy-back on an existing simplifier rather than add our own
       ( \i ->
           let (before, after) = splitAt i todos
-           in before <> categorifyTodos <> after <> [removeCategorify]
+           in before <> [categorifyTodo] <> after <> [removeCategorify]
       )
     $ findIndex isSimplifier todos
   where
@@ -127,26 +124,6 @@ removeBuiltinRules :: [Plugins.RuleName] -> Plugins.CorePluginPass
 removeBuiltinRules names = pure . mapModGutsRules (filter (not . ruleMatches))
   where
     ruleMatches r = Plugins.isBuiltinRule r && Plugins.ru_name r `elem` names
-
--- | A simplifier run before we add our pass, to make sure calls to `categorify` are in the right
---   form to be successfully transformed.
---
---  __TODO__: We may be able to add this conditionally, based on whether another suitable
---            simplifier is already in the todos list. That could allow us to play more nicely
---            with other plugins.
-presimplifier :: Plugins.Id -> Plugins.DynFlags -> Plugins.CoreToDo
-presimplifier convert dflags =
-  Plugins.CoreDoSimplify
-    1
-    Plugins.SimplMode
-      { Plugins.sm_case_case = False,
-        Plugins.sm_dflags = dflags,
-        Plugins.sm_eta_expand = False,
-        Plugins.sm_inline = True,
-        Plugins.sm_names = ["pre-" <> Plugins.getOccString convert],
-        Plugins.sm_phase = Plugins.Phase 1,
-        Plugins.sm_rules = False
-      }
 
 -- | A simplifer run after we add our pass, to make sure `categorify` calls are expanded regardless
 --   of what other passes exist.
