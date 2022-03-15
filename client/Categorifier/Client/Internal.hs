@@ -170,13 +170,17 @@ alphaEquiv' (TH.ForallVisT b t, TH.ForallVisT b' t') =
   --          (order of @b@ matters)
   bool Nothing (alphaEquiv t t') $ length b == length b'
 #endif
+#if MIN_VERSION_template_haskell(2, 15, 0)
+alphaEquiv' (TH.AppKindT t k, TH.AppKindT t' k') = (<>) <$> alphaEquiv t t' <*> alphaEquiv k k'
+alphaEquiv' (TH.ImplicitParamT s t, TH.ImplicitParamT s' t') =
+  bool Nothing (alphaEquiv t t') $ s == s'
+#endif
 alphaEquiv' ty = case ty of
   (TH.ForallT b c t, TH.ForallT b' c' t') ->
     -- __TODO__: Ensure that the kinds of @b@ match, and that those names are added to the map
     --          (order of @b@ matters)
     bool Nothing (alphaEquiv t t') $ length b == length b' && c == c'
   (TH.AppT c e, TH.AppT c' e') -> (<>) <$> alphaEquiv c c' <*> alphaEquiv e e'
-  (TH.AppKindT t k, TH.AppKindT t' k') -> (<>) <$> alphaEquiv t t' <*> alphaEquiv k k'
   (TH.SigT t k, TH.SigT t' k') -> (<>) <$> alphaEquiv t t' <*> alphaEquiv k k'
   (TH.VarT n, TH.VarT n') ->
     -- __TODO__: If neither has been seen before, add them both with the same index, otherwise they
@@ -202,7 +206,6 @@ alphaEquiv' ty = case ty of
   (TH.ConstraintT, TH.ConstraintT) -> pure []
   (TH.LitT t, TH.LitT t') -> bool Nothing (pure []) $ t == t'
   (TH.WildCardT, TH.WildCardT) -> pure []
-  (TH.ImplicitParamT s t, TH.ImplicitParamT s' t') -> bool Nothing (alphaEquiv t t') $ s == s'
   (_, _) -> Nothing -- any structural mismatch is not equivalent
 
 -- | Renames the varibles in a type according to some equivalence mapping.
@@ -210,12 +213,15 @@ alphaRename :: [(TH.Name, TH.Name)] -> TH.Type -> Either (NonEmpty TH.Name) TH.T
 alphaRename mapping = first NE.nub . alphaRename'
   where
     alphaRename' = \case
-      TH.ForallT b c t -> TH.ForallT b <$> traverseD alphaRename' c <*\> alphaRename' t
 #if MIN_VERSION_template_haskell(2, 16, 0)
       TH.ForallVisT b t -> TH.ForallVisT b <$> alphaRename' t
 #endif
-      TH.AppT c e -> TH.AppT <$> alphaRename' c <*\> alphaRename' e
+#if MIN_VERSION_template_haskell(2, 15, 0)
       TH.AppKindT t k -> TH.AppKindT <$> alphaRename' t <*\> alphaRename' k
+      TH.ImplicitParamT s t -> TH.ImplicitParamT s <$> alphaRename' t
+#endif
+      TH.ForallT b c t -> TH.ForallT b <$> traverseD alphaRename' c <*\> alphaRename' t
+      TH.AppT c e -> TH.AppT <$> alphaRename' c <*\> alphaRename' e
       TH.SigT t k -> TH.SigT <$> alphaRename' t <*\> alphaRename' k
       TH.VarT n -> fmap TH.VarT . getParallel $ noteAccum (flip lookup mapping) n
       TH.ConT n -> pure $ TH.ConT n
@@ -236,7 +242,6 @@ alphaRename mapping = first NE.nub . alphaRename'
       TH.ConstraintT -> pure TH.ConstraintT
       TH.LitT l -> pure $ TH.LitT l
       TH.WildCardT -> pure TH.WildCardT
-      TH.ImplicitParamT s t -> TH.ImplicitParamT s <$> alphaRename' t
 
 groupByType :: [(TH.Type, (TH.TypeQ, a, b))] -> [(TH.Type, NonEmpty (TH.TypeQ, a, b))]
 groupByType = foldr gbt []
@@ -332,7 +337,12 @@ deriveHasRep' = \case
       TH.instanceD
         (pure [])
         [t|HasRep $type0|]
-        [ TH.tySynInstD $ TH.tySynEqn Nothing [t|Rep $type0|] repTy,
+        [
+#if MIN_VERSION_template_haskell(2, 15, 0)
+          TH.tySynInstD $ TH.tySynEqn Nothing [t|Rep $type0|] repTy,
+#else
+          TH.tySynInstD ''Rep $ TH.tySynEqn [type0] repTy,
+#endif
           TH.funD 'abst abstClauses,
           TH.pragInlD 'abst TH.Inline TH.FunLike TH.AllPhases,
           TH.funD 'repr reprClauses,

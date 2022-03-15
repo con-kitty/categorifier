@@ -1,9 +1,10 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# OPTIONS_GHC -Wno-orphans #-}
-
+-- Because `ZonkEnv` isn't exported before GHC 8.8, so we use @_@ instead.
+{-# LANGUAGE PartialTypeSignatures #-}
 -- -Wno-orphans is so we can add missing instances to `Bag.Bag`
+{-# OPTIONS_GHC -Wno-orphans -Wno-partial-type-signatures #-}
 
 -- |
 -- Module      :  ConCat.BuildDictionary
@@ -35,7 +36,7 @@ import Control.Arrow (Arrow (..))
 import Control.Monad ((<=<))
 import Control.Monad.Extra (filterM)
 import Control.Monad.Trans.Class (lift)
-import Control.Monad.Trans.Except (ExceptT (..), except, throwE)
+import Control.Monad.Trans.Except (ExceptT (..), throwE)
 import Control.Monad.Trans.RWS.Strict (gets, modify)
 import Data.Data (Data)
 import Data.Foldable (traverse_)
@@ -71,6 +72,13 @@ import qualified TcSimplify as Typechecker
 import qualified UniqSet as NonDetSet
 import Unique (mkUniqueGrimily)
 import Yaya.Functor (hmap)
+
+emptyZonkEnv :: Typechecker.TcM _
+#if MIN_VERSION_ghc(8, 8, 0)
+emptyZonkEnv = Typechecker.emptyZonkEnv
+#else
+emptyZonkEnv = pure Typechecker.emptyZonkEnv
+#endif
 
 uniqSetToList :: Plugins.UniqSet a -> [a]
 uniqSetToList = NonDetSet.nonDetEltsUniqSet
@@ -149,7 +157,7 @@ buildDictionary' evIds evar = do
               pure z
           )
     traceTc' "buildDictionary' back from runTcS" (Plugins.ppr bnds0)
-    ez <- Typechecker.emptyZonkEnv
+    ez <- emptyZonkEnv
     -- Use the newly exported zonkEvBinds. <https://phabricator.haskell.org/D2088>
     (_env', bnds) <- Typechecker.zonkEvBinds ez bnds0
     -- traceTc "buildDictionary' wCs'" (Plugins.ppr wCs')
@@ -232,10 +240,15 @@ buildDictionary env dflags guts inScope goalTy =
                   --        `Plugins.InitialPhase` vs @`Plugins.Phase` 0@ in Conal's. AFAICT, that
                   --         shouldn't matter, but if it does, come back here.
                   . ( lift . simplifyExpr dflags
-                        &&& except . traverse_ (Left . pure . FreeIds) . nonEmpty . freeIdTys
+                        &&& ExceptT
+                          . pure
+                          . traverse_ (Left . pure . FreeIds)
+                          . nonEmpty
+                          . freeIdTys
                     )
                   . dict
-                  &&& except
+                  &&& ExceptT
+                    . pure
                     . traverse_ (Left . pure . CoercionHoles)
                     . nonEmpty
                     . NonEmpty.filter hasCoercionHole

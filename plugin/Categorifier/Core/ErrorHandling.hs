@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TupleSections #-}
@@ -62,18 +63,27 @@ runtimeCallStack = \case
       _ -> Nothing
     decodeFrame = \case
       Plugins.App
+#if MIN_VERSION_ghc(8, 8, 0)
         (Plugins.App _tuple (Plugins.App _ (Plugins.Lit (Plugins.LitString function))))
         ( Plugins.collectArgs ->
             ( _srcLoc,
               [ Plugins.App _ (Plugins.Lit (Plugins.LitString package)),
                 Plugins.App _ (Plugins.Lit (Plugins.LitString modu)),
                 Plugins.App _ (Plugins.Lit (Plugins.LitString file)),
+#else
+        (Plugins.App _tuple (Plugins.App _ (Plugins.Lit (Plugins.MachStr function))))
+        ( Plugins.collectArgs ->
+            ( _srcLoc,
+              [ Plugins.App _ (Plugins.Lit (Plugins.MachStr package)),
+                Plugins.App _ (Plugins.Lit (Plugins.MachStr modu)),
+                Plugins.App _ (Plugins.Lit (Plugins.MachStr file)),
+#endif
                 Plugins.App _ (Plugins.Lit (Plugins.LitNumber _ startLine _)),
                 Plugins.App _ (Plugins.Lit (Plugins.LitNumber _ startCol _)),
                 Plugins.App _ (Plugins.Lit (Plugins.LitNumber _ endLine _)),
                 Plugins.App _ (Plugins.Lit (Plugins.LitNumber _ endCol _))
-                ]
-              )
+              ]
+            )
           ) ->
           pure
             ( BS.unpack function,

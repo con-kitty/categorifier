@@ -72,12 +72,15 @@ specializeT typ typs = do
       TH.KindedTV n _ -> n
     go :: TH.Type -> StateT (Map TH.Name TH.TypeQ) TH.Q TH.Type
     go = \case
-      TH.ForallT bs ctx t -> TH.ForallT bs <$> fmap (filter hasVarT) (traverse go ctx) <*> go t
 #if MIN_VERSION_template_haskell(2, 16, 0)
       TH.ForallVisT bs t -> TH.ForallVisT bs <$> go t
 #endif
-      TH.AppT a b -> TH.AppT <$> go a <*> go b
+#if MIN_VERSION_template_haskell(2, 15, 0)
       TH.AppKindT t k -> TH.AppKindT <$> go t <*> pure k
+      TH.ImplicitParamT s t -> TH.ImplicitParamT s <$> go t
+#endif
+      TH.ForallT bs ctx t -> TH.ForallT bs <$> fmap (filter hasVarT) (traverse go ctx) <*> go t
+      TH.AppT a b -> TH.AppT <$> go a <*> go b
       TH.SigT t k -> TH.SigT <$> go t <*> pure k
       TH.VarT n ->
         -- If @n@ is substitutable, do so, otherwise leave the `TH.VarT` alone.
@@ -100,7 +103,6 @@ specializeT typ typs = do
       TH.ConstraintT -> pure TH.ConstraintT
       TH.LitT l -> pure $ TH.LitT l
       TH.WildCardT -> pure TH.WildCardT
-      TH.ImplicitParamT s t -> TH.ImplicitParamT s <$> go t
     applySubsts t bs args =
       let (varsM, substsM, remainingArgsM) =
             unzip3 $
@@ -129,12 +131,15 @@ specializeT typ typs = do
             $ nonEmpty remainingArgs
 
 hasVarT :: TH.Type -> Bool
-hasVarT TH.ForallT {} = True
 #if MIN_VERSION_template_haskell(2, 16, 0)
 hasVarT (TH.ForallVisT _ _) = True
 #endif
-hasVarT (TH.AppT a b) = hasVarT a || hasVarT b
+#if MIN_VERSION_template_haskell(2, 15, 0)
 hasVarT (TH.AppKindT t _) = hasVarT t
+hasVarT (TH.ImplicitParamT _ t) = hasVarT t
+#endif
+hasVarT TH.ForallT {} = True
+hasVarT (TH.AppT a b) = hasVarT a || hasVarT b
 hasVarT (TH.SigT t _) = hasVarT t
 hasVarT (TH.VarT _) = True
 hasVarT (TH.ConT _) = False
@@ -155,4 +160,3 @@ hasVarT TH.StarT = False
 hasVarT TH.ConstraintT = False
 hasVarT (TH.LitT _) = False
 hasVarT TH.WildCardT = False
-hasVarT (TH.ImplicitParamT _ t) = hasVarT t

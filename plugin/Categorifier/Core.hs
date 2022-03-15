@@ -1,4 +1,5 @@
 {-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -248,7 +249,11 @@ deferFailures throw str cat a b calls =
         )
         . Plugins.App (Plugins.Var str)
         . Plugins.Lit
+#if MIN_VERSION_ghc(8, 8, 0)
         $ Plugins.mkLitString
+#else
+        $ Plugins.mkMachString
+#endif
           [fmt|A call to `{TH.nameQualified convertFn}` failed to be eliminated by
 the "Categorifier" plugin. But errors from the plugin have been deferred to runtime,
 so you see this message instead of the actual compile-time failure. Compile

@@ -575,7 +575,11 @@ replacePrimOps resultType replaceExpr = do
       | (Plugins.Var f, arguments) <- Plugins.collectArgs e,
         Just mbDiv <- Plugins.isPrimOpId_maybe f,
         PrimOp.DoubleDivOp == mbDiv,
+#if MIN_VERSION_ghc(8, 8, 0)
         [Plugins.Lit (Plugins.LitDouble 1), x] <- arguments -> do
+#else
+        [Plugins.Lit (Plugins.MachDouble 1), x] <- arguments -> do
+#endif
           rcp <- lift (mkRecip makers Plugins.doubleTy)
           arg <- replacePrimOps (pure Plugins.doubleTy) x
           pure $ Plugins.mkCoreApps rcp [arg]
@@ -584,7 +588,11 @@ replacePrimOps resultType replaceExpr = do
       | (Plugins.Var f, arguments) <- Plugins.collectArgs e,
         Just mbDiv <- Plugins.isPrimOpId_maybe f,
         PrimOp.FloatDivOp == mbDiv,
+#if MIN_VERSION_ghc(8, 8, 0)
         [Plugins.Lit (Plugins.LitFloat 1), x] <- arguments -> do
+#else
+        [Plugins.Lit (Plugins.MachFloat 1), x] <- arguments -> do
+#endif
           rcp <- lift (mkRecip makers Plugins.floatTy)
           arg <- replacePrimOps (pure Plugins.floatTy) x
           pure $ Plugins.mkCoreApps rcp [arg]

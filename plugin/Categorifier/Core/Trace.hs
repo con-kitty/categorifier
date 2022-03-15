@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 
@@ -148,8 +149,13 @@ newtype Unpretty a = Unpretty a
 
 instance Plugins.Outputable (Unpretty Plugins.Coercion) where
   ppr (Unpretty coercion) = case coercion of
+#if MIN_VERSION_ghc(8, 8, 0)
     TyCoRep.Refl ty -> "Refl" <+> Plugins.ppr ty
     TyCoRep.GRefl role ty mco -> "GRefl" <+> Plugins.ppr role <+> Plugins.ppr ty <+> nestedCo mco
+#else
+    TyCoRep.CoherenceCo co kCo -> "CoherenceCo" <+> nestedCo co <+> nestedCo kCo
+    TyCoRep.Refl role ty -> "Refl" <+> Plugins.ppr role <+> Plugins.ppr ty
+#endif
     TyCoRep.TyConAppCo role tyCon coes ->
       "TyConAppCo" <+> Plugins.ppr role <+> Plugins.ppr tyCon <+> Plugins.ppr (Unpretty <$> coes)
     TyCoRep.AppCo co coN -> "AppCo" <+> nestedCo co <+> nestedCo coN

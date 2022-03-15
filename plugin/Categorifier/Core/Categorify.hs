@@ -187,7 +187,7 @@ categorify
                   )
                     <$> extractTypes from
                     <*\> extractTypes to
-              TyCoRep.Refl _ -> categorifyFun from
+              TyCoRep.Refl {} -> categorifyFun from
               TyCoRep.TransCo inner outer ->
                 categorifyFun $ Plugins.Cast (Plugins.Cast from inner) outer -- NON-INDUCTIVE
               _ -> throwE . pure $ UnsupportedCast from co

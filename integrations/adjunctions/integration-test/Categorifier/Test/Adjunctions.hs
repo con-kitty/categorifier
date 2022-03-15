@@ -12,7 +12,7 @@ where
 import Categorifier.Test.HList (HList1 (..))
 import Categorifier.Test.TH (mkBinaryTestConfig, mkExprTest, mkUnaryTestConfig)
 import Categorifier.Test.Tests (TestTerms)
-import Data.Functor.Identity (Identity)
+import Data.Functor.Identity (Identity (..))
 import qualified Data.Functor.Rep as Representable
 
 testTerms :: TestTerms _
