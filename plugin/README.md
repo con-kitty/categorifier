@@ -83,6 +83,18 @@ are some features that aren't supported (or, not supported fully).
  `MyCustomClass` simply aggregates operations from type classes in `base`, then it will still
   categorify.)
 
+### Partial Application of Categorifier.Categorify.expression
+
+A call to `Categorifier.Categorify.expression` must be fully saturated to trigger the rewrite
+rule installed by the plugin. For example, `expression . f $ x` or
+`(if b then expression else somethingElse) (f x)` does not trigger the plugin, but
+`expression $ f x` and `expression (f x)` do.
+
+If you need to support a particular kind of partial application (such as `expression . foo $ bar`),
+you may want to install an additional `CoreToDo`, which runs before the plugin and performs the
+necessary rewriting (e.g., rewrite `expression . f $ x` into `expression (f x)`).
+
+
 ### Limitation of BuildDictionary
 
 `BuildDictionary.hs` is responsible for building type class dictionaries needed by the plugin to
