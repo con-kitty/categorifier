@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
@@ -27,7 +28,9 @@ import Categorifier.Core.Types
     writerT,
   )
 import Categorifier.Duoidal ((<\*))
+#if MIN_VERSION_ghc(8, 10, 0)
 import qualified Constraint as Typechecker
+#endif
 import Control.Arrow (Arrow (..))
 import Control.Monad ((<=<))
 import Control.Monad.Extra (filterM)
@@ -48,13 +51,19 @@ import ErrUtils (WarningMessages)
 import Finder (FindResult (..), findExposedPackageModule)
 import GhcPlugins ((<+>))
 import qualified GhcPlugins as Plugins
+#if MIN_VERSION_ghc(8, 10, 0)
 import qualified Predicate as Core
+#else
+import qualified Id as Core
+#endif
 import SimplCore (simplifyExpr)
 import qualified TcErrors as Typechecker
 import qualified TcEvidence as Typechecker
 import qualified TcHsSyn as Typechecker
 import qualified TcInteract as Typechecker
+#if MIN_VERSION_ghc(8, 10, 0)
 import qualified TcOrigin as Typechecker
+#endif
 import qualified TcRnDriver as Typechecker
 import qualified TcRnMonad as Typechecker
 import qualified TcSMonad as Typechecker

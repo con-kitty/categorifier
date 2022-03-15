@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -24,9 +25,26 @@ import qualified Categorifier.Common.IO.Exception as Exception
 import qualified Categorifier.TH as TH
 import Control.Applicative (liftA2)
 import Control.Arrow (Arrow (..))
+#if !MIN_VERSION_template_haskell(2, 16, 0)
+import Control.Monad ((<=<))
+#endif
 import Data.Maybe (fromMaybe)
 import GHC.Stack (CallStack, HasCallStack, callStack, prettyCallStack)
 import qualified Language.Haskell.TH as TH
+
+reifyType :: TH.Name -> TH.TypeQ
+#if MIN_VERSION_template_haskell(2, 16, 0)
+reifyType = TH.reifyType
+#else
+reifyType =
+  (\case
+      TH.ClassOpI _ ty _ -> pure ty
+      TH.DataConI _ ty _ -> pure ty
+      TH.VarI _ ty _ -> pure ty
+      _ -> fail "Tried to reify the type of a term that isn't a function"
+  )
+    <=< TH.reify
+#endif
 
 -- | The name of the module for the plugin.
 pluginModule :: String
@@ -85,11 +103,12 @@ instance Show UnconvertedCall where
 instance Exception UnconvertedCall
 
 splitTy :: TH.Type -> TH.Q (([TH.TyVarBndr], TH.Cxt), (TH.Type, TH.Type))
-splitTy = \case
-  TH.ForallT vs ctx t -> first ((vs, ctx) <>) <$> splitTy t
-  TH.ForallVisT _ t -> splitTy t
-  TH.AppT (TH.AppT TH.ArrowT inp) outp -> pure (mempty, (inp, outp))
-  typ -> Exception.throwIOAsException (("unsupported type " <>) . show) typ
+splitTy (TH.AppT (TH.AppT TH.ArrowT inp) outp) = pure (mempty, (inp, outp))
+splitTy (TH.ForallT vs ctx t) = first ((vs, ctx) <>) <$> splitTy t
+#if MIN_VERSION_template_haskell(2, 16, 0)
+splitTy (TH.ForallVisT _ t) = splitTy t
+#endif
+splitTy typ = Exception.throwIOAsException (("unsupported type " <>) . show) typ
 
 generateResultName ::
   TH.Name ->
@@ -130,7 +149,7 @@ functionAs ::
   [Maybe TH.TypeQ] ->
   TH.DecsQ
 functionAs newName oldName k tys = do
-  ((vs, ctx), (input, output)) <- splitTy =<< TH.specializeT (TH.reifyType oldName) tys
+  ((vs, ctx), (input, output)) <- splitTy =<< TH.specializeT (reifyType oldName) tys
   functionAs' (TH.mkName newName) oldName vs ctx k input output
 
 functionAs' ::
@@ -172,7 +191,7 @@ separatelyAs ::
   [Maybe TH.TypeQ] ->
   TH.DecsQ
 separatelyAs newName oldName k tys = do
-  ((vs, ctx), (input, output)) <- splitTy =<< TH.specializeT (TH.reifyType oldName) tys
+  ((vs, ctx), (input, output)) <- splitTy =<< TH.specializeT (reifyType oldName) tys
   -- __TODO__: Fail if there's no module, because the name isn't global.
   let (modu, base) = (fromMaybe "" . TH.nameModule &&& TH.nameBase) oldName
       newName' = TH.mkName newName

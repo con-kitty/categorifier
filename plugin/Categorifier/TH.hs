@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 -- | Functions that should be part of @template-haskell@, but aren't.
 module Categorifier.TH
   ( nameQualified,
@@ -50,6 +52,7 @@ specializeT typ typs = do
       if null vars && null ctx
         then pure newType
         else TH.ForallT vars <$> fmap (filter hasVarT) (traverse go ctx) <*> pure newType
+#if MIN_VERSION_template_haskell(2, 16, 0)
     TH.ForallVisT bs t -> flip evalStateT mempty $ do
       -- Add substitutions for as many args as we can. Leave the tail of the binders alone.
       (vars, newType) <- applySubsts t bs typs
@@ -57,6 +60,7 @@ specializeT typ typs = do
         if null vars
           then newType
           else TH.ForallVisT vars newType
+#endif
     _ ->
       if null typs
         then typ
@@ -69,7 +73,9 @@ specializeT typ typs = do
     go :: TH.Type -> StateT (Map TH.Name TH.TypeQ) TH.Q TH.Type
     go = \case
       TH.ForallT bs ctx t -> TH.ForallT bs <$> fmap (filter hasVarT) (traverse go ctx) <*> go t
+#if MIN_VERSION_template_haskell(2, 16, 0)
       TH.ForallVisT bs t -> TH.ForallVisT bs <$> go t
+#endif
       TH.AppT a b -> TH.AppT <$> go a <*> go b
       TH.AppKindT t k -> TH.AppKindT <$> go t <*> pure k
       TH.SigT t k -> TH.SigT <$> go t <*> pure k
@@ -123,29 +129,30 @@ specializeT typ typs = do
             $ nonEmpty remainingArgs
 
 hasVarT :: TH.Type -> Bool
-hasVarT = \case
-  TH.ForallT {} -> True
-  TH.ForallVisT _ _ -> True
-  TH.AppT a b -> hasVarT a || hasVarT b
-  TH.AppKindT t _ -> hasVarT t
-  TH.SigT t _ -> hasVarT t
-  TH.VarT _ -> True
-  TH.ConT _ -> False
-  TH.PromotedT _ -> False
-  TH.InfixT a _ b -> hasVarT a || hasVarT b
-  TH.UInfixT a _ b -> hasVarT a || hasVarT b
-  TH.ParensT t -> hasVarT t
-  TH.TupleT _ -> False
-  TH.UnboxedTupleT _ -> False
-  TH.UnboxedSumT _ -> False
-  TH.ArrowT -> False
-  TH.EqualityT -> False
-  TH.ListT -> False
-  TH.PromotedTupleT _ -> False
-  TH.PromotedNilT -> False
-  TH.PromotedConsT -> False
-  TH.StarT -> False
-  TH.ConstraintT -> False
-  TH.LitT _ -> False
-  TH.WildCardT -> False
-  TH.ImplicitParamT _ t -> hasVarT t
+hasVarT TH.ForallT {} = True
+#if MIN_VERSION_template_haskell(2, 16, 0)
+hasVarT (TH.ForallVisT _ _) = True
+#endif
+hasVarT (TH.AppT a b) = hasVarT a || hasVarT b
+hasVarT (TH.AppKindT t _) = hasVarT t
+hasVarT (TH.SigT t _) = hasVarT t
+hasVarT (TH.VarT _) = True
+hasVarT (TH.ConT _) = False
+hasVarT (TH.PromotedT _) = False
+hasVarT (TH.InfixT a _ b) = hasVarT a || hasVarT b
+hasVarT (TH.UInfixT a _ b) = hasVarT a || hasVarT b
+hasVarT (TH.ParensT t) = hasVarT t
+hasVarT (TH.TupleT _) = False
+hasVarT (TH.UnboxedTupleT _) = False
+hasVarT (TH.UnboxedSumT _) = False
+hasVarT TH.ArrowT = False
+hasVarT TH.EqualityT = False
+hasVarT TH.ListT = False
+hasVarT (TH.PromotedTupleT _) = False
+hasVarT TH.PromotedNilT = False
+hasVarT TH.PromotedConsT = False
+hasVarT TH.StarT = False
+hasVarT TH.ConstraintT = False
+hasVarT (TH.LitT _) = False
+hasVarT TH.WildCardT = False
+hasVarT (TH.ImplicitParamT _ t) = hasVarT t

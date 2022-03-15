@@ -407,7 +407,7 @@ withNewBinding unboxedBinder boxedBinder =
 
 -- | This is only extracted in order to work with Ormolu's CPP support.
 extractCallSpecTarget :: Plugins.IdDetails -> Maybe Plugins.CCallTarget
-#if MIN_VERSION_GLASGOW_HASKELL(8,10,7,0)
+#if MIN_VERSION_ghc(8, 10, 7)
 extractCallSpecTarget (Plugins.FCallId (Plugins.CCall (Plugins.CCallSpec target _ _ _ _))) =
   pure target
 #else

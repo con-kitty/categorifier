@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -160,15 +161,20 @@ explainGadtProcessingFailure = \case
 --
 --  __TODO__: Currently just ignores var names, but should eventually keep track of them.
 alphaEquiv :: TH.Type -> TH.Type -> Maybe [(TH.Name, TH.Name)]
-alphaEquiv = curry $ \case
+alphaEquiv = curry alphaEquiv'
+
+alphaEquiv' :: (TH.Type, TH.Type) -> Maybe [(TH.Name, TH.Name)]
+#if MIN_VERSION_template_haskell(2, 16, 0)
+alphaEquiv' (TH.ForallVisT b t, TH.ForallVisT b' t') =
+  -- __TODO__: Ensure that the kinds of @b@ match, and that those names are added to the map
+  --          (order of @b@ matters)
+  bool Nothing (alphaEquiv t t') $ length b == length b'
+#endif
+alphaEquiv' ty = case ty of
   (TH.ForallT b c t, TH.ForallT b' c' t') ->
     -- __TODO__: Ensure that the kinds of @b@ match, and that those names are added to the map
     --          (order of @b@ matters)
     bool Nothing (alphaEquiv t t') $ length b == length b' && c == c'
-  (TH.ForallVisT b t, TH.ForallVisT b' t') ->
-    -- __TODO__: Ensure that the kinds of @b@ match, and that those names are added to the map
-    --          (order of @b@ matters)
-    bool Nothing (alphaEquiv t t') $ length b == length b'
   (TH.AppT c e, TH.AppT c' e') -> (<>) <$> alphaEquiv c c' <*> alphaEquiv e e'
   (TH.AppKindT t k, TH.AppKindT t' k') -> (<>) <$> alphaEquiv t t' <*> alphaEquiv k k'
   (TH.SigT t k, TH.SigT t' k') -> (<>) <$> alphaEquiv t t' <*> alphaEquiv k k'
@@ -205,7 +211,9 @@ alphaRename mapping = first NE.nub . alphaRename'
   where
     alphaRename' = \case
       TH.ForallT b c t -> TH.ForallT b <$> traverseD alphaRename' c <*\> alphaRename' t
+#if MIN_VERSION_template_haskell(2, 16, 0)
       TH.ForallVisT b t -> TH.ForallVisT b <$> alphaRename' t
+#endif
       TH.AppT c e -> TH.AppT <$> alphaRename' c <*\> alphaRename' e
       TH.AppKindT t k -> TH.AppKindT <$> alphaRename' t <*\> alphaRename' k
       TH.SigT t k -> TH.SigT <$> alphaRename' t <*\> alphaRename' k

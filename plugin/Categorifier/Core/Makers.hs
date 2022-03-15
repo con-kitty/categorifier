@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TupleSections #-}
@@ -26,7 +27,9 @@ import Data.Bitraversable (Bitraversable (..))
 import Data.Either.Extra (maybeToEither)
 import Data.Generics.Uniplate.Data (universeBi)
 import qualified GhcPlugins as Plugins
+#if MIN_VERSION_ghc(8, 10, 0)
 import qualified TyCoRep
+#endif
 
 -- Need Uniplate for traversals on GHC-provided recursive types
 {-# ANN module ("HLint: ignore Avoid restricted module" :: String) #-}
@@ -359,10 +362,15 @@ haskMakers dflags inScope guts hscEnv HaskOps {..} Hierarchy {..} cat =
     arrow is "=>", not "->".
     -}
     invisFunArg :: Plugins.Type -> Maybe Plugins.Type
+#if MIN_VERSION_ghc(8, 10, 0)
     invisFunArg = \case
       ty | Just ty' <- Plugins.coreView ty -> invisFunArg ty'
       TyCoRep.FunTy Plugins.InvisArg arg _ -> Just arg
       _ -> Nothing
+#else
+    invisFunArg =
+      (\(arg, _) -> if Plugins.isPredTy arg then pure arg else Nothing) <=< Plugins.splitFunTy_maybe
+#endif
 
     isPredTy' :: Plugins.Type -> Bool
     isPredTy' ty = Plugins.isPredTy ty || others ty

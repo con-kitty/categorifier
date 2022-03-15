@@ -2,7 +2,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TupleSections #-}
 -- To avoid turning @if then else@ into `ifThenElse`.
 {-# LANGUAGE NoRebindableSyntax #-}
 
@@ -541,7 +540,12 @@ mkTestTerms
   . HCons1 (TestCases (const [])) -- no support for `liftA2` in Categories
   . HCons1
     ( TestCases
-        (const [([t|Word8|], pure ([|(,pure) . Identity <$> Gen.enumBounded|], [|show . fst|]))])
+        ( const
+            [ ( [t|Word8|],
+                pure ([|(\x -> (x, pure)) . Identity <$> Gen.enumBounded|], [|show . fst|])
+              )
+            ]
+        )
     )
   . HCons1
     ( TestCases
