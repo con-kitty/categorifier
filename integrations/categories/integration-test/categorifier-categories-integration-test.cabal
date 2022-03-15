@@ -6,7 +6,7 @@ description:    Plugin using Kmett's Categories classes.
 homepage:       https://github.com/con-kitty/categorifier#readme
 bug-reports:    https://github.com/con-kitty/categorifier/issues
 build-type:     Simple
-tested-with:    GHC==8.10.1, GHC==8.10.2, GHC==8.10.4, GHC==8.10.7
+tested-with:    GHC==8.10.1, GHC==8.10.7
 
 source-repository head
   type: git
