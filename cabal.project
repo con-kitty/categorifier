@@ -1,40 +1,40 @@
 source-repository-package
   type: git
-  location: git://github.com/conal/concat.git
+  location: https://github.com/conal/concat.git
   tag: a0f894d73be00099b652010e22bf021637320881
   subdir: classes
 
 source-repository-package
   type: git
-  location: git://github.com/conal/concat.git
+  location: https://github.com/conal/concat.git
   tag: a0f894d73be00099b652010e22bf021637320881
   subdir: examples
 
 -- dependency of concat-classes, concat-examples
 source-repository-package
   type: git
-  location: git://github.com/conal/concat.git
+  location: https://github.com/conal/concat.git
   tag: a0f894d73be00099b652010e22bf021637320881
   subdir: inline
 
 -- dependency of concat-classes, concat-examples
 source-repository-package
   type: git
-  location: git://github.com/conal/concat.git
+  location: https://github.com/conal/concat.git
   tag: a0f894d73be00099b652010e22bf021637320881
   subdir: known
 
 -- dependency of concat-examples
 source-repository-package
   type: git
-  location: git://github.com/conal/concat.git
+  location: https://github.com/conal/concat.git
   tag: a0f894d73be00099b652010e22bf021637320881
   subdir: plugin
 
 -- dependency of concat-classes
 source-repository-package
   type: git
-  location: git://github.com/conal/concat.git
+  location: https://github.com/conal/concat.git
   tag: a0f894d73be00099b652010e22bf021637320881
   subdir: satisfy
 
