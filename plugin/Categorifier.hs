@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 
@@ -28,6 +29,7 @@ import PyF (fmt)
 --   Plugins](https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/extending_ghc.html#compiler-plugins) [ ](DONTLINTLINELENGTH)
 --   for more information.
 plugin :: GhcPlugins.Plugin
+#if MIN_VERSION_ghc(8, 6, 0)
 plugin =
   GhcPlugins.defaultPlugin
     { GhcPlugins.installCoreToDos =
@@ -38,6 +40,17 @@ plugin =
             . pure,
       GhcPlugins.pluginRecompile = GhcPlugins.purePlugin
     }
+#else
+plugin =
+  GhcPlugins.defaultPlugin
+    { GhcPlugins.installCoreToDos =
+        \opts ->
+          join
+            . GhcPlugins.liftIO
+            . liftA2 Categorifier.Core.install (partitionOptions' opts)
+            . pure
+    }
+#endif
 
 partitionOptions' :: [GhcPlugins.CommandLineOption] -> IO (Map OptionGroup [Text])
 partitionOptions' opts =

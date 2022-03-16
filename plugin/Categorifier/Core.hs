@@ -32,7 +32,7 @@ import Categorifier.Core.Types
     MissingSymbol (..),
     neverAutoInterpret,
   )
-import Categorifier.Duoidal (Parallel (..), traverseD, (=<\<))
+import Categorifier.Duoidal (Parallel (..), foldMapD, traverseD, (=<\<))
 import Categorifier.Hierarchy
   ( First (..),
     Hierarchy,
@@ -55,7 +55,6 @@ import qualified Data.List.NonEmpty as NE
 import Data.List.NonEmpty.Extra (NonEmpty, nonEmpty, nubOrd)
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Data.Monoid (Ap (..))
 import Data.Text (Text)
 import qualified Data.Text as Text
 import qualified DynamicLoading as Dynamic
@@ -121,7 +120,7 @@ install opts todos = do
       Plugins.CoreDoSimplify numIterations _ -> numIterations > 0
       _ -> False
 
-removeBuiltinRules :: [Plugins.RuleName] -> Plugins.CorePluginPass
+removeBuiltinRules :: [Plugins.RuleName] -> Plugins.ModGuts -> Plugins.CoreM Plugins.ModGuts
 removeBuiltinRules names = pure . mapModGutsRules (filter (not . ruleMatches))
   where
     ruleMatches r = Plugins.isBuiltinRule r && Plugins.ru_name r `elem` names
@@ -172,7 +171,8 @@ addCategorifyRules ::
   Plugins.DynFlags ->
   Plugins.Id ->
   Map OptionGroup [Text] ->
-  Plugins.CorePluginPass
+  Plugins.ModGuts ->
+  Plugins.CoreM Plugins.ModGuts
 addCategorifyRules dflags convert opts guts =
   either (throwIOAsException $ prettyMissingSymbols dflags) (\r -> pure (mapModGutsRules (r <>) guts))
     =<< categorifyRules convert opts guts
@@ -380,7 +380,7 @@ categorifyRules convert opts guts =
     additionalBoxers <- additionalBoxers'
     tryAutoInterpret <- autoInterpreter
     h <- hierarchy
-    bh <- getParallel $ combineHierarchies [baseHierarchy, Parallel hierarchy]
+    bh <- combineHierarchies [getParallel baseHierarchy, hierarchy]
     makerMapFun <- makerMap
     baseIdentifiers <- getParallel getBaseIdentifiers
     uniqS <- lift Plugins.getUniqueSupplyM
@@ -418,7 +418,7 @@ categorifyRules convert opts guts =
                       exprs
                 else Nothing
   where
-    combineHierarchies = getAp . fmap getFirst . foldMap (Ap . fmap First)
+    combineHierarchies = fmap getFirst . foldMapD (fmap First)
 
 -- | Fold everything in our stack down to `IO`. The plugin system gives us basically no outlet for
 --   errors or anything, so we need to process everything before we return. This does the "safe"

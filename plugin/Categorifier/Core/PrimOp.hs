@@ -683,11 +683,12 @@ replacePrimOps resultType replaceExpr = do
              where `trueExpr' = replacePrimOps resultType trueExpr`. Same for `falseExpr'`.
           -}
           | Plugins.boolTy `Plugins.eqType` newScTy,
-            [ (Plugins.DEFAULT, [], falseExpr),
-              (Plugins.LitAlt one, [], trueExpr)
-              ] <-
-              alts,
+            [(Plugins.DEFAULT, [], falseExpr), (Plugins.LitAlt one, [], trueExpr)] <- alts,
+#if MIN_VERSION_ghc(8, 6, 0)
             Plugins.LitNumber _litCoreTy 1 _litHsTy <- one ->
+#else
+            Plugins.LitInteger 1 _litHsTy <- one ->
+#endif
               fmap
                 (rpoLabel "4b Bool" caseExpr)
                 $ do
@@ -716,7 +717,11 @@ replacePrimOps resultType replaceExpr = do
               alts,
             Plugins.varType bndr `Plugins.eqType` TysPrim.intPrimTy,
             ty `Plugins.eqType` Plugins.boolTy,
+#if MIN_VERSION_ghc(8, 6, 0)
             Plugins.LitNumber _litCoreTy 0 _litHsTy <- zero,
+#else
+            Plugins.LitInteger 0 _litHsTy <- zero,
+#endif
             Just tdc <- Plugins.isDataConId_maybe t,
             tdc == Plugins.trueDataCon,
             Just fdc <- Plugins.isDataConId_maybe f,
@@ -792,9 +797,15 @@ replacePrimOps resultType replaceExpr = do
                           -- __TODO__: We've run into Core Lint complaints here when dealing with
                           -- negative literals (e.g., @-1# :: Int32@), but we've managed to avoid them
                           -- by interpreting operations where they occur.
+#if MIN_VERSION_ghc(8, 6, 0)
                           (Plugins.LitAlt (Plugins.LitNumber nt i _oldTy), _binds, litExpr) ->
                             Right . (Plugins.LitNumber nt i t,)
                               <$> replacePrimOps resultType litExpr
+#else
+                          (Plugins.LitAlt (Plugins.LitInteger i _oldTy), _binds, litExpr) ->
+                            Right . (Plugins.LitInteger i t,)
+                              <$> replacePrimOps resultType litExpr
+#endif
                           (Plugins.LitAlt x, _binds, _e) ->
                             lift . throwE . pure $ UnsupportedPrimitiveLiteral x caseExpr
                           (Plugins.DataAlt dc, _binds, _e) ->
@@ -1129,10 +1140,13 @@ scanForBinderEBTViaReboxing boxers binder = \case
   _ -> Nothing
 
 setLiteralType :: Plugins.Type -> Plugins.Literal -> Plugins.Literal
-setLiteralType toType = \case
-  Plugins.LitNumber litNumTy litNumVal _oldType ->
-    Plugins.LitNumber litNumTy litNumVal toType
-  x -> x
+#if MIN_VERSION_ghc(8, 6, 0)
+setLiteralType toType (Plugins.LitNumber litNumTy litNumVal _oldType) =
+  Plugins.LitNumber litNumTy litNumVal toType
+#else
+setLiteralType toType (Plugins.LitInteger litNumVal _oldType) = Plugins.LitInteger litNumVal toType
+#endif
+setLiteralType _ x = x
 
 -- | Determines whether the given type is a primitive type, or a function type
 -- whose argument types or result type contains a primitive type.

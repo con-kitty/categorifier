@@ -9,7 +9,7 @@ description:    Unconstrained versions of Conal's ConCat classes. They can be us
 homepage:       https://github.com/con-kitty/categorifier#readme
 bug-reports:    https://github.com/con-kitty/categorifier/issues
 build-type:     Simple
-tested-with:    GHC==8.6.1, GHC==8.8.1, GHC==8.10.1, GHC==8.10.7
+tested-with:    GHC==8.4.1, GHC==8.6.1, GHC==8.8.1, GHC==8.10.1, GHC==8.10.7
 
 source-repository head
   type: git
@@ -36,7 +36,6 @@ library
     , FlexibleInstances
     , FunctionalDependencies
     , LambdaCase
-    , NoStarIsType
     , TypeOperators
     , BangPatterns
     , StandaloneDeriving

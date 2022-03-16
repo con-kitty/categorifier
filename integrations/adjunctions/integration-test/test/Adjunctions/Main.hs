@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -35,8 +36,10 @@ mkTestTerms
   Adjunctions.testTerms
   --             name   type      prefix       strategy
   [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
-    TestCategory ''Hask [t|Hask|] "hask" (ComputeFromInput [|runHask|]),
-    TestCategory ''(->) [t|(->)|] "plainArrow" (ComputeFromInput [|id|])
+#if MIN_VERSION_GLASGOW_HASKELL(8, 6, 0, 0)
+    TestCategory ''(->) [t|(->)|] "plainArrow" (ComputeFromInput [|id|]),
+#endif
+    TestCategory ''Hask [t|Hask|] "hask" (ComputeFromInput [|runHask|])
   ]
   -- adjunctions
   . HCons1 (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))

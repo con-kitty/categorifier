@@ -45,7 +45,6 @@ import Control.Monad.Trans.Writer.Strict (WriterT (..))
 import Data.Bifunctor (bimap, first)
 import Data.Bitraversable (Bitraversable, bisequence, bitraverse)
 import Data.Functor.Compose (Compose (..))
-import Data.Monoid (Ap (..))
 
 newtype Parallel f a = Parallel {getParallel :: f a}
 
@@ -107,8 +106,11 @@ sequenceD = getParallel . traverse Parallel
 traverseD :: (Traversable t, Duoid f) => (a -> f b) -> t a -> f (t b)
 traverseD f = getParallel . traverse (Parallel . f)
 
+-- | `foldMap` over a `Duoid`.
 foldMapD :: (Foldable t, Duoid f, Monoid b) => (a -> f b) -> t a -> f b
-foldMapD f = getParallel . getAp . foldMap (Ap . Parallel . f)
+-- __NB__: This is implemented with `foldr` instead of `foldMap`, because the latter requires `Ap`,
+--         which doesn't exist before base 4.12 (GHC 8.6).
+foldMapD f = getParallel . foldr (liftA2 (<>) . Parallel . f) (pure mempty)
 
 -- INSTANCES
 
