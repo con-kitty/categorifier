@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -38,7 +39,9 @@ mkTestTerms
   defaultTestTerms
   --             name     type         prefix       strategy
   [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
+#if MIN_VERSION_GLASGOW_HASKELL(8, 6, 0, 0)
     TestCategory ''(->) [t|(->)|] "plainArrow" (ComputeFromInput [|id|]),
+#endif
     TestCategory ''Hask [t|Hask|] "hask" (ComputeFromInput [|runHask|])
   ]
   -- core

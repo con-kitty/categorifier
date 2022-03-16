@@ -171,7 +171,11 @@ instance Plugins.Outputable (Unpretty Plugins.Coercion) where
       "UnivCo" <+> Plugins.ppr prov <+> Plugins.ppr role <+> Plugins.ppr ty <+> Plugins.ppr ty'
     TyCoRep.SymCo co -> "SymCo" <+> nestedCo co
     TyCoRep.TransCo co co' -> "TransCo" <+> nestedCo co <+> nestedCo co'
+#if MIN_VERSION_ghc(8, 6, 0)
     TyCoRep.NthCo rule i co -> "NthCo" <+> Plugins.ppr rule <+> Plugins.ppr i <+> nestedCo co
+#else
+    TyCoRep.NthCo i co -> "NthCo" <+> Plugins.ppr i <+> nestedCo co
+#endif
     TyCoRep.LRCo lr coN -> "LRCo" <+> Plugins.ppr lr <+> nestedCo coN
     TyCoRep.InstCo co coN -> "InstCo" <+> nestedCo co <+> nestedCo coN
     TyCoRep.KindCo co -> "KindCo" <+> nestedCo co
@@ -181,7 +185,9 @@ instance Plugins.Outputable (Unpretty Plugins.Coercion) where
       nestedCo :: Plugins.Outputable (Unpretty a) => a -> Plugins.SDoc
       nestedCo = Plugins.parens . Plugins.ppr . Unpretty
 
+#if MIN_VERSION_ghc(8, 6, 0)
 instance Plugins.Outputable (Unpretty Plugins.MCoercion) where
   ppr (Unpretty mco) = case mco of
     Plugins.MRefl -> "MRefl"
     Plugins.MCo co -> "MCo" <+> Plugins.parens (Plugins.ppr (Unpretty co))
+#endif

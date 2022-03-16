@@ -78,10 +78,17 @@ runtimeCallStack = \case
                 Plugins.App _ (Plugins.Lit (Plugins.MachStr modu)),
                 Plugins.App _ (Plugins.Lit (Plugins.MachStr file)),
 #endif
+#if MIN_VERSION_ghc(8, 6, 0)
                 Plugins.App _ (Plugins.Lit (Plugins.LitNumber _ startLine _)),
                 Plugins.App _ (Plugins.Lit (Plugins.LitNumber _ startCol _)),
                 Plugins.App _ (Plugins.Lit (Plugins.LitNumber _ endLine _)),
                 Plugins.App _ (Plugins.Lit (Plugins.LitNumber _ endCol _))
+#else
+                Plugins.App _ (Plugins.Lit (Plugins.LitInteger startLine _)),
+                Plugins.App _ (Plugins.Lit (Plugins.LitInteger startCol _)),
+                Plugins.App _ (Plugins.Lit (Plugins.LitInteger endLine _)),
+                Plugins.App _ (Plugins.Lit (Plugins.LitInteger endCol _))
+#endif
               ]
             )
           ) ->

@@ -1,4 +1,5 @@
 {-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
@@ -73,6 +74,14 @@ import HscTypes (lookupDataCon, lookupId, lookupTyCon)
 import qualified PrimOp
 import qualified Unique
 import Prelude hiding (mod)
+
+lookupRdrNameInModuleForPlugins' :: Plugins.HscEnv -> ModuleName -> RdrName -> IO (Maybe Name)
+#if MIN_VERSION_ghc(8, 6, 0)
+lookupRdrNameInModuleForPlugins' hscEnv modu =
+  fmap (fmap fst) . lookupRdrNameInModuleForPlugins hscEnv modu
+#else
+lookupRdrNameInModuleForPlugins' = lookupRdrNameInModuleForPlugins
+#endif
 
 -- | This is the type for @(->)@ when you want to apply it to types of kind `Data.Kind.Type`. It's
 --   easy to build this incorrectly and Core won't tell you that you have, so use this instead.
@@ -620,7 +629,7 @@ emptyHierarchy =
 lookupName :: ModuleName -> (String -> Plugins.OccName) -> String -> CoreM (Maybe Plugins.Name)
 lookupName modu mkOcc str = do
   hscEnv <- getHscEnv
-  liftIO . fmap (fmap fst) . lookupRdrNameInModuleForPlugins hscEnv modu . Unqual $ mkOcc str
+  liftIO . lookupRdrNameInModuleForPlugins' hscEnv modu . Unqual $ mkOcc str
 
 -- __TODO__: This can throw in `lookupRdrNameInModuleForPlugins` if it can't find the module. We
 --           should capture that.
