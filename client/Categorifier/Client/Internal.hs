@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -26,6 +27,7 @@ import Data.Semigroup (Any (..))
 import Data.Tuple.Extra (fst3, snd3, thd3)
 import Data.Void (Void)
 import qualified Language.Haskell.TH as TH
+import PyF (fmt)
 
 -- | Convert to and from standard representations. Used for transforming case expression scrutinees
 --   and constructor applications. The 'repr' method should convert to a standard representation
@@ -140,20 +142,18 @@ deriveHasRep name =
   where
     explainDeriveCallFailure = \case
       GadtProcessingFailures failures ->
-        "Some GADT alternatives had errors while processing:"
-          <> mconcat (toList $ fmap (("\n- " <>) . explainGadtProcessingFailure) failures)
-      InvalidName info -> "expected type constructor for " <> show name <> " but got " <> show info
+        [fmt|Some GADT alternatives had errors while processing: \
+{mconcat (toList $ fmap (("\n- " <>) . explainGadtProcessingFailure) failures)}|]
+      InvalidName info -> [fmt|expected type constructor for {show name} but got {show info}|]
       MisquotedName ->
-        "expected type constructor for "
-          <> show name
-          <> " but got Data Constructor. Did you only put one apostrophe on your thingy?"
+        [fmt|expected type constructor for {show name} but got data constructor. Did you only put\
+one apostrophe on your thingy?|]
 
 explainGadtProcessingFailure :: GadtProcessingFailure -> String
 explainGadtProcessingFailure = \case
   GadtMissingName ty ->
-    "a GADT constructor with type "
-      <> show ty
-      <> " has no constructor name. This should be impossible."
+    [fmt|a GADT constructor with type {show ty} has no constructor name. \
+This should be impossible.|]
   UnableToAlphaRename _ -> ""
 
 -- | Checks if two types are alpha equivalent. If so, it returns a mapping between the variable
@@ -381,4 +381,4 @@ deriveHasRep' = \case
          in (mkL <$> mkNestedSums mkL mkR ys) <> (mkR <$> mkNestedSums mkL mkR zs)
 
     varSupply :: [TH.Name]
-    varSupply = TH.mkName <$> ["hasrep_" <> i | i <- show <$> [0 :: Int ..]]
+    varSupply = TH.mkName <$> [[fmt|hasrep_{i}|] | i <- show <$> [0 :: Int ..]]

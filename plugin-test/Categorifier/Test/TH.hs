@@ -1,3 +1,4 @@
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 
@@ -36,6 +37,7 @@ import Data.Tuple.Extra (uncurry3)
 import qualified Hedgehog
 import Language.Haskell.TH (Dec, Exp, Name, Q, Type)
 import qualified Language.Haskell.TH as TH
+import PyF (fmt)
 
 data TestCategory = TestCategory
   { arrName :: Name,
@@ -86,7 +88,7 @@ mkTernaryTestConfig :: String -> TestCategory -> TestConfig
 mkTernaryTestConfig funName' arrowTy = TestConfig arrowTy funName' [|uncurry3|]
 
 mkPropName :: Int -> Name -> Name
-mkPropName i = TH.mkName . (\nm -> "hprop_" <> nm <> show i) . TH.nameBase
+mkPropName i = TH.mkName . (\nm -> [fmt|hprop_{nm}{show i}|]) . TH.nameBase
 
 mkPropLabel :: Int -> Name -> String
 mkPropLabel i = (<> show i) . TH.nameBase

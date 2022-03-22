@@ -95,25 +95,15 @@ maybeTraceWithStack doTrace render act a =
 takeLines :: Int -> Int -> String -> String
 takeLines x y s
   | x < 0 || y < 0 = s
-  | otherwise = prefix <> omitted <> suffix
+  | otherwise = [fmt|{prefix}{omitted}{suffix}|]
   where
-    (xs, ys) = List.splitAt x (List.lines s)
-    (zs, ws) = List.splitAtEnd y ys
+    (xs, (zs, ws)) = List.splitAtEnd y <$> List.splitAt x (List.lines s)
     prefix = List.intercalate "\n" xs
-    omitted =
-      if null zs
-        then ""
-        else
-          (if x == 0 then "" else "\n")
-            <> "<...omitted "
-            <> show (length zs)
-            <> " lines>"
+    omitted = if null zs then "" else [fmt|\n<...omitted {length zs} lines>|] :: String
     suffix =
       if null ws || y == 0
         then ""
-        else
-          (if x == 0 && null zs then "" else "\n")
-            <> List.intercalate "\n" ws
+        else (if x == 0 && null zs then "" else "\n") <> List.intercalate "\n" ws
 
 -- | An `IORef` holding (incrementing step id, call stack).
 stepInfoRef :: IORef (Int, [Int])

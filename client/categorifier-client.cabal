@@ -22,6 +22,7 @@ library
       Paths_categorifier_client
   ghc-options: -Wall
   build-depends:
+    , PyF
     , base
     , categorifier-common
     , categorifier-duoids

@@ -254,14 +254,9 @@ lookupOpTyCons dflags debug convVar opMap (var, argCons, resCon) =
   go
     <|> maybeTraceWith
       debug
-      ( const $
-          "lookupOpTyCons: boxed equivalent for "
-            <> dbg var
-            <> " :: ("
-            <> dbg (fmap Plugins.mkTyConTy argCons)
-            <> " -> "
-            <> dbg (Plugins.mkTyConTy resCon)
-            <> ") not found."
+      ( const [fmt|"lookupOpTyCons: boxed equivalent for
+  {dbg var} :: {dbg $ Plugins.mkTyConTy <$> argCons} -> {dbg $ Plugins.mkTyConTy resCon}
+not found.|]
       )
       Nothing
   where
@@ -488,13 +483,11 @@ replacePrimOps resultType replaceExpr = do
     Reader.ask
   let rpoLabel :: (Plugins.Outputable a, Plugins.Outputable b) => String -> a -> b -> b
       rpoLabel which before =
-        maybeTraceWith
-          debug
-          (\x -> "replacePrimOps " <> which <> "> " <> dbg before <> " ---> " <> dbg x)
+        maybeTraceWith debug (\x -> [fmt|replacePrimOps {which}> {dbg before} ---> {dbg x}|])
   whenJust resultType $ \ty ->
     when (containsPrimitiveType ty) $
       lift . throwE . pure $ UnexpectedUnboxedType "replacePrimOps" ty replaceExpr
-  maybeTraceWith debug (\x -> "replacePrimOps> " <> dbg x) <$> case replaceExpr of
+  maybeTraceWith debug (\x -> [fmt|replacePrimOps> {dbg x}|]) <$> case replaceExpr of
     -- Case 14. Enum comparisons
     --
     -- GHC will unbox enum representations via "tags" to compare them.  We will only encounter this
@@ -553,7 +546,7 @@ replacePrimOps resultType replaceExpr = do
         (Plugins.Var toInt, args@[Plugins.Type fromType, _f, arg]) <- Plugins.collectArgs v,
         Plugins.varName toInt == Plugins.toIntegerName,
         Just toType <- resultType ->
-          rpoLabel ("7c (" <> dbg args <> ")") appCase
+          rpoLabel [fmt|"7c ({dbg args})|] appCase
             <$> ( Plugins.App
                     <$> lift (mkFromIntegral makers fromType toType)
                     <*\> replacePrimOps (pure fromType) arg
@@ -648,17 +641,9 @@ replacePrimOps resultType replaceExpr = do
                     ( maybeTraceWith
                         debug
                         ( \x ->
-                            "replacePrimOps 5> "
-                              <> "\n[ "
-                              <> dbg unb
-                              <> " : "
-                              <> dbg bndr'
-                              <> " :: "
-                              <> dbg (Plugins.varType bndr')
-                              <> " ]\n"
-                              <> dbg caseExpr
-                              <> " ---> "
-                              <> dbg x
+                            [fmt|replacePrimOps 5>
+[ {dbg unb} : {dbg bndr'} :: {dbg (Plugins.varType bndr')} ]
+{dbg caseExpr} ---> {dbg x}|]
                         )
                     )
                     . withNewBinding unb bndr'
@@ -1028,18 +1013,11 @@ mkBoxedVarFrom pfx ty v = do
       rpoCtxShouldTrace = debug
     } <-
     fst <$> Reader.ask
-  maybeTraceWith
-    debug
-    ( \x ->
-        "mkBoxedVarFrom made: "
-          <> dbg x
-          <> " :: "
-          <> dbg (Plugins.varType x)
-    )
+  maybeTraceWith debug (\x -> [fmt|mkBoxedVarFrom made: {dbg x} :: {dbg $ Plugins.varType x}|])
     . mkVar varName ty
     <$> lift getUnique
   where
-    varName = pfx <> "_" <> getName v
+    varName = [fmt|{pfx}_{getName v}|]
     errString =
       "<Categorifier.Core.Categorify: unboxing `case` transformation var>"
     getName = Plugins.occNameString . Plugins.nameOccName . Plugins.varName
@@ -1195,7 +1173,7 @@ replaceFunCall deduceArg deduceResult chooseMap outerExpr mbResultTy fid argumen
       (primArgTypes, boxedArgTypes) = List.partition Plugins.isPrimitiveType argTypes
       stillHavePrims = not $ List.null primArgTypes
       accumWithTypes =
-        foldr (\x acc -> dbg x <> " :: " <> dbg (Plugins.exprType x) <> "\n" <> acc) ""
+        foldr (\x acc -> [fmt|{dbg x} :: {dbg $ Plugins.exprType x}\n{acc}|]) ("" :: String)
       -- This seems like it should be handled elsewhere eventually.  Note that the second case may
       -- receive more than two arguments, which is not currently expected to work.
       apply fun = \case
@@ -1594,7 +1572,7 @@ mkFpCCallBoxers makers (tc, dc, suffix) =
   where
     ty = Plugins.mkTyConTy tc
     renameBoxer (Boxer m f d t, args, res) =
-      (Boxer m (f <> suffix) d t, args, res)
+      (Boxer m [fmt|{f}{suffix}|] d t, args, res)
 
 findCCallBoxer ::
   [(Plugins.CLabelString, (Boxer, [Plugins.Type], Plugins.Type))] ->
@@ -1607,7 +1585,7 @@ findCCallBoxer additionalBoxers makers dflags debug x =
   lookup x table
     <|> maybeTraceWith
       debug
-      (const $ "findCCallBoxer: boxed equivalent for C function '" <> dbg x <> "' not found.")
+      (const [fmt|"findCCallBoxer: boxed equivalent for C function '{dbg x}' not found."|])
       Nothing
   where
     dbg = renderSDoc dflags . Plugins.ppr

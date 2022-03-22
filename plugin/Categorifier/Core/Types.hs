@@ -1,5 +1,7 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TupleSections #-}
 -- -Wno-orphans is so we can add missing instances to `Bag.Bag`
 {-# OPTIONS_GHC -Wno-orphans #-}
@@ -33,6 +35,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import ErrUtils (ErrorMessages, WarningMessages)
 import qualified GhcPlugins as Plugins
+import PyF (fmt)
 
 -- | Need this instance to use a `Bag.Bag` as the output of @RWST@.
 instance Semigroup (Bag.Bag a) where
@@ -145,7 +148,7 @@ instance Plugins.Outputable WithIdInfo where
                 else
                   ( maybe
                       ""
-                      (\m -> Plugins.text $ Plugins.moduleNameString (Plugins.moduleName m) <> ".")
+                      (\m -> [fmt|{Plugins.moduleNameString $ Plugins.moduleName m}.|])
                       (Plugins.nameModule_maybe $ Plugins.varName v)
                       Plugins.<>
                   )

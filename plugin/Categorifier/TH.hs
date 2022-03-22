@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 -- | Functions that should be part of @template-haskell@, but aren't.
 module Categorifier.TH
@@ -19,10 +20,12 @@ import qualified Data.Map as Map
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.These (These (..))
 import qualified Language.Haskell.TH as TH
+import PyF (fmt)
 
 -- | It generates the fully-qualified name.
 nameQualified :: TH.Name -> String
-nameQualified name = maybe "" (<> ".") (TH.nameModule name) <> TH.nameBase name
+nameQualified name =
+  maybe (TH.nameBase name) (\modu -> [fmt|{modu}.{TH.nameBase name}|]) $ TH.nameModule name
 
 data SpecializationFailure
   = NotAParameterizedType
@@ -32,7 +35,7 @@ prettySpecializationFailure :: SpecializationFailure -> String
 prettySpecializationFailure = \case
   NotAParameterizedType -> "Attempted to specialize a type that doesn't have any type variables."
   TooManySpecializers extras ->
-    "Specialized a parameterized type, but had leftover specializers: " <> show extras
+    [fmt|Specialized a parameterized type, but had leftover specializers: {show extras}|]
 
 -- | It specializes a `TH.ForallT` or `TH.ForallVisT`.
 specializeT ::

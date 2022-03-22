@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -74,6 +75,7 @@ import qualified TyCoRep
 import qualified TysWiredIn
 import qualified Unique
 import Prelude hiding (head)
+import PyF (fmt)
 
 -- Need Uniplate for traversals on GHC-provided recursive types
 {-# ANN module ("HLint: ignore Avoid restricted module" :: String) #-}
@@ -128,7 +130,7 @@ categorify
     (fmap markBindNoInline -> dictVarBinds) <-
       fmap (uncurry Plugins.NonRec . fst) . sortOn snd <$> getCreatedDictVars
     let res =
-          maybeTraceWith debug (\res' -> "result size: " <> show (exprSize res'))
+          maybeTraceWith debug (\res' -> [fmt|result size: {show $ exprSize res'}|])
             . maybeTraceWith debug (thump "result")
             . Plugins.mkCoreLets dictVarBinds
             $ Plugins.mkCoreLets binds res1
@@ -518,16 +520,12 @@ categorify
                       maybeTraceWith
                         debug
                         ( \bt ->
-                            "case> fallback:\nscrut:\t"
-                              <> dbg scrut
-                              <> "\nbinder:\t"
-                              <> dbg unsafeBinder
-                              <> "\nbinder type:\t"
-                              <> dbg bt
-                              <> "\ntype:\t"
-                              <> dbg typ
-                              <> "\nalts:\t"
-                              <> dbg alts
+                            [fmt|case> fallback:
+      scrut: {dbg scrut}
+     binder: {dbg unsafeBinder}
+binder type: {dbg bt}
+       type: {dbg typ}
+       alts: {dbg alts}|]
                         )
                         -- scrut type sometimes differs from binder type, e.g.,
                         --
@@ -840,7 +838,7 @@ categorify
           maker2 = makeMaker2 m (categorifyLambda n) expr
 
           mkNative' = do
-            let tagTy = TyCoRep.LitTy . TyCoRep.StrTyLit . Plugins.mkFastString $ modu <> "." <> var
+            let tagTy = TyCoRep.LitTy $ TyCoRep.StrTyLit [fmt|{modu}.{var}|]
                 f = fst $ applyTyAndPredArgs Plugins.Var (Plugins.Var target) args
             (argTy, resTy) <-
               maybe (throwE . pure $ NotFunTy f (Plugins.exprType f)) pure $
@@ -985,7 +983,7 @@ categorify
             | otherwise = pure Nothing
 
           tryAutoInterpret' =
-            fmap (fmap (maybeTraceWith debug (const $ "Automatically interpreted " <> dbg target)))
+            fmap (fmap (maybeTraceWith debug (const [fmt|Automatically interpreted {dbg target}|])))
               . tryAutoInterpret
                 buildDictionary
                 cat
@@ -1146,6 +1144,8 @@ categorify
                     $ Map.lookup f lets <!> Plugins.maybeUnfoldingTemplate unf
             e -> onNonVar' e
 
+      handlePrimOps ::
+        String -> Plugins.Var -> Plugins.CoreExpr -> TyCoRep.Type -> CategoryStack Plugins.CoreExpr
       handlePrimOps label name expr resultType = do
         boxedOps <-
           PrimOp.replace
@@ -1156,13 +1156,13 @@ categorify
             baseIdentifiers
             getUnique
             resultType
-            $ maybeTraceWith debug (\x -> "going primitive> " <> label <> ": " <> dbg x) expr
+            $ maybeTraceWith debug (\x -> [fmt|going primitive> {label}: {dbg x}|]) expr
         _ <-
           -- __FIXME__: In some cases this check should not be performed; see #23
           PrimOp.checkForUnboxedVars boxedOps $
             maybeTraceWith
               debug
-              (\x -> "primitive> " <> label <> ": " <> dbg x)
+              (\x -> [fmt|"primitive> {label}: {dbg x}|])
               boxedOps
         categorifyLambda name boxedOps
 
