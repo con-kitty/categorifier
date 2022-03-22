@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes #-}
 -- Because `ZonkEnv` isn't exported before GHC 8.8, so we use @_@ instead.
 {-# LANGUAGE PartialTypeSignatures #-}
 -- -Wno-orphans is so we can add missing instances to `Bag.Bag`
@@ -57,6 +58,7 @@ import qualified Predicate as Core
 #else
 import qualified Id as Core
 #endif
+import PyF (fmt)
 import SimplCore (simplifyExpr)
 import qualified TcErrors as Typechecker
 import qualified TcEvidence as Typechecker
@@ -290,7 +292,7 @@ stringToName str =
     (Plugins.mkFastString str)
 
 cacheKey :: Plugins.Type -> DictCacheKey
-cacheKey ty = modu <> "." <> Plugins.showSDocUnsafe (Plugins.ppr ty)
+cacheKey ty = [fmt|{modu}.{Plugins.showSDocUnsafe $ Plugins.ppr ty}|]
   where
     tyCon = fst $ Plugins.splitTyConApp ty
     name = Plugins.tyConName tyCon

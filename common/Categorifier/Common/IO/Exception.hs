@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
@@ -144,6 +145,7 @@ import Control.Exception (throw)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Typeable (Typeable)
 import GHC.Stack (CallStack, HasCallStack, callStack, prettyCallStack)
+import PyF (fmt)
 import UnliftIO (MonadUnliftIO)
 import UnliftIO.Exception (Exception (..), SomeException)
 import qualified UnliftIO.Exception as Exception
@@ -175,7 +177,7 @@ instance Exception e => Show (CallStacked e) where
   show = displayException
 
 instance Exception e => Exception (CallStacked e) where
-  displayException (CallStacked e calls') = displayException e <> "\n" <> prettyCallStack calls'
+  displayException (CallStacked e calls') = [fmt|{displayException e}\n{prettyCallStack calls'}|]
 
 -- | Bundles up the current call stack information with the given value.
 addCallStack :: HasCallStack => e -> CallStacked e

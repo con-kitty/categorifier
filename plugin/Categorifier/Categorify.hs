@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 -- | These are the operations to use with the "Categorifier" plugin, which trigger conversion from
@@ -31,6 +32,7 @@ import Control.Monad ((<=<))
 import Data.Maybe (fromMaybe)
 import GHC.Stack (CallStack, HasCallStack, callStack, prettyCallStack)
 import qualified Language.Haskell.TH as TH
+import PyF (fmt)
 
 reifyType :: TH.Name -> TH.TypeQ
 #if MIN_VERSION_template_haskell(2, 16, 0)
@@ -83,22 +85,19 @@ data UnconvertedCall = forall a b. UnconvertedCall (a -> b) CallStack
 -- | Defined because it's required by the `Exception` instance, this is not a standard `Show`.
 instance Show UnconvertedCall where
   show (UnconvertedCall _ calls) =
-    unlines
-      [ "error: " <> pluginModule <> " failed to eliminate a call to",
-        "      `" <> TH.nameQualified 'expression <> "`.",
-        "  | This should only be possible if the module mentioned above was compiled",
-        "  | without the " <> pluginModule <> " plugin enabled. Ensure that you're",
-        "  | configuring it properly for your build process. E.g., passing",
-        "  | `-fplugin=" <> pluginModule <> "` to GHC directly, or adding",
-        "  | `plugins = [\"//code_generation/category:categorify\"]` to your Bazel target.",
-        "  |",
-        "  | It's also possible that some other plugin that you've enabled has interfered",
-        "  | with this one. If you've enabled other plugins, try permuting the order of",
-        "  | the `-fplugin` flags. (GHC installs the plugins in the /reverse/ order that",
-        "  | `-fplugin` flags are provided on the command line.)",
-        "",
-        prettyCallStack calls
-      ]
+    let functionName = TH.nameQualified 'expression
+     in [fmt|error: {pluginModule} failed to eliminate a call to `{functionName}`.
+  | This should only be possible if the module mentioned above was compiled
+  | without the {pluginModule} plugin enabled. Ensure that you're configuring
+  | it properly for your build process. E.g., passing `-fplugin={pluginModule}`
+  | to GHC directly.
+  |
+  | It's also possible that some other plugin that you've enabled has interfered
+  | with this one. If you've enabled other plugins, try permuting the order of
+  | the `-fplugin` flags. (GHC installs the plugins in the /reverse/ order that
+  | `-fplugin` flags are provided on the command line.)
+
+{prettyCallStack calls}|]
 
 instance Exception UnconvertedCall
 
@@ -117,7 +116,7 @@ generateResultName ::
   -- | A list of types for specializing the type of the provided `TH.Name`
   [Maybe TH.TypeQ] ->
   TH.Q String
-generateResultName name _k _tys = pure $ "wrap_" <> TH.nameBase name
+generateResultName name _k _tys = pure [fmt|wrap_{TH.nameBase name}|]
 
 -- | Shorthand for `expression` when you're applying it to a named function. Makes it more robust
 --   against types changing.
@@ -202,7 +201,11 @@ separatelyAs newName oldName k tys = do
         <$> TH.instanceD
           (pure ctx)
           [t|
-            NativeCat $k $(TH.litT . TH.strTyLit $ modu <> "." <> base) $(pure input) $(pure output)
+            NativeCat
+              $k
+              $(TH.litT $ TH.strTyLit [fmt|{modu}.{base}|])
+              $(pure input)
+              $(pure output)
             |]
           [TH.funD 'nativeK [TH.clause [] (TH.NormalB <$> TH.varE newName') []]]
     )

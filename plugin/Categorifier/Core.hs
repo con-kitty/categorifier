@@ -98,13 +98,13 @@ install opts todos = do
   -- TODO: support partial application of `Categorify.expression` (#33).
   let allOurTodos = [categorifyTodo, postsimplifier convert dflags, removeCategorify]
       categorifyTodo =
-        Plugins.CoreDoPluginPass ("add " <> Plugins.getOccString convert <> " rules") $
+        Plugins.CoreDoPluginPass [fmt|add {Plugins.getOccString convert} rules|] $
           addCategorifyRules dflags convert opts
       removeCategorify =
-        Plugins.CoreDoPluginPass ("remove " <> Plugins.getOccString convert <> " rules") $
+        Plugins.CoreDoPluginPass [fmt|remove {Plugins.getOccString convert} rules|] $
           removeBuiltinRules ruleNames
       -- __TODO__: extract these from `addCategorifyRules`
-      ruleNames = [Plugins.getOccFS convert, Plugins.getOccFS convert <> " $"]
+      ruleNames = [Plugins.getOccFS convert, [fmt|{Plugins.getOccString convert} $|]]
   pure
     . maybe
       -- no existing simplifier, so we use our own
@@ -140,7 +140,7 @@ postsimplifier convert dflags =
         Plugins.sm_dflags = dflags,
         Plugins.sm_eta_expand = False,
         Plugins.sm_inline = False,
-        Plugins.sm_names = [Plugins.getOccString convert <> " minimal"],
+        Plugins.sm_names = [[fmt|{Plugins.getOccString convert} minimal|]],
         Plugins.sm_phase = Plugins.InitialPhase,
         Plugins.sm_rules = False
       }
@@ -187,15 +187,15 @@ partialAppRules ::
   Plugins.RuleFun ->
   [Plugins.CoreRule]
 partialAppRules app fn nargs try =
-  let name = Plugins.getOccFS fn
+  let name = Plugins.getOccString fn
    in [ Plugins.BuiltinRule
-          { Plugins.ru_name = name,
+          { Plugins.ru_name = Plugins.mkFastString name,
             Plugins.ru_fn = fn,
             Plugins.ru_nargs = nargs,
             Plugins.ru_try = try
           },
         Plugins.BuiltinRule
-          { Plugins.ru_name = name <> Plugins.fsLit " $",
+          { Plugins.ru_name = [fmt|{name} $|],
             Plugins.ru_fn = Plugins.varName app,
             Plugins.ru_nargs = 5,
             Plugins.ru_try = \dflags inScope ident exprs ->

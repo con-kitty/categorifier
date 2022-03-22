@@ -36,6 +36,7 @@ library
     -O2
     -Wall
   build-depends:
+    , PyF
     , adjunctions
     , base
     , categorifier-category
