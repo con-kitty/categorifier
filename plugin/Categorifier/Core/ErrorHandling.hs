@@ -22,17 +22,37 @@ import qualified Data.Map as Map
 import Data.Text (Text)
 import qualified Data.Text as Text
 #if MIN_VERSION_ghc(9, 0, 0)
+import GHC.Data.Bag (Bag)
 import qualified GHC.Plugins as Plugins
-import GHC.Utils.Error (ErrorMessages, WarningMessages, pprErrMsgBagWithLoc)
+#if MIN_VERSION_ghc(9, 2, 0)
+import GHC.Utils.Error
+  ( DecoratedSDoc,
+    ErrorMessages,
+    MsgEnvelope,
+    WarningMessages,
+    pprMsgEnvelopeBagWithLoc,
+  )
+#else
+import GHC.Utils.Error (ErrMsg, ErrorMessages, WarningMessages, pprErrMsgBagWithLoc)
+#endif
 import GHC.Utils.Panic (GhcException (..))
 #else
-import ErrUtils (ErrorMessages, WarningMessages, pprErrMsgBagWithLoc)
+import Bag (Bag)
+import ErrUtils (ErrMsg, ErrorMessages, WarningMessages, pprErrMsgBagWithLoc)
 import qualified GhcPlugins as Plugins
 import Panic (GhcException (..))
 #endif
 import GHC.Stack (CallStack, SrcLoc (..), fromCallSiteList, prettyCallStack)
 import Numeric.Natural (Natural)
 import PyF (fmt)
+
+#if MIN_VERSION_GLASGOW_HASKELL(9, 2, 0, 0)
+pprMsgEnvelopeBagWithLoc' :: Bag (MsgEnvelope DecoratedSDoc) -> [Plugins.SDoc]
+pprMsgEnvelopeBagWithLoc' = pprMsgEnvelopeBagWithLoc
+#else
+pprMsgEnvelopeBagWithLoc' :: Bag ErrMsg -> [Plugins.SDoc]
+pprMsgEnvelopeBagWithLoc' = pprErrMsgBagWithLoc
+#endif
 
 -- | Deduplicates a structure, maintaining a count for each element.
 --
@@ -47,7 +67,7 @@ formatTcErrs :: Plugins.DynFlags -> Int -> ErrorMessages -> Text
 formatTcErrs dflags _indent =
   Text.intercalate "\n"
     . fmap (Text.pack . renderSDoc dflags . (Plugins.text "-" Plugins.<+>) . rephraseErrMsg)
-    . pprErrMsgBagWithLoc
+    . pprMsgEnvelopeBagWithLoc'
   where
     -- TODO: This should use regex to match and replace error messages that we can report more
     --       effectively for plugin users.
@@ -142,7 +162,7 @@ Please report the following information to the categorify plugin maintainers:
 showWarnings :: Plugins.DynFlags -> WarningMessages -> Text
 showWarnings dflags warns =
   [fmt|warnings during categorification:
-{renderSDoc dflags . Plugins.vcat $ pprErrMsgBagWithLoc warns}|]
+{renderSDoc dflags . Plugins.vcat $ pprMsgEnvelopeBagWithLoc' warns}|]
 
 showFailures ::
   Plugins.DynFlags -> NonEmpty Plugins.Name -> Plugins.CoreExpr -> NonEmpty CategoricalFailure -> Text

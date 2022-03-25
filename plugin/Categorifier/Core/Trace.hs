@@ -39,7 +39,10 @@ import System.IO.Unsafe (unsafePerformIO)
 import System.Time.Extra (Seconds, offsetTime)
 
 renderWithStyle :: Plugins.DynFlags -> Plugins.PrintUnqualified -> Plugins.SDoc -> String
-#if MIN_VERSION_ghc(9, 0, 0)
+#if MIN_VERSION_ghc(9, 2, 0)
+renderWithStyle dflags =
+  Plugins.renderWithContext . Plugins.initSDocContext dflags . Plugins.mkDumpStyle
+#elif MIN_VERSION_ghc(9, 0, 0)
 renderWithStyle dflags =
   Plugins.renderWithStyle . Plugins.initSDocContext dflags . Plugins.mkDumpStyle
 #else
@@ -142,7 +145,12 @@ addIdInfo = \case
   Plugins.Type ty -> Plugins.Type ty
   Plugins.Coercion c -> Plugins.Coercion c
   where
+#if MIN_VERSION_ghc(9, 2, 0)
+    addIdInfoAlt (Plugins.Alt con binds expr) =
+      Plugins.Alt con (fmap WithIdInfo binds) (addIdInfo expr)
+#else
     addIdInfoAlt (con, binds, expr) = (con, fmap WithIdInfo binds, addIdInfo expr)
+#endif
     addIdInfoBind = \case
       Plugins.NonRec b e -> Plugins.NonRec (WithIdInfo b) $ addIdInfo e
       Plugins.Rec alts -> Plugins.Rec $ fmap (bimap WithIdInfo addIdInfo) alts

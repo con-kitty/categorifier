@@ -58,6 +58,10 @@ import Data.Text (Text)
 import qualified Data.Text as Text
 import qualified GHC.CString
 #if MIN_VERSION_ghc(9, 0, 0)
+#if MIN_VERSION_ghc(9, 2, 0)
+import GHC.Core.Unfold (defaultUnfoldingOpts)
+import qualified GHC.Utils.Logger as Log
+#endif
 import GHC.Data.Bag (isEmptyBag)
 import qualified GHC.Plugins as Plugins
 import qualified GHC.Runtime.Loader as Dynamic
@@ -104,7 +108,12 @@ install opts todos = do
     either (throwIOAsException $ prettyMissingSymbols dflags) pure <=< runExceptT . getParallel $
       idFromTHName conversionFunction
   -- TODO: support partial application of `Categorify.expression` (#33).
+#if MIN_VERSION_ghc(9, 2, 0)
+  logger <- Log.getLogger
+  let allOurTodos = [categorifyTodo, postsimplifier convert logger dflags, removeCategorify]
+#else
   let allOurTodos = [categorifyTodo, postsimplifier convert dflags, removeCategorify]
+#endif
       categorifyTodo =
         Plugins.CoreDoPluginPass [fmt|add {Plugins.getOccString convert} rules|] $
           addCategorifyRules dflags convert opts
@@ -139,6 +148,24 @@ removeBuiltinRules names = pure . mapModGutsRules (filter (not . ruleMatches))
 --   This is the most minimal simplifier possible, as we try not to affect whatever else the user
 --   wants, we only need a pass so that categorification is performed. If there is already a
 --   simplifier in the pipeline, we should prefer that to adding our own.
+#if MIN_VERSION_ghc(9, 2, 0)
+postsimplifier :: Plugins.Id -> Log.Logger -> Plugins.DynFlags -> Plugins.CoreToDo
+postsimplifier convert logger dflags =
+  Plugins.CoreDoSimplify
+    1
+    Plugins.SimplMode
+      { Plugins.sm_case_case = False,
+        Plugins.sm_uf_opts = defaultUnfoldingOpts,
+        Plugins.sm_pre_inline = False,
+        Plugins.sm_logger = logger,
+        Plugins.sm_dflags = dflags,
+        Plugins.sm_eta_expand = False,
+        Plugins.sm_inline = False,
+        Plugins.sm_names = [[fmt|{Plugins.getOccString convert} minimal|]],
+        Plugins.sm_phase = Plugins.InitialPhase,
+        Plugins.sm_rules = False
+      }
+#else
 postsimplifier :: Plugins.Id -> Plugins.DynFlags -> Plugins.CoreToDo
 postsimplifier convert dflags =
   Plugins.CoreDoSimplify
@@ -152,6 +179,7 @@ postsimplifier convert dflags =
         Plugins.sm_phase = Plugins.InitialPhase,
         Plugins.sm_rules = False
       }
+#endif
 
 prettyMissingSymbols :: Plugins.DynFlags -> NonEmpty MissingSymbol -> String
 prettyMissingSymbols dflags =

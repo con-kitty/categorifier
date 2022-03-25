@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TupleSections #-}
@@ -83,6 +84,15 @@ import PyF (fmt)
 
 -- Need Uniplate for traversals on GHC-provided recursive types
 {-# ANN module ("HLint: ignore Avoid restricted module" :: String) #-}
+
+#if MIN_VERSION_ghc(9, 2, 0)
+pattern Alt :: Plugins.AltCon -> [b] -> Plugins.Expr b -> Plugins.Alt b
+pattern Alt x y z = Plugins.Alt x y z
+#else
+pattern Alt :: Plugins.AltCon -> [b] -> Plugins.Expr b -> (Plugins.AltCon, [b], Plugins.Expr b)
+pattern Alt x y z = (x, y, z)
+#endif
+{-# COMPLETE Alt #-}
 
 {-# ANN splitFunTy_maybe ("HLint: ignore Use camelCase" :: String) #-}
 splitFunTy_maybe :: Plugins.Type -> Maybe (Plugins.Type, Plugins.Type)
@@ -651,7 +661,7 @@ replacePrimOps resultType replaceExpr = do
           --   Int64 -> Double
           --
           -- and this case removes the second step in the original conversion.
-          | [(Plugins.DataAlt con, [_unb], Plugins.App (Plugins.Var si) _unbv)] <- alts,
+          | [Alt (Plugins.DataAlt con) [_unb] (Plugins.App (Plugins.Var si) _unbv)] <- alts,
             con `elem` fmap snd boxers,
 #if MIN_VERSION_ghc(9, 0, 0)
             Plugins.varName si == Plugins.integerFromInt64Name ->
@@ -661,7 +671,7 @@ replacePrimOps resultType replaceExpr = do
               pure sc
           -- This is a case statement that unboxes an existing variable.  Replace it with a
           -- `let`-binding, extend the replacement table and continue descending.
-          | [(Plugins.DataAlt con, [unb], e)] <- alts,
+          | [Alt (Plugins.DataAlt con) [unb] e] <- alts,
             con `elem` fmap snd boxers ->
               let -- The type of the binder does not change (it's already boxed if we are unboxing
                   -- in the sole alternative); we just reset the occurrence info before using it
@@ -699,7 +709,7 @@ replacePrimOps resultType replaceExpr = do
              where `trueExpr' = replacePrimOps resultType trueExpr`. Same for `falseExpr'`.
           -}
           | Plugins.boolTy `Plugins.eqType` newScTy,
-            [(Plugins.DEFAULT, [], falseExpr), (Plugins.LitAlt one, [], trueExpr)] <- alts,
+            [Alt Plugins.DEFAULT [] falseExpr, Alt (Plugins.LitAlt one) [] trueExpr] <- alts,
 #if MIN_VERSION_ghc(9, 0, 0)
             Plugins.LitNumber _litCoreTy 1 <- one ->
 #elif MIN_VERSION_ghc(8, 6, 0)
@@ -714,9 +724,9 @@ replacePrimOps resultType replaceExpr = do
                   withNewBinding bndr bndr' $
                     Plugins.Case sc' bndr' ty
                       <$> sequenceD
-                        [ (Plugins.DataAlt Plugins.falseDataCon,[],)
+                        [ Alt (Plugins.DataAlt Plugins.falseDataCon) []
                             <$> replacePrimOps resultType falseExpr,
-                          (Plugins.DataAlt Plugins.trueDataCon,[],)
+                          Alt (Plugins.DataAlt Plugins.trueDataCon) []
                             <$> replacePrimOps resultType trueExpr
                         ]
           {- Rewrite
@@ -729,8 +739,8 @@ replacePrimOps resultType replaceExpr = do
 
              into `x > 3`.
           -}
-          | [ (Plugins.DEFAULT, [], Plugins.Var t),
-              (Plugins.LitAlt zero, [], Plugins.Var f)
+          | [ Alt Plugins.DEFAULT [] (Plugins.Var t),
+              Alt (Plugins.LitAlt zero) [] (Plugins.Var f)
               ] <-
               alts,
             Plugins.varType bndr `Plugins.eqType` TysPrim.intPrimTy,
@@ -768,7 +778,7 @@ replacePrimOps resultType replaceExpr = do
           --
           -- TODO(MP): We could get slightly more safety by checking the `cUnit` in the table
           -- lookup as well.
-          | [(_alt, [_realWorld, conBind], e)] <- alts,
+          | [Alt _alt [_realWorld, conBind] e] <- alts,
             (Plugins.Var f, arguments) <- Plugins.collectArgs sc,
             Just target <- extractCallSpecTarget $ Plugins.idDetails f,
             Plugins.StaticTarget _source functionName _cUnit True <- target,
@@ -792,7 +802,7 @@ replacePrimOps resultType replaceExpr = do
                 <$> do
                   bndr' <- mkBoxedVarFrom "ccc_boxed" newScTy bndr
                   withNewBinding bndr bndr' . fmap (newApp bndr' sc') $ case alts of
-                    [(Plugins.DEFAULT, [], e)] ->
+                    [Alt Plugins.DEFAULT [] e] ->
                       -- If there is only one branch, the solution is easy.
                       replacePrimOps resultType e
                     _ -> do
@@ -812,25 +822,25 @@ replacePrimOps resultType replaceExpr = do
                         -- Here we also replacePrimOps on the right-hand sides of all valid
                         -- branches.
                         cleanAlt t = \case
-                          (Plugins.DEFAULT, _binds, defExpr) ->
+                          Alt Plugins.DEFAULT _binds defExpr ->
                             Left <$> replacePrimOps resultType defExpr
                           -- __TODO__: We've run into Core Lint complaints here when dealing with
                           -- negative literals (e.g., @-1# :: Int32@), but we've managed to avoid them
                           -- by interpreting operations where they occur.
 #if MIN_VERSION_ghc(9, 0, 0)
-                          (Plugins.LitAlt (Plugins.LitNumber nt i), _binds, litExpr) ->
+                          Alt (Plugins.LitAlt (Plugins.LitNumber nt i)) _binds litExpr ->
                             Right . (Plugins.LitNumber nt i,)
 #elif MIN_VERSION_ghc(8, 6, 0)
-                          (Plugins.LitAlt (Plugins.LitNumber nt i _oldTy), _binds, litExpr) ->
+                          Alt (Plugins.LitAlt (Plugins.LitNumber nt i _oldTy)) _binds litExpr ->
                             Right . (Plugins.LitNumber nt i t,)
 #else
-                          (Plugins.LitAlt (Plugins.LitInteger i _oldTy), _binds, litExpr) ->
+                          Alt (Plugins.LitAlt (Plugins.LitInteger i _oldTy)) _binds litExpr ->
                             Right . (Plugins.LitInteger i t,)
 #endif
                               <$> replacePrimOps resultType litExpr
-                          (Plugins.LitAlt x, _binds, _e) ->
+                          Alt (Plugins.LitAlt x) _binds _e ->
                             lift . throwE . pure $ UnsupportedPrimitiveLiteral x caseExpr
-                          (Plugins.DataAlt dc, _binds, _e) ->
+                          Alt (Plugins.DataAlt dc) _binds _e ->
                             lift . throwE . pure $ UnsupportedPrimitiveDataAlt dc caseExpr
                         -- Step 2 is to transform situations like
                         --
@@ -867,8 +877,8 @@ replacePrimOps resultType replaceExpr = do
                                     eqScrut
                                     eqBndr
                                     (Plugins.exprType litExpr)
-                                    [ (Plugins.DataAlt Plugins.falseDataCon, [], acc k),
-                                      (Plugins.DataAlt Plugins.trueDataCon, [], litExpr)
+                                    [ Alt (Plugins.DataAlt Plugins.falseDataCon) [] (acc k),
+                                      Alt (Plugins.DataAlt Plugins.trueDataCon) [] litExpr
                                     ],
                                 mbDefault
                               )
@@ -887,9 +897,7 @@ replacePrimOps resultType replaceExpr = do
                   <*\> pure bndr
                   <*\> pure ty
                   <*\> traverseD
-                    ( \(con, bind, expr) ->
-                        (con,bind,)
-                          <$> replacePrimOps (pure ty) expr
+                    ( \(Alt con bind expr) -> Alt con bind <$> replacePrimOps (pure ty) expr
                     )
                     alts
           -- TODO(MP): what error conditions should be caught here?
@@ -1320,12 +1328,21 @@ mkFloatingPrimOps makers =
       ( PrimOp.DoubleFabsOp,
         pure (([dt], dt), Boxer "GHC.Num" "abs" [dd] . mkAbs makers $ Plugins.mkTyConTy dt)
       ),
+#if MIN_VERSION_ghc(9, 2, 0)
+      ( PrimOp.DoubleToFloatOp,
+        pure (([dt], ft), Boxer "GHC.Float" "double2float" [dd] $ mkDoubleToFloat makers)
+      ),
+      ( PrimOp.FloatToDoubleOp,
+        pure (([ft], dt), Boxer "GHC.Float" "float2Double" [fd] $ mkFloatToDouble makers)
+      ),
+#else
       ( PrimOp.Double2FloatOp,
         pure (([dt], ft), Boxer "GHC.Float" "double2float" [dd] $ mkDoubleToFloat makers)
       ),
       ( PrimOp.Float2DoubleOp,
         pure (([ft], dt), Boxer "GHC.Float" "float2Double" [fd] $ mkFloatToDouble makers)
       ),
+#endif
       ( PrimOp.DoubleEqOp,
         pure
           ( ([dt, dt], Plugins.boolTyCon),
@@ -1498,6 +1515,22 @@ mkWordPrimOps makers tc dc =
             Boxer "GHC.Classes" "/=" [dc] . mkNotEqual makers $ Plugins.mkTyConTy tc
           )
       ),
+#if MIN_VERSION_ghc(9, 2, 0)
+      ( PrimOp.WordToDoubleOp,
+        pure
+          ( ([tc], Plugins.doubleTyCon),
+            Boxer "GHC.Classes" "fromIntegral" [dc] $
+              mkFromIntegral makers (Plugins.mkTyConTy tc) Plugins.doubleTy
+          )
+      ),
+      ( PrimOp.WordToFloatOp,
+        pure
+          ( ([tc], Plugins.floatTyCon),
+            Boxer "GHC.Classes" "fromIntegral" [dc] $
+              mkFromIntegral makers (Plugins.mkTyConTy tc) Plugins.floatTy
+          )
+      )
+#else
       ( PrimOp.Word2DoubleOp,
         pure
           ( ([tc], Plugins.doubleTyCon),
@@ -1512,6 +1545,7 @@ mkWordPrimOps makers tc dc =
               mkFromIntegral makers (Plugins.mkTyConTy tc) Plugins.floatTy
           )
       )
+#endif
     ]
 
 mkIntPrimOps :: Makers -> Plugins.TyCon -> Plugins.DataCon -> PrimOpMap
@@ -1573,6 +1607,22 @@ mkIntPrimOps makers tc dc =
             Boxer "GHC.Classes" "/=" [dc] . mkNotEqual makers $ Plugins.mkTyConTy tc
           )
       ),
+#if MIN_VERSION_ghc(9, 2, 0)
+      ( PrimOp.IntToDoubleOp,
+        pure
+          ( ([tc], Plugins.doubleTyCon),
+            Boxer "GHC.Classes" "fromIntegral" [dc] $
+              mkFromIntegral makers (Plugins.mkTyConTy tc) Plugins.doubleTy
+          )
+      ),
+      ( PrimOp.IntToFloatOp,
+        pure
+          ( ([tc], Plugins.floatTyCon),
+            Boxer "GHC.Classes" "fromIntegral" [dc] $
+              mkFromIntegral makers (Plugins.mkTyConTy tc) Plugins.floatTy
+          )
+      )
+#else
       ( PrimOp.Int2DoubleOp,
         pure
           ( ([tc], Plugins.doubleTyCon),
@@ -1587,6 +1637,7 @@ mkIntPrimOps makers tc dc =
               mkFromIntegral makers (Plugins.mkTyConTy tc) Plugins.floatTy
           )
       )
+#endif
     ]
 
 mkFpCCallBoxers ::

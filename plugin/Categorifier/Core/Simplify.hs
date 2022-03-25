@@ -20,6 +20,10 @@ where
 
 import Control.Monad ((<=<))
 import Data.Set (Set, member)
+#if MIN_VERSION_ghc(9, 2, 0)
+import qualified GHC.Core.Unfold as Core
+import qualified GHC.Utils.Logger as Log
+#endif
 #if MIN_VERSION_ghc(9, 0, 0)
 import GHC.Core.Stats (exprSize)
 import GHC.Core.FamInstEnv (emptyFamInstEnvs)
@@ -52,6 +56,31 @@ data Transformation = CaseOfCase | EtaExpand | Inline | Rules
 --   hard to separate out (future work?). This one disables everything we can by default, then
 --   allows us to turn on individual transformations. There are also some other transformations we
 --   need that are implicit in here. E.g. specialization and case of known constructor.
+#if MIN_VERSION_ghc(9, 2, 0)
+simplifyExpr ::
+  Log.Logger ->
+  Plugins.DynFlags ->
+  Set Transformation ->
+  Plugins.CoreExpr ->
+  IO Plugins.CoreExpr
+simplifyExpr logger dflags trans expr =
+  fmap fst . initSmpl logger dflags Plugins.emptyRuleEnv emptyFamInstEnvs (exprSize expr) $
+    doSimplify
+      1
+      Plugins.SimplMode
+        { Plugins.sm_case_case = CaseOfCase `member` trans,
+          Plugins.sm_uf_opts = Core.defaultUnfoldingOpts,
+          Plugins.sm_pre_inline = Inline `member` trans,
+          Plugins.sm_logger = logger,
+          Plugins.sm_dflags = dflags,
+          Plugins.sm_eta_expand = EtaExpand `member` trans,
+          Plugins.sm_inline = Inline `member` trans,
+          Plugins.sm_names = ["categorify internal"],
+          Plugins.sm_phase = Plugins.Phase 1,
+          Plugins.sm_rules = Rules `member` trans -- this improves specialisation
+        }
+      expr
+#else
 simplifyExpr ::
   Plugins.DynFlags ->
   Set Transformation ->
@@ -72,6 +101,7 @@ simplifyExpr dflags trans uniqS expr =
           Plugins.sm_rules = Rules `member` trans -- this improves specialisation
         }
       expr
+#endif
 
 -- | Designed to be like `Plugins.CoreDoSimplify`, but applicable to arbitrary `Plugins.CoreExpr`s.
 doSimplify :: Int -> Plugins.SimplMode -> Plugins.CoreExpr -> SimplM Plugins.CoreExpr

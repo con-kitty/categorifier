@@ -69,11 +69,16 @@ import GHC (Id, ModuleName, Name, RdrName (..), mkModuleName)
 #if MIN_VERSION_ghc(9, 0, 0)
 import qualified GHC.Builtin.PrimOps as PrimOp
 import GHC.Core.Opt.Monad (CoreM, getHscEnv, liftIO)
+#if MIN_VERSION_ghc(9, 2, 0)
+import GHC.Types.TyThing (lookupDataCon, lookupId, lookupTyCon)
+import qualified GHC.Builtin.Uniques as Unique
+#else
 import GHC.Driver.Types (lookupDataCon, lookupId, lookupTyCon)
+import qualified GHC.Types.Unique as Unique
+#endif
 import GHC.Plugins (CoreExpr, Type)
 import qualified GHC.Plugins as Plugins
 import GHC.Runtime.Loader (lookupRdrNameInModuleForPlugins)
-import qualified GHC.Types.Unique as Unique
 #else
 import CoreMonad (CoreM, getHscEnv, liftIO)
 import DynamicLoading (lookupRdrNameInModuleForPlugins)
@@ -84,6 +89,13 @@ import qualified PrimOp
 import qualified Unique
 #endif
 import Prelude hiding (mod)
+
+liftedDataConTy :: Plugins.Type
+#if MIN_VERSION_ghc(9, 2, 0)
+liftedDataConTy = Plugins.liftedDataConTy
+#else
+liftedDataConTy = Plugins.liftedRepDataConTy
+#endif
 
 lookupRdrNameInModuleForPlugins' :: Plugins.HscEnv -> ModuleName -> RdrName -> IO (Maybe Name)
 #if MIN_VERSION_ghc(8, 6, 0)
@@ -98,12 +110,9 @@ lookupRdrNameInModuleForPlugins' = lookupRdrNameInModuleForPlugins
 properFunTy :: Type
 #if MIN_VERSION_ghc(9, 0, 0)
 properFunTy =
-  Plugins.mkTyConApp
-    Plugins.funTyCon
-    [Plugins.manyDataConTy, Plugins.liftedRepDataConTy, Plugins.liftedRepDataConTy]
+  Plugins.mkTyConApp Plugins.funTyCon [Plugins.manyDataConTy, liftedDataConTy, liftedDataConTy]
 #else
-properFunTy =
-  Plugins.mkTyConApp Plugins.funTyCon [Plugins.liftedRepDataConTy, Plugins.liftedRepDataConTy]
+properFunTy = Plugins.mkTyConApp Plugins.funTyCon [liftedDataConTy, liftedDataConTy]
 #endif
 
 -- | Similar to `properFunTy`, but fully-applied, inferring the kind arguments from the kinds of the
@@ -865,7 +874,7 @@ baseHierarchy = do
       op <- identifier "GHC.Err" "undefined"
       pure $ \onDict cat a b ->
         mkMethodApps onDict arr [cat] [a, b] . pure
-          =<< mkFunctionApps onDict op [Plugins.liftedRepDataConTy, funTy a b] []
+          =<< mkFunctionApps onDict op [liftedDataConTy, funTy a b] []
   coerceV <-
     pure <$> do
       arr <- identifier "Control.Arrow" "arr"
