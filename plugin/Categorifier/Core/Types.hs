@@ -36,6 +36,7 @@ import GHC.Core.Opt.Monad (CoreM)
 import qualified GHC.Data.Bag as Bag
 import qualified GHC.Plugins as Plugins
 import GHC.Utils.Error (ErrorMessages, WarningMessages)
+import GHC.Utils.Outputable (SDocContext (..))
 #else
 import qualified Bag
 import CoreMonad (CoreM)
@@ -145,8 +146,31 @@ data CategoricalFailure
 
 newtype WithIdInfo = WithIdInfo Plugins.Id
 
+#if MIN_VERSION_ghc(9, 0, 0)
 instance Plugins.Outputable WithIdInfo where
-  -- I wanted the full IdInfo, but it's not Outputtable
+  -- I wanted the full IdInfo, but it's not `Outputable`
+  ppr (WithIdInfo v) =
+    Plugins.sdocWithContext $ \ctx ->
+      let ident =
+            ( if sdocSuppressModulePrefixes ctx
+                then id
+                else
+                  ( maybe
+                      ""
+                      (\m -> [fmt|{Plugins.moduleNameString $ Plugins.moduleName m}.|])
+                      (Plugins.nameModule_maybe $ Plugins.varName v)
+                      Plugins.<>
+                  )
+            )
+              $ Plugins.ppr v
+       in if sdocSuppressTypeSignatures ctx
+            then ident
+            else
+              Plugins.sep
+                [ident, Plugins.nest 2 $ Plugins.dcolon Plugins.<+> Plugins.ppr (Plugins.varType v)]
+#else
+instance Plugins.Outputable WithIdInfo where
+  -- I wanted the full IdInfo, but it's not `Outputable`
   ppr (WithIdInfo v) =
     Plugins.sdocWithDynFlags $ \dflags ->
       let ident =
@@ -166,6 +190,7 @@ instance Plugins.Outputable WithIdInfo where
             else
               Plugins.sep
                 [ident, Plugins.nest 2 $ Plugins.dcolon Plugins.<+> Plugins.ppr (Plugins.varType v)]
+#endif
 
 instance Plugins.OutputableBndr WithIdInfo where
   pprInfixOcc = Plugins.ppr

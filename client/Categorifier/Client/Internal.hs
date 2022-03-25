@@ -30,6 +30,13 @@ import Data.Void (Void)
 import qualified Language.Haskell.TH as TH
 import PyF (fmt)
 
+conP' :: TH.Name -> [TH.Pat] -> TH.Pat
+#if MIN_VERSION_template_haskell(2, 18, 0)
+conP' n = TH.ConP n []
+#else
+conP' = TH.ConP
+#endif
+
 -- | Convert to and from standard representations. Used for transforming case expression scrutinees
 --   and constructor applications. The 'repr' method should convert to a standard representation
 --  (unit, products, sums). The 'abst' method should reveal a constructor so that we can perform the
@@ -361,10 +368,10 @@ deriveHasRep' = \case
        in ( mkNestedPairs (\x y -> [t|($x, $y)|]) [t|()|] $
               fmap (TH.AppT $ TH.ConT ''Dict) predTypes <> fieldTypes,
             ( mkNestedPairs (\x y -> [p|($x, $y)|]) [p|()|] $
-                fmap (`TH.ConP` []) dicts <> fmap TH.VarP vars,
+                fmap (`conP'` []) dicts <> fmap TH.VarP vars,
               pure $ foldl' (\e -> TH.AppE e . TH.VarE) (TH.ConE conName) vars
             ),
-            ( pure $ TH.ConP conName . fmap TH.VarP $ toList vars,
+            ( pure $ conP' conName . fmap TH.VarP $ toList vars,
               mkNestedPairs (\x y -> [|($x, $y)|]) [|()|] $ fmap TH.ConE dicts <> fmap TH.VarE vars
             )
           )

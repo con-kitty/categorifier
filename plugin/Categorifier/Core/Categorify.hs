@@ -11,6 +11,7 @@
 --   Categories](http://conal.net/papers/compiling-to-categories/compiling-to-categories.pdf).
 module Categorifier.Core.Categorify
   ( AutoInterpreter,
+    Logger,
     categorify,
     applyTyAndPredArgs,
     isTypeOrPred,
@@ -65,16 +66,21 @@ import qualified Data.Map as Map
 import Data.Maybe (fromMaybe, mapMaybe)
 import qualified Data.Set as Set
 import Data.Traversable (for)
-import Data.Tuple.Extra (first3, thd3)
+import Data.Tuple.Extra (first3)
 #if MIN_VERSION_ghc(9, 0, 0)
 import GHC.Builtin.Names (leftDataConName, rightDataConName)
 import qualified GHC.Builtin.Types as TysWiredIn
+#if MIN_VERSION_ghc(9, 2, 0)
+import qualified GHC.Builtin.Uniques as Unique
+import qualified GHC.Utils.Logger as Logger
+#else
+import qualified GHC.Types.Unique as Unique
+#endif
 import GHC.Core.Opt.Arity (etaExpand)
 import GHC.Core.Stats (exprSize)
 import qualified GHC.Core.TyCo.Rep as TyCoRep
 import qualified GHC.Plugins as Plugins
 import qualified GHC.Types.ForeignCall as Plugins
-import qualified GHC.Types.Unique as Unique
 #else
 import CoreArity (etaExpand)
 import CoreStats (exprSize)
@@ -92,6 +98,21 @@ import PyF (fmt)
 -- Need Uniplate for traversals on GHC-provided recursive types
 {-# ANN module ("HLint: ignore Avoid restricted module" :: String) #-}
 
+#if MIN_VERSION_ghc(9, 2, 0)
+pattern Alt :: Plugins.AltCon -> [b] -> Plugins.Expr b -> Plugins.Alt b
+pattern Alt x y z = Plugins.Alt x y z
+#else
+pattern Alt :: Plugins.AltCon -> [b] -> Plugins.Expr b -> (Plugins.AltCon, [b], Plugins.Expr b)
+pattern Alt x y z = (x, y, z)
+#endif
+{-# COMPLETE Alt #-}
+
+#if MIN_VERSION_ghc(9, 2, 0)
+type Logger = Logger.Logger
+#else
+type Logger = ()
+#endif
+
 -- | This is named as a pun on `Categorifier.Categorify.expression`, as it's effectively the "real"
 --   implementation of that pseudo-function.
 categorify ::
@@ -100,6 +121,7 @@ categorify ::
   -- | Enable benchmarking
   Bool ->
   Plugins.DynFlags ->
+  Logger ->
   -- | Target category
   Plugins.Type ->
   (Plugins.Type -> DictionaryStack Plugins.CoreExpr) ->
@@ -118,6 +140,7 @@ categorify
   debug
   bench
   dflags
+  logger
   cat
   buildDictionary
   baseIdentifiers
@@ -295,9 +318,9 @@ categorify
                                   else Right from'
                               other -> Left other
                             )
-                            <$> (simplifyFun dflags [] =<\< mkInline from)
+                            <$> (simplifyFun dflags logger [] =<\< mkInline from)
                         categorifyLambda name
-                          =<\< simplifyFun dflags [] (Plugins.mkCoreApps inlined args)
+                          =<\< simplifyFun dflags logger [] (Plugins.mkCoreApps inlined args)
                   -- Convert all the arguments of an application at once.
                   _
                     | let (tyArgs, otherArgs) = spanTypes args,
@@ -393,16 +416,17 @@ categorify
           -- //code_generation/generate:BallFollower on 15833/2, where you'd see @x_azfm@
           -- and @y_azfn@ used repeatedly, causing shadowing.
           caseExpr@(Plugins.Case scrut (Plugins.zapIdOccInfo -> unsafeBinder) typ unsafeAlts) -> do
-            alts <- for unsafeAlts $ \(altCon, unsafeBoundVars, rhs) -> do
+            alts <- for unsafeAlts $ \(Alt altCon unsafeBoundVars rhs) -> do
               boundVars <- traverse uniquifyVarName unsafeBoundVars
-              pure (altCon, boundVars, subst (zip unsafeBoundVars $ fmap Plugins.Var boundVars) rhs)
+              pure . Alt altCon boundVars $
+                subst (zip unsafeBoundVars $ fmap Plugins.Var boundVars) rhs
 
             let withBinder f = do
                   binder <-
                     -- If @unsafeBinder@ occurs in any of the @Alt@s, we don't bother making
                     -- a new unique binder, because if it is not unique, we don't know which
                     -- one the occurrence refers to.
-                    if any (isFreeIn unsafeBinder . thd3) alts
+                    if any (\(Alt _ _ rhs) -> isFreeIn unsafeBinder rhs) alts
                       then pure unsafeBinder
                       else uniquifyVarName unsafeBinder
                   categorifyLambda name . Plugins.Let (Plugins.NonRec binder scrut) =<\< f binder
@@ -410,7 +434,7 @@ categorify
             case alts of
               -- "For __case__ expressions, suppose the scrutinee expression has a product type"
               -- ⸻§3
-              [(Plugins.DataAlt dc, [a, b], rhs)] | Plugins.isTupleDataCon dc ->
+              [Alt (Plugins.DataAlt dc) [a, b] rhs] | Plugins.isTupleDataCon dc ->
                 withBinder $ \binder -> do
                   bindFst <- do
                     if a `isFreeIn` rhs
@@ -423,13 +447,13 @@ categorify
                   pure $ bindFst (bindSnd rhs)
               -- "Distributive categories enable translation of definition by cases. Consider
               --  only __case__ over binary sums /a + b/ for now." ⸻§8
-              [(Plugins.DataAlt left, [a], lrhs), (Plugins.DataAlt right, [b], rrhs)]
+              [Alt (Plugins.DataAlt left) [a] lrhs, Alt (Plugins.DataAlt right) [b] rrhs]
                 | Plugins.dataConName left == leftDataConName
                     && Plugins.dataConName right == rightDataConName ->
                     withBinder $
                       mkEither makers (Plugins.Lam a lrhs) (Plugins.Lam b rrhs) . Plugins.Var
               -- @if@ is represented in Core as a @case@ on `Bool`.
-              [(Plugins.DataAlt false, [], rhsF), (Plugins.DataAlt true, [], rhsT)]
+              [Alt (Plugins.DataAlt false) [] rhsF, Alt (Plugins.DataAlt true) [] rhsT]
                 | false == Plugins.falseDataCon && true == Plugins.trueDataCon ->
                     joinD $
                       composeCat makers
@@ -445,7 +469,7 @@ categorify
                           )
               -- @Data.Constraint.Dict@ contains a constraint, so it can't have a
               -- @HasRep@ instance. Here we handle it as a special case.
-              [(Plugins.DataAlt dc, [v], rhs)]
+              [Alt (Plugins.DataAlt dc) [v] rhs]
                 | isDictDataCon dc,
                   let predTy = Plugins.varType v,
                   Plugins.isPredTy predTy ->
@@ -464,7 +488,7 @@ categorify
               -- unboxed (primitive) one, so that @_rhs@ contains some unboxed operations.  This
               -- type of destructuring bind will eventually be removed in case 3 of
               -- `PrimOp.checkForUnboxedVars` below.
-              [(Plugins.DataAlt con, [_unboxedV], _rhs)]
+              [Alt (Plugins.DataAlt con) [_unboxedV] _rhs]
                 -- We look for the boxing constructor for the type that this case statement
                 -- returns.
                 | con `elem` fmap snd primConMap ->
@@ -474,7 +498,7 @@ categorify
               -- unboxing a primitive (the unboxing of the argument typically occurs within the
               -- right-hand side of the case alternative); its contents must still be handled
               -- with `replacePrimOps`.
-              [(Plugins.DEFAULT, [], rhs)]
+              [Alt Plugins.DEFAULT [] rhs]
                 | Plugins.isCoVar unsafeBinder ->
                     if unsafeBinder `isFreeIn` rhs
                       then do
@@ -490,7 +514,7 @@ categorify
                             scrut
                             binder
                             (Plugins.exprType res)
-                            [(Plugins.DEFAULT, [], res)]
+                            [Alt Plugins.DEFAULT [] res]
                       else categorifyLambda name rhs
                 -- `frominteger`
                 | Just toTy <- PrimOp.matchOnUniverse PrimOp.matchFloatFromIntegralApp scrut,
@@ -512,13 +536,13 @@ categorify
                       (Plugins.Case scrut unsafeBinder typ alts)
                       typ
               -- Also need to handle the unit case.
-              [(_, [], rhs)] -> withBinder $ \_binder -> pure rhs
+              [Alt _ [] rhs] -> withBinder $ \_binder -> pure rhs
               -- When the scrut's type is a constraint (e.g., `Num (C Double)`), we must
               -- specialize the whole case expression, because constraints don't have `HasRep`
               -- instances. This is achieved by simplifying it with `Inline` and `Rules`.
-              [_]
+              [Alt {}]
                 | Plugins.isPredTy (Plugins.varType unsafeBinder) ->
-                    categorifyLambda name =<\< simplifyFun dflags [Inline, Rules] caseExpr
+                    categorifyLambda name =<\< simplifyFun dflags logger [Inline, Rules] caseExpr
               -- "consider a __case__ expression /case scrut of { p1 → rhs1; ...; pn → rhsn }/,
               -- where (the scrutinee) /scrut/ has a non-standard type with a /HasRep/
               -- instance. Rewrite /scrut/ to /inline abst (repr scrut)/ (this time inlining
@@ -552,7 +576,7 @@ binder type: {dbg bt}
                 -- NON-INDUCTIVE
                 -- Here we expect `simplifyFun` to apply the `let`-substitution, case-of-case,
                 -- and case-of-known-constructor transformations.
-                categorifyLambda name <=\< simplifyFun dflags [CaseOfCase] $
+                categorifyLambda name <=\< simplifyFun dflags logger [CaseOfCase] $
                   Plugins.Case (Plugins.App abst (Plugins.App repr scrut)) unsafeBinder typ alts
           Plugins.Let bind expr -> case bind of
             Plugins.NonRec v rhs ->
@@ -617,7 +641,7 @@ binder type: {dbg bt}
                               pure
                               -- If `v` has a polymorphic type, we run the simplifier
                               -- to apply the type argument(s).
-                              (simplifyFun dflags [])
+                              (simplifyFun dflags logger [])
                               (Plugins.isForAllTy (Plugins.varType v))
                               (subst [(v, rhs)] expr)
                         else
@@ -685,7 +709,7 @@ binder type: {dbg bt}
             -- Here we expect `simplifyFun` to apply the `let`-substitution and
             -- case-of-known-constructor transformations.
             categorifyLambda name
-              <=\< simplifyFun dflags [] . Plugins.mkLams binds . Plugins.App abst
+              <=\< simplifyFun dflags logger [] . Plugins.mkLams binds . Plugins.App abst
               $ Plugins.App repr body
       -- `HasRep` is special to the plugin. We need to ensure the operations /don't/ inline in some
       -- cases and the must be /fully/ inlined in others. We wrap the methods in functions so we can
@@ -814,13 +838,13 @@ binder type: {dbg bt}
                               --            However, if we /don't/ simplify here, then we get
                               --            complaints about missing dictionaries elsewhere.
 
-                              (categorifyLambda n =<\< simplifyFun dflags [] =<\< mkInline expr)
+                              (categorifyLambda n =<\< simplifyFun dflags logger [] =<\< mkInline expr)
                               (maker1 (dropWhile isTypeOrPred args))
                               =<\< tryAutoInterpret'
                           )
                   else
                     maybe
-                      (categorifyLambda n =<\< simplifyFun dflags [] =<\< mkInline expr)
+                      (categorifyLambda n =<\< simplifyFun dflags logger [] =<\< mkInline expr)
                       (maker1 (dropWhile isTypeOrPred args))
                       =<\< tryAutoInterpret'
               )
@@ -1139,7 +1163,7 @@ binder type: {dbg bt}
               -- know the expression has changed, so we can continue trying to categorify it.
               . ( go onMissingUnfolding pure lets
                     . uncurry Plugins.mkCoreApps
-                    <=\< bitraverse (simplifyFun dflags [Rules]) pure
+                    <=\< bitraverse (simplifyFun dflags logger [Rules]) pure
                       . uncurry (applyTyAndPredArgs varUnfoldingFun)
                       . Plugins.collectArgs
                 )
@@ -1213,17 +1237,18 @@ uniquifyVarName v =
 -- expression we can.
 simplifyFun ::
   Plugins.DynFlags ->
+  Logger ->
   [Transformation] ->
   Plugins.CoreExpr ->
   CategoryStack Plugins.CoreExpr
-simplifyFun dflags trans e0 = do
+simplifyFun dflags logger trans e0 = do
   -- Here we perform `subst` directly, rather than make let-bindings and let the
   -- `Plugins.Let` case handle them. The reason is that the latter doesn't perform some
   -- specializations that we want. For instance, there was a case where the latter failed to
   -- specialize `(.&&)` into `$fKAndC_$c.&&`.
   e <- Map.foldrWithKey' (curry (subst . pure)) e0 <$> lift ask
   uniqS <- getNewUniqueSupply
-  Plugins.liftIO $ simplifyExpr dflags (Set.fromList trans) uniqS e
+  Plugins.liftIO $ simplifyExpr logger dflags (Set.fromList trans) uniqS e
 
 -- Replaces all occurences of each `Plugins.Id` with the corresponding `Plugins.CoreExpr`.
 subst :: [(Plugins.Id, Plugins.CoreExpr)] -> Plugins.CoreExpr -> Plugins.CoreExpr
@@ -1338,7 +1363,7 @@ data LetOrCase
 collectNestedBinders :: Plugins.CoreExpr -> ([LetOrCase], [Plugins.Var], Plugins.CoreExpr)
 collectNestedBinders = \case
   Plugins.Let b e -> first3 (Let b :) (collectNestedBinders e)
-  Plugins.Case scrut binder typ [(altCon, caseBinders, rhs)] ->
+  Plugins.Case scrut binder typ [Alt altCon caseBinders rhs] ->
     first3 (SingleAltCase scrut binder typ altCon caseBinders :) (collectNestedBinders rhs)
   e -> let (vars, body) = Plugins.collectBinders e in ([], vars, body)
 
@@ -1346,7 +1371,7 @@ addLetsAndCases :: [LetOrCase] -> Plugins.CoreExpr -> Plugins.CoreExpr
 addLetsAndCases = flip . foldr $ \x e -> case x of
   Let b -> Plugins.Let b e
   SingleAltCase scrut binder typ altCon caseBinders ->
-    Plugins.Case scrut binder typ [(altCon, caseBinders, e)]
+    Plugins.Case scrut binder typ [Alt altCon caseBinders e]
 
 -- | Get the dictionary vars created during `Categorifier.Core.BuildDictionary.buildDictionary`
 -- and their unfoldings.

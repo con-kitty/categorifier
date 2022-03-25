@@ -1,5 +1,6 @@
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -17,7 +18,7 @@ import qualified Categorifier.Categorify
 import Categorifier.CommandLineOptions (OptionGroup (..))
 import Categorifier.Common.IO.Exception (SomeException, handle, throwIOAsException)
 import qualified Categorifier.Core.BuildDictionary as BuildDictionary
-import Categorifier.Core.Categorify (categorify)
+import Categorifier.Core.Categorify (Logger, categorify)
 import qualified Categorifier.Core.ErrorHandling as Errors
 import Categorifier.Core.MakerMap (MakerMapFun, baseMakerMapFun, combineMakerMapFuns)
 import Categorifier.Core.Makers (Makers, haskMakers)
@@ -58,6 +59,10 @@ import Data.Text (Text)
 import qualified Data.Text as Text
 import qualified GHC.CString
 #if MIN_VERSION_ghc(9, 0, 0)
+#if MIN_VERSION_ghc(9, 2, 0)
+import GHC.Core.Unfold (defaultUnfoldingOpts)
+import qualified GHC.Utils.Logger as Logger
+#endif
 import GHC.Data.Bag (isEmptyBag)
 import qualified GHC.Plugins as Plugins
 import qualified GHC.Runtime.Loader as Dynamic
@@ -77,6 +82,19 @@ import System.IO.Unsafe (unsafePerformIO)
 
 -- We need @MagicHash@ to load some GHC-internal identifiers
 {-# ANN module ("HLint: ignore Avoid restricted extensions" :: String) #-}
+
+#if MIN_VERSION_ghc(9, 2, 0)
+type HasLogger = Logger.HasLogger
+#else
+type HasLogger = Applicative
+#endif
+
+getLogger :: HasLogger m => m Logger
+#if MIN_VERSION_ghc(9, 2, 0)
+getLogger = Logger.getLogger
+#else
+getLogger = pure ()
+#endif
 
 -- | The name of the pseudo-function that triggers the execution of our simplifier rule.
 conversionFunction :: TH.Name
@@ -103,8 +121,9 @@ install opts todos = do
   convert <-
     either (throwIOAsException $ prettyMissingSymbols dflags) pure <=< runExceptT . getParallel $
       idFromTHName conversionFunction
+  logger <- getLogger
   -- TODO: support partial application of `Categorify.expression` (#33).
-  let allOurTodos = [categorifyTodo, postsimplifier convert dflags, removeCategorify]
+  let allOurTodos = [categorifyTodo, postsimplifier convert logger dflags, removeCategorify]
       categorifyTodo =
         Plugins.CoreDoPluginPass [fmt|add {Plugins.getOccString convert} rules|] $
           addCategorifyRules dflags convert opts
@@ -139,8 +158,25 @@ removeBuiltinRules names = pure . mapModGutsRules (filter (not . ruleMatches))
 --   This is the most minimal simplifier possible, as we try not to affect whatever else the user
 --   wants, we only need a pass so that categorification is performed. If there is already a
 --   simplifier in the pipeline, we should prefer that to adding our own.
-postsimplifier :: Plugins.Id -> Plugins.DynFlags -> Plugins.CoreToDo
-postsimplifier convert dflags =
+postsimplifier :: Plugins.Id -> Logger -> Plugins.DynFlags -> Plugins.CoreToDo
+#if MIN_VERSION_ghc(9, 2, 0)
+postsimplifier convert logger dflags =
+  Plugins.CoreDoSimplify
+    1
+    Plugins.SimplMode
+      { Plugins.sm_case_case = False,
+        Plugins.sm_uf_opts = defaultUnfoldingOpts,
+        Plugins.sm_pre_inline = False,
+        Plugins.sm_logger = logger,
+        Plugins.sm_dflags = dflags,
+        Plugins.sm_eta_expand = False,
+        Plugins.sm_inline = False,
+        Plugins.sm_names = [[fmt|{Plugins.getOccString convert} minimal|]],
+        Plugins.sm_phase = Plugins.InitialPhase,
+        Plugins.sm_rules = False
+      }
+#else
+postsimplifier convert _ dflags =
   Plugins.CoreDoSimplify
     1
     Plugins.SimplMode
@@ -152,6 +188,7 @@ postsimplifier convert dflags =
         Plugins.sm_phase = Plugins.InitialPhase,
         Plugins.sm_rules = False
       }
+#endif
 
 prettyMissingSymbols :: Plugins.DynFlags -> NonEmpty MissingSymbol -> String
 prettyMissingSymbols dflags =
@@ -393,6 +430,7 @@ categorifyRules dflags convert opts guts =
     makerMapFun <- makerMap
     baseIdentifiers <- getParallel getBaseIdentifiers
     uniqS <- lift Plugins.getUniqueSupplyM
+    logger <- lift getLogger
     hierarchyOptions' <- hierarchyOptions
     pure $
       partialAppRules apply (Plugins.varName convert) 5 $
@@ -415,6 +453,7 @@ categorifyRules dflags convert opts guts =
                             (Map.member DebugOption opts)
                             (Map.member BenchmarkOption opts)
                             dflags
+                            logger
                             cat
                             (BuildDictionary.buildDictionary hscEnv dflags guts inScope)
                             baseIdentifiers

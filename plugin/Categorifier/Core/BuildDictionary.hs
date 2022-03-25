@@ -47,7 +47,6 @@ import Data.Monoid (Any (..))
 import qualified GHC.Core.Predicate as Core
 import GHC.Core.Opt.Pipeline (simplifyExpr)
 import qualified GHC.Data.Bag as Bag
-import GHC.Driver.Finder (FindResult (..), findExposedPackageModule)
 import GHC.HsToCore.Binds (dsEvBinds)
 import GHC.HsToCore.Monad (initDsTc)
 import GHC.Plugins ((<+>))
@@ -65,6 +64,14 @@ import qualified GHC.Tc.Utils.Monad as Typechecker
 import qualified GHC.Tc.Utils.Zonk as Typechecker
 import GHC.Types.Unique (mkUniqueGrimily)
 import qualified GHC.Types.Unique.Set as NonDetSet
+#if MIN_VERSION_ghc(9, 2, 0)
+import qualified GHC.Runtime.Context as Plugins
+import GHC.Types.Error (getErrorMessages, getWarningMessages)
+import GHC.Unit.Finder (FindResult (..), findExposedPackageModule)
+import qualified GHC.Unit.Module.Deps as Plugins
+#else
+import GHC.Driver.Finder (FindResult (..), findExposedPackageModule)
+#endif
 import GHC.Utils.Error (WarningMessages)
 #else
 import qualified Bag
@@ -132,8 +139,13 @@ runTcRn env0 guts m = do
       . fmap Plugins.moduleName
       . Plugins.dep_orphs
       $ Plugins.mg_deps guts
+#if MIN_VERSION_ghc(9, 2, 0)
+  (msg, mr) <- Typechecker.runTcInteractive (env orphans) m
+  pure (handleResult (getErrorMessages msg) mr, getWarningMessages msg)
+#else
   ((warns, errs), mr) <- Typechecker.runTcInteractive (env orphans) m
   pure (handleResult errs mr, warns)
+#endif
   where
     isFound :: FindResult -> Bool
     isFound (Found _ _) = True

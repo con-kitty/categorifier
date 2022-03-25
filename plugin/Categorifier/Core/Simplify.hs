@@ -20,11 +20,15 @@ where
 
 import Control.Monad ((<=<))
 import Data.Set (Set, member)
+#if MIN_VERSION_ghc(9, 2, 0)
+import qualified GHC.Core.Unfold as Core
+import qualified GHC.Utils.Logger as Logger
+#endif
 #if MIN_VERSION_ghc(9, 0, 0)
 import GHC.Core.Stats (exprSize)
 import GHC.Core.FamInstEnv (emptyFamInstEnvs)
 import GHC.Core.Opt.OccurAnal (occurAnalyseExpr)
-import GHC.Core.Opt.Simplify.Env (mkSimplEnv)
+import GHC.Core.Opt.Simplify.Env (SimplEnv (..), mkSimplEnv)
 import GHC.Core.Opt.Simplify.Monad (SimplM, initSmpl)
 import GHC.Core.Opt.Simplify (simplExpr)
 import qualified GHC.Plugins as Plugins
@@ -33,9 +37,15 @@ import CoreStats (exprSize)
 import FamInstEnv (emptyFamInstEnvs)
 import qualified GhcPlugins as Plugins
 import OccurAnal (occurAnalyseExpr)
-import SimplEnv (mkSimplEnv)
+import SimplEnv (SimplEnv (..), mkSimplEnv)
 import SimplMonad (SimplM, initSmpl)
 import Simplify (simplExpr)
+#endif
+
+#if MIN_VERSION_ghc(9, 2, 0)
+type Logger = Logger.Logger
+#else
+type Logger = ()
 #endif
 
 -- | This is the simplifier we apply surgically to expressions that should be re-written before
@@ -53,12 +63,32 @@ data Transformation = CaseOfCase | EtaExpand | Inline | Rules
 --   allows us to turn on individual transformations. There are also some other transformations we
 --   need that are implicit in here. E.g. specialization and case of known constructor.
 simplifyExpr ::
+  Logger ->
   Plugins.DynFlags ->
   Set Transformation ->
   Plugins.UniqSupply ->
   Plugins.CoreExpr ->
   IO Plugins.CoreExpr
-simplifyExpr dflags trans uniqS expr =
+#if MIN_VERSION_ghc(9, 2, 0)
+simplifyExpr logger dflags trans _ expr =
+  fmap fst . initSmpl logger dflags Plugins.emptyRuleEnv emptyFamInstEnvs (exprSize expr) $
+    doSimplify
+      1
+      Plugins.SimplMode
+        { Plugins.sm_case_case = CaseOfCase `member` trans,
+          Plugins.sm_uf_opts = Core.defaultUnfoldingOpts,
+          Plugins.sm_pre_inline = Inline `member` trans,
+          Plugins.sm_logger = logger,
+          Plugins.sm_dflags = dflags,
+          Plugins.sm_eta_expand = EtaExpand `member` trans,
+          Plugins.sm_inline = Inline `member` trans,
+          Plugins.sm_names = ["categorify internal"],
+          Plugins.sm_phase = Plugins.Phase 1,
+          Plugins.sm_rules = Rules `member` trans -- this improves specialisation
+        }
+      expr
+#else
+simplifyExpr _ dflags trans uniqS expr =
   fmap fst . initSmpl dflags Plugins.emptyRuleEnv emptyFamInstEnvs uniqS (exprSize expr) $
     doSimplify
       1
@@ -72,8 +102,18 @@ simplifyExpr dflags trans uniqS expr =
           Plugins.sm_rules = Rules `member` trans -- this improves specialisation
         }
       expr
+#endif
 
 -- | Designed to be like `Plugins.CoreDoSimplify`, but applicable to arbitrary `Plugins.CoreExpr`s.
 doSimplify :: Int -> Plugins.SimplMode -> Plugins.CoreExpr -> SimplM Plugins.CoreExpr
-doSimplify passCount mode =
-  foldr (<=<) pure . replicate passCount $ simplExpr (mkSimplEnv mode) . occurAnalyseExpr
+doSimplify passCount mode expr =
+  foldr (<=<) pure (replicate passCount $ simplExpr simplEnv . occurAnalyseExpr) expr
+  where
+    simplEnv' = mkSimplEnv mode
+    simplEnv =
+      simplEnv'
+        -- __NB__: We have to extend the scope here so that any fresh Uniques don't conflict with
+        --         vars free in @expr@. See https://gitlab.haskell.org/ghc/ghc/-/issues/21321 for
+        --         details.
+        { seInScope = Plugins.extendInScopeSetSet (seInScope simplEnv') $ Plugins.exprFreeVars expr
+        }
