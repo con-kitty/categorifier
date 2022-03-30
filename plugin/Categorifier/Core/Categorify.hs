@@ -256,7 +256,7 @@ categorify
           Plugins.Var y ->
             if name == y
               then mkId makers $ Plugins.varType name
-              else categorifyLambda name =<\< mkInline (Plugins.Var y)
+              else categorifyLambda name =<\< mkInline name (Plugins.Var y)
           -- `tagToEnum#` in enum comparisons
           --
           -- Typically we see `tagToEnum#` within some other primitive-related expression.
@@ -309,9 +309,9 @@ categorify
                                   else Right from'
                               other -> Left other
                             )
-                            <$> (simplifyFun dflags [] =<\< mkInline from)
+                            <$> (simplifyFun' dflags [] =<\< mkInline name from)
                         categorifyLambda name
-                          =<\< simplifyFun dflags [] (Plugins.mkCoreApps inlined args)
+                          =<\< simplifyFun' dflags [] (Plugins.mkCoreApps inlined args)
                   -- Convert all the arguments of an application at once.
                   _
                     | let (tyArgs, otherArgs) = spanTypes args,
@@ -348,7 +348,7 @@ categorify
                         -- for `y`, etc.
                         --
                         -- This is not just an optimization, but is in fact a necessary step.
-                        -- The `simplifyFun []` after inlining is supposed to perform beta-reductions.
+                        -- The `simplifyFun' []` after inlining is supposed to perform beta-reductions.
                         -- However, sometimes a `case` expression with a single `DEFAULT` case may
                         -- prevent beta-reductions from being performed. As a result, here we may be
                         -- faced with something like
@@ -360,7 +360,7 @@ categorify
                         --       }) arg
                         -- @
                         --
-                        -- i.e., `simplifyFun` failed to substitute `arg` for `x` here, due to the
+                        -- i.e., `simplifyFun'` failed to substitute `arg` for `x` here, due to the
                         -- existence of the `case`.
                         --
                         -- This could cause problems. For instance, if `arg` is a constant, then an
@@ -533,7 +533,7 @@ categorify
               -- instances. This is achieved by simplifying it with `Inline` and `Rules`.
               [Alt _ _ _]
                 | Plugins.isPredTy (Plugins.varType unsafeBinder) ->
-                    categorifyLambda name =<\< simplifyFun dflags [Inline, Rules] caseExpr
+                    categorifyLambda name =<\< simplifyFun' dflags [Inline, Rules] caseExpr
               -- "consider a __case__ expression /case scrut of { p1 → rhs1; ...; pn → rhsn }/,
               -- where (the scrutinee) /scrut/ has a non-standard type with a /HasRep/
               -- instance. Rewrite /scrut/ to /inline abst (repr scrut)/ (this time inlining
@@ -562,12 +562,12 @@ binder type: {dbg bt}
                         -- In this case we can't use binder type.
                         $ Plugins.exprType scrut
 
-                abst <- inlineHasRep =<\< mkAbst makers bindTy
+                abst <- inlineHasRep name =<\< mkAbst makers bindTy
                 repr <- mkRepr makers bindTy
                 -- NON-INDUCTIVE
-                -- Here we expect `simplifyFun` to apply the `let`-substitution, case-of-case,
+                -- Here we expect `simplifyFun'` to apply the `let`-substitution, case-of-case,
                 -- and case-of-known-constructor transformations.
-                categorifyLambda name <=\< simplifyFun dflags [CaseOfCase] $
+                categorifyLambda name <=\< simplifyFun' dflags [CaseOfCase] $
                   Plugins.Case (Plugins.App abst (Plugins.App repr scrut)) unsafeBinder typ alts
           Plugins.Let bind expr -> case bind of
             Plugins.NonRec v rhs ->
@@ -632,7 +632,7 @@ binder type: {dbg bt}
                               pure
                               -- If `v` has a polymorphic type, we run the simplifier
                               -- to apply the type argument(s).
-                              (simplifyFun dflags [])
+                              (simplifyFun' dflags [])
                               (Plugins.isForAllTy (Plugins.varType v))
                               (subst [(v, rhs)] expr)
                         else
@@ -652,6 +652,8 @@ binder type: {dbg bt}
           -- This case is covered by "constant as abstraction body", but hard to convince GHC of
           -- that, so we duplicate the relevant logic here.
           Plugins.Lit lit -> mkConst' makers (Plugins.varType name) (Plugins.Lit lit)
+        where
+          simplifyFun' dflags trans = simplifyFun dflags trans [name]
 
       substBndrs ::
         Plugins.CoreExpr ->
@@ -695,12 +697,12 @@ binder type: {dbg bt}
                     (etaExpand (Plugins.dataConRepArity dc - length nonTypeArgs) e)
                 bodyTy = Plugins.exprType body
             abst <- mkAbst makers bodyTy
-            repr <- inlineHasRep =<\< mkRepr makers bodyTy
+            repr <- inlineHasRep name =<\< mkRepr makers bodyTy
             -- NON-INDUCTIVE
             -- Here we expect `simplifyFun` to apply the `let`-substitution and
             -- case-of-known-constructor transformations.
             categorifyLambda name
-              <=\< simplifyFun dflags [] . Plugins.mkLams binds . Plugins.App abst
+              <=\< simplifyFun dflags [] [name] . Plugins.mkLams binds . Plugins.App abst
               $ Plugins.App repr body
       -- `HasRep` is special to the plugin. We need to ensure the operations /don't/ inline in some
       -- cases and the must be /fully/ inlined in others. We wrap the methods in functions so we can
@@ -708,8 +710,8 @@ binder type: {dbg bt}
       -- method, and the second inlines the method. This should work as long as the instances are
       -- defined correctly (which should be the case, since it's rare to have to define an instance
       -- that wouldn't be provided by `deriveHasRep`).
-      inlineHasRep :: Plugins.CoreExpr -> CategoryStack Plugins.CoreExpr
-      inlineHasRep = inlineCast <=\< mkInline <=\< mkInline
+      inlineHasRep :: Plugins.Var -> Plugins.CoreExpr -> CategoryStack Plugins.CoreExpr
+      inlineHasRep name = inlineCast <=\< mkInline name <=\< mkInline name
         where
           -- `inlineCast` is needed to deal with casts resulting from type family definitions. For
           -- example, when we inline `abst` for `KSum2 C () (TimedSensor (Msg MotorStatusMsg C) C)`,
@@ -754,7 +756,7 @@ binder type: {dbg bt}
               -- ```
               --
               -- and since we can't inline `Foo`, we need to return it.
-              mkInline' (const . pure) pure e
+              mkInline' name (const . pure) pure e
             other -> pure other
       -- This checks to see if the input is some application of an `Plugins.Id` that we know how to
       -- map directly to a categorical representation. See `findMaker` for the `Plugins.Id`s that we
@@ -829,13 +831,13 @@ binder type: {dbg bt}
                               --            However, if we /don't/ simplify here, then we get
                               --            complaints about missing dictionaries elsewhere.
 
-                              (categorifyLambda n =<\< simplifyFun dflags [] =<\< mkInline expr)
+                              (categorifyLambda n =<\< simplifyFun dflags [] [n] =<\< mkInline n expr)
                               (maker1 (dropWhile isTypeOrPred args))
                               =<\< tryAutoInterpret'
                           )
                   else
                     maybe
-                      (categorifyLambda n =<\< simplifyFun dflags [] =<\< mkInline expr)
+                      (categorifyLambda n =<\< simplifyFun dflags [] [n] =<\< mkInline n expr)
                       (maker1 (dropWhile isTypeOrPred args))
                       =<\< tryAutoInterpret'
               )
@@ -1128,18 +1130,19 @@ binder type: {dbg bt}
       -- This is the behavior for the `Plugins.BuiltinRule` defined for `GHC.Exts.inline`. We
       -- duplicate it here rather than generating a call to `GHC.Exts.inline` and trampolining. This
       -- gives us very precise control over inlining.
-      mkInline :: Plugins.CoreExpr -> CategoryStack Plugins.CoreExpr
-      mkInline =
-        mkInline'
+      mkInline :: Plugins.Var -> Plugins.CoreExpr -> CategoryStack Plugins.CoreExpr
+      mkInline name =
+        mkInline' name
           (\e unf -> throwE . pure . UninlinedExpr e $ Just unf)
           (throwE . pure . flip UninlinedExpr Nothing)
 
       mkInline' ::
+        Plugins.Var ->
         (Plugins.CoreExpr -> Plugins.Unfolding -> CategoryStack Plugins.CoreExpr) ->
         (Plugins.CoreExpr -> CategoryStack Plugins.CoreExpr) ->
         Plugins.CoreExpr ->
         CategoryStack Plugins.CoreExpr
-      mkInline' onMissingUnfolding onNonVar expr = do
+      mkInline' name onMissingUnfolding onNonVar expr = do
         lets <- lift ask
         createdDictVars <- Map.fromListWith const . fmap fst <$> getCreatedDictVars
         let varUnfoldingFun v = case Map.lookup v createdDictVars of
@@ -1154,7 +1157,7 @@ binder type: {dbg bt}
               -- know the expression has changed, so we can continue trying to categorify it.
               . ( go onMissingUnfolding pure lets
                     . uncurry Plugins.mkCoreApps
-                    <=\< bitraverse (simplifyFun dflags [Rules]) pure
+                    <=\< bitraverse (simplifyFun dflags [Rules] [name]) pure
                       . uncurry (applyTyAndPredArgs varUnfoldingFun)
                       . Plugins.collectArgs
                 )
@@ -1231,9 +1234,13 @@ uniquifyVarName v =
 simplifyFun ::
   Plugins.DynFlags ->
   [Transformation] ->
+  -- | Additional in scope vars to be added to @SimplEnv@. In GHC 9.2.1, when simplifying
+  -- the body of a `Plugins.Lam`, the binder variable needs to be added to @SimplEnv@,
+  -- otherwise the GHC simplifier would panic because it can't find the binder variable.
+  [Plugins.Var] ->
   Plugins.CoreExpr ->
   CategoryStack Plugins.CoreExpr
-simplifyFun dflags trans e0 = do
+simplifyFun dflags trans inScopeVars e0 = do
   -- Here we perform `subst` directly, rather than make let-bindings and let the
   -- `Plugins.Let` case handle them. The reason is that the latter doesn't perform some
   -- specializations that we want. For instance, there was a case where the latter failed to
@@ -1241,7 +1248,7 @@ simplifyFun dflags trans e0 = do
   e <- Map.foldrWithKey' (curry (subst . pure)) e0 <$> lift ask
 #if MIN_VERSION_ghc(9, 2, 0)
   logger <- Plugins.liftIO Log.initLogger
-  Plugins.liftIO $ simplifyExpr logger dflags (Set.fromList trans) e
+  Plugins.liftIO $ simplifyExpr logger dflags (Set.fromList trans) inScopeVars e
 #else
   uniqS <- getNewUniqueSupply
   Plugins.liftIO $ simplifyExpr dflags (Set.fromList trans) uniqS e

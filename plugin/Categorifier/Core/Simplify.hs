@@ -19,7 +19,9 @@ module Categorifier.Core.Simplify
 where
 
 import Control.Monad ((<=<))
+import Data.Foldable (foldl')
 import Data.Set (Set, member)
+
 #if MIN_VERSION_ghc(9, 2, 0)
 import qualified GHC.Core.Unfold as Core
 import qualified GHC.Utils.Logger as Log
@@ -28,9 +30,10 @@ import qualified GHC.Utils.Logger as Log
 import GHC.Core.Stats (exprSize)
 import GHC.Core.FamInstEnv (emptyFamInstEnvs)
 import GHC.Core.Opt.OccurAnal (occurAnalyseExpr)
-import GHC.Core.Opt.Simplify.Env (mkSimplEnv)
+import GHC.Core.Opt.Simplify.Env (mkSimplEnv, SimplEnv(..))
 import GHC.Core.Opt.Simplify.Monad (SimplM, initSmpl)
 import GHC.Core.Opt.Simplify (simplExpr)
+import GHC.Types.Var.Env (extendInScopeSet)
 import qualified GHC.Plugins as Plugins
 #else
 import CoreStats (exprSize)
@@ -61,9 +64,10 @@ simplifyExpr ::
   Log.Logger ->
   Plugins.DynFlags ->
   Set Transformation ->
+  [Plugins.Var] ->
   Plugins.CoreExpr ->
   IO Plugins.CoreExpr
-simplifyExpr logger dflags trans expr =
+simplifyExpr logger dflags trans inScopeVars expr =
   fmap fst . initSmpl logger dflags Plugins.emptyRuleEnv emptyFamInstEnvs (exprSize expr) $
     doSimplify
       1
@@ -79,6 +83,7 @@ simplifyExpr logger dflags trans expr =
           Plugins.sm_phase = Plugins.Phase 1,
           Plugins.sm_rules = Rules `member` trans -- this improves specialisation
         }
+      inScopeVars
       expr
 #else
 simplifyExpr ::
@@ -100,10 +105,22 @@ simplifyExpr dflags trans uniqS expr =
           Plugins.sm_phase = Plugins.Phase 1,
           Plugins.sm_rules = Rules `member` trans -- this improves specialisation
         }
+      []
       expr
 #endif
 
 -- | Designed to be like `Plugins.CoreDoSimplify`, but applicable to arbitrary `Plugins.CoreExpr`s.
-doSimplify :: Int -> Plugins.SimplMode -> Plugins.CoreExpr -> SimplM Plugins.CoreExpr
-doSimplify passCount mode =
-  foldr (<=<) pure . replicate passCount $ simplExpr (mkSimplEnv mode) . occurAnalyseExpr
+doSimplify ::
+  Int ->
+  Plugins.SimplMode ->
+  [Plugins.Var] ->
+  Plugins.CoreExpr ->
+  SimplM Plugins.CoreExpr
+doSimplify passCount mode inScopeVars =
+  foldr (<=<) pure . replicate passCount $ simplExpr simplEnv . occurAnalyseExpr
+  where
+    simplEnv0 = mkSimplEnv mode
+    simplEnv =
+      simplEnv0
+        { seInScope = foldl' extendInScopeSet (seInScope simplEnv0) inScopeVars
+        }
