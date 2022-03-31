@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -26,27 +25,9 @@ import qualified Categorifier.Common.IO.Exception as Exception
 import qualified Categorifier.TH as TH
 import Control.Applicative (liftA2)
 import Control.Arrow (Arrow (..))
-#if !MIN_VERSION_template_haskell(2, 16, 0)
-import Control.Monad ((<=<))
-#endif
 import Data.Maybe (fromMaybe)
 import GHC.Stack (CallStack, HasCallStack, callStack, prettyCallStack)
-import qualified Language.Haskell.TH as TH
 import PyF (fmt)
-
-reifyType :: TH.Name -> TH.TypeQ
-#if MIN_VERSION_template_haskell(2, 16, 0)
-reifyType = TH.reifyType
-#else
-reifyType =
-  (\case
-      TH.ClassOpI _ ty _ -> pure ty
-      TH.DataConI _ ty _ -> pure ty
-      TH.VarI _ ty _ -> pure ty
-      _ -> fail "Tried to reify the type of a term that isn't a function"
-  )
-    <=< TH.reify
-#endif
 
 -- | The name of the module for the plugin.
 pluginModule :: String
@@ -101,20 +82,6 @@ instance Show UnconvertedCall where
 
 instance Exception UnconvertedCall
 
-#if MIN_VERSION_template_haskell(2, 17, 0)
-type TyVarBndr = TH.TyVarBndr TH.Specificity
-#else
-type TyVarBndr = TH.TyVarBndr
-#endif
-
-splitTy :: TH.Type -> TH.Q (([TyVarBndr], TH.Cxt), (TH.Type, TH.Type))
-splitTy (TH.AppT (TH.AppT TH.ArrowT inp) outp) = pure (mempty, (inp, outp))
-splitTy (TH.ForallT vs ctx t) = first ((vs, ctx) <>) <$> splitTy t
-#if MIN_VERSION_template_haskell(2, 16, 0)
-splitTy (TH.ForallVisT _ t) = splitTy t
-#endif
-splitTy typ = Exception.throwIOAsException (("unsupported type " <>) . show) typ
-
 generateResultName ::
   TH.Name ->
   -- | The target category type
@@ -154,11 +121,11 @@ functionAs ::
   [Maybe TH.TypeQ] ->
   TH.DecsQ
 functionAs newName oldName k tys = do
-  ((vs, ctx), (input, output)) <- splitTy =<< TH.specializeT (reifyType oldName) tys
+  ((vs, ctx), (input, output)) <- TH.splitTy =<< TH.specializeT (TH.reifyType oldName) tys
   functionAs' (TH.mkName newName) oldName vs ctx k input output
 
 functionAs' ::
-  TH.Name -> TH.Name -> [TyVarBndr] -> TH.Cxt -> TH.TypeQ -> TH.Type -> TH.Type -> TH.DecsQ
+  TH.Name -> TH.Name -> [TH.TyVarBndr flag] -> TH.Cxt -> TH.TypeQ -> TH.Type -> TH.Type -> TH.DecsQ
 functionAs' newName oldName _vs ctx k input output =
   sequenceA
     [ TH.sigD newName $ TH.forallT [] (pure ctx) [t|$k $(pure input) $(pure output)|],
@@ -196,7 +163,7 @@ separatelyAs ::
   [Maybe TH.TypeQ] ->
   TH.DecsQ
 separatelyAs newName oldName k tys = do
-  ((vs, ctx), (input, output)) <- splitTy =<< TH.specializeT (reifyType oldName) tys
+  ((vs, ctx), (input, output)) <- TH.splitTy =<< TH.specializeT (TH.reifyType oldName) tys
   -- __TODO__: Fail if there's no module, because the name isn't global.
   let (modu, base) = (fromMaybe "" . TH.nameModule &&& TH.nameBase) oldName
       newName' = TH.mkName newName

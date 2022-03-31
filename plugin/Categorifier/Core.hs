@@ -75,7 +75,6 @@ import ErrUtils (WarningMessages)
 import qualified ForeignCall as Plugins
 import qualified GhcPlugins as Plugins
 #endif
-import qualified Language.Haskell.TH as TH
 import PyF (fmt)
 import System.IO (hPutStrLn, stderr)
 import System.IO.Unsafe (unsafePerformIO)

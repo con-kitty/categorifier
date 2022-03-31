@@ -26,6 +26,7 @@ library
     , PyF
     , base
     , categorifier-common
+    , categorifier-duoids
     , containers
     , semialign
     , template-haskell
