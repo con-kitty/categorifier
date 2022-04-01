@@ -24,9 +24,9 @@ library
     , adjunctions
     , base
     , categorifier-duoids
+    , categorifier-ghc
     , categorifier-plugin
     , containers
-    , ghc
     , template-haskell
     , transformers
   default-language: Haskell2010

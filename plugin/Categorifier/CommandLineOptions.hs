@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- | Manages and parses /all/ the options for every part of the plugin. This is because the set of
@@ -10,6 +9,7 @@ module Categorifier.CommandLineOptions
   )
 where
 
+import qualified Categorifier.GHC.Driver as GhcPlugins
 import Data.Bifunctor (Bifunctor (..))
 import Data.Either.Validation (Validation (..))
 import Data.List (elemIndex)
@@ -19,11 +19,6 @@ import qualified Data.Map as Map
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Tuple.Extra (firstM)
-#if MIN_VERSION_ghc(9, 0, 0)
-import qualified GHC.Plugins as GhcPlugins
-#else
-import qualified GhcPlugins
-#endif
 
 -- | An enumeration of the various command-line option groups the plugin supports.
 data OptionGroup

@@ -1,11 +1,6 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
--- Because `ZonkEnv` isn't exported before GHC 8.8, so we use @_@ instead.
-{-# LANGUAGE PartialTypeSignatures #-}
--- -Wno-orphans is so we can add missing instances to `Bag.Bag`
-{-# OPTIONS_GHC -Wno-orphans -Wno-partial-type-signatures #-}
 
 -- |
 -- Module      :  ConCat.BuildDictionary
@@ -29,6 +24,15 @@ import Categorifier.Core.Types
     writerT,
   )
 import Categorifier.Duoidal ((<\*))
+import qualified Categorifier.GHC.Core as Plugins
+import qualified Categorifier.GHC.Data as Plugins
+import qualified Categorifier.GHC.Driver as Plugins
+import qualified Categorifier.GHC.HsToCore as Plugins
+import qualified Categorifier.GHC.Runtime as Plugins
+import qualified Categorifier.GHC.Tc as Typechecker
+import qualified Categorifier.GHC.Types as Plugins
+import qualified Categorifier.GHC.Unit as Plugins
+import qualified Categorifier.GHC.Utils as Plugins
 import Control.Arrow (Arrow (..))
 import Control.Monad ((<=<))
 import Control.Monad.Extra (filterM)
@@ -43,79 +47,11 @@ import Data.List.NonEmpty (NonEmpty (..), nonEmpty)
 import qualified Data.List.NonEmpty as NonEmpty
 import qualified Data.Map.Strict as Map
 import Data.Monoid (Any (..))
-#if MIN_VERSION_ghc(9, 0, 0)
-import qualified GHC.Core.Predicate as Core
-import GHC.Core.Opt.Pipeline (simplifyExpr)
-import qualified GHC.Data.Bag as Bag
-import GHC.HsToCore.Binds (dsEvBinds)
-import GHC.HsToCore.Monad (initDsTc)
-import GHC.Plugins ((<+>))
-import qualified GHC.Plugins as Plugins
-import qualified GHC.Tc.Errors as Typechecker
-import qualified GHC.Tc.Module as Typechecker
-import qualified GHC.Tc.Solver as Typechecker
-import qualified GHC.Tc.Solver.Interact as Typechecker
-import qualified GHC.Tc.Solver.Monad as Typechecker
-import qualified GHC.Tc.Types as Typechecker
-import qualified GHC.Tc.Types.Constraint as Typechecker
-import qualified GHC.Tc.Types.Evidence as Typechecker
-import qualified GHC.Tc.Types.Origin as Typechecker
-import qualified GHC.Tc.Utils.Monad as Typechecker
-import qualified GHC.Tc.Utils.Zonk as Typechecker
-import GHC.Types.Unique (mkUniqueGrimily)
-import qualified GHC.Types.Unique.Set as NonDetSet
-#if MIN_VERSION_ghc(9, 2, 0)
-import qualified GHC.Runtime.Context as Plugins
-import GHC.Types.Error (getErrorMessages, getWarningMessages)
-import GHC.Unit.Finder (FindResult (..), findExposedPackageModule)
-import qualified GHC.Unit.Module.Deps as Plugins
-#else
-import GHC.Driver.Finder (FindResult (..), findExposedPackageModule)
-#endif
-import GHC.Utils.Error (WarningMessages)
-#else
-import qualified Bag
-#if MIN_VERSION_ghc(8, 10, 0)
-import qualified Constraint as Typechecker
-#endif
-import DsBinds (dsEvBinds)
-import DsMonad (initDsTc)
-import ErrUtils (WarningMessages)
-import Finder (FindResult (..), findExposedPackageModule)
-import GhcPlugins ((<+>))
-import qualified GhcPlugins as Plugins
-#if MIN_VERSION_ghc(8, 10, 0)
-import qualified Predicate as Core
-#else
-import qualified Id as Core
-#endif
-import SimplCore (simplifyExpr)
-import qualified TcErrors as Typechecker
-import qualified TcEvidence as Typechecker
-import qualified TcHsSyn as Typechecker
-import qualified TcInteract as Typechecker
-#if MIN_VERSION_ghc(8, 10, 0)
-import qualified TcOrigin as Typechecker
-#endif
-import qualified TcRnDriver as Typechecker
-import qualified TcRnMonad as Typechecker
-import qualified TcSMonad as Typechecker
-import qualified TcSimplify as Typechecker
-import qualified UniqSet as NonDetSet
-import Unique (mkUniqueGrimily)
-#endif
 import PyF (fmt)
 import Yaya.Functor (hmap)
 
-emptyZonkEnv :: Typechecker.TcM _
-#if MIN_VERSION_ghc(8, 8, 0)
-emptyZonkEnv = Typechecker.emptyZonkEnv
-#else
-emptyZonkEnv = pure Typechecker.emptyZonkEnv
-#endif
-
 uniqSetToList :: Plugins.UniqSet a -> [a]
-uniqSetToList = NonDetSet.nonDetEltsUniqSet
+uniqSetToList = Plugins.nonDetEltsUniqSet
 
 traceTcS' :: String -> Plugins.SDoc -> Typechecker.TcS ()
 traceTcS' str doc = pprTrace' str doc (pure ())
@@ -131,29 +67,24 @@ runTcRn ::
   Plugins.HscEnv ->
   Plugins.ModGuts ->
   Typechecker.TcRn a ->
-  IO (Either (NonEmpty DictionaryFailure) a, WarningMessages)
+  IO (Either (NonEmpty DictionaryFailure) a, Plugins.WarningMessages)
 runTcRn env0 guts m = do
   -- Remove hidden modules from dep_orphans
   orphans <-
-    filterM (fmap isFound . flip (findExposedPackageModule env0) Nothing)
+    filterM (fmap isFound . flip (Plugins.findExposedPackageModule env0) Nothing)
       . fmap Plugins.moduleName
       . Plugins.dep_orphs
       $ Plugins.mg_deps guts
-#if MIN_VERSION_ghc(9, 2, 0)
-  (msg, mr) <- Typechecker.runTcInteractive (env orphans) m
-  pure (handleResult (getErrorMessages msg) mr, getWarningMessages msg)
-#else
   ((warns, errs), mr) <- Typechecker.runTcInteractive (env orphans) m
   pure (handleResult errs mr, warns)
-#endif
   where
-    isFound :: FindResult -> Bool
-    isFound (Found _ _) = True
+    isFound :: Plugins.FindResult -> Bool
+    isFound (Plugins.Found _ _) = True
     isFound _ = False
     handleResult errors =
       maybe
         (Left . pure $ TypecheckFailure errors)
-        (if Bag.isEmptyBag errors then pure else Left . pure . ErroneousTypecheckSuccess errors)
+        (if Plugins.isEmptyBag errors then pure else Left . pure . ErroneousTypecheckSuccess errors)
     imports0 = Plugins.ic_imports (Plugins.hsc_IC env0)
     env :: [Plugins.ModuleName] -> Plugins.HscEnv
     env extraModuleNames =
@@ -196,14 +127,14 @@ buildDictionary' evIds evar = do
               pure z
           )
     traceTc' "buildDictionary' back from runTcS" (Plugins.ppr bnds0)
-    ez <- emptyZonkEnv
+    ez <- Typechecker.emptyZonkEnv
     -- Use the newly exported zonkEvBinds. <https://phabricator.haskell.org/D2088>
     (_env', bnds) <- Typechecker.zonkEvBinds ez bnds0
     -- traceTc "buildDictionary' wCs'" (Plugins.ppr wCs')
     traceTc' "buildDictionary' zonked" (Plugins.ppr bnds)
     Typechecker.reportAllUnsolved wCs'
     pure bnds
-  initDsTc $ dsEvBinds bs
+  Plugins.initDsTc $ Plugins.dsEvBinds bs
 
 -- TODO: Richard Eisenberg: "use TcMType.newWanted to make your CtWanted. As it
 -- stands, if predTy is an equality constraint, your CtWanted will be
@@ -214,16 +145,15 @@ buildDictionary' evIds evar = do
 --   the constraint to satisfy.
 buildDictionary ::
   Plugins.HscEnv ->
-  Plugins.DynFlags ->
   Plugins.ModGuts ->
   Plugins.InScopeEnv ->
   Plugins.Type ->
   DictionaryStack Plugins.CoreExpr
-buildDictionary env dflags guts inScope goalTy =
+buildDictionary env guts inScope goalTy =
   pprTrace' "\nbuildDictionary" (Plugins.ppr goalTy)
     . pprTrace'
       "buildDictionary in-scope evidence"
-      (Plugins.ppr (WithType . Plugins.Var <$> uniqSetToList scopedDicts))
+      (Plugins.ppr (Plugins.WithType . Plugins.Var <$> uniqSetToList scopedDicts))
     -- TODO: replace the hardcoded @True@.
     . Bench.billTo True Bench.BuildDictionary
     $ getCachedDict goalTy >>= \case
@@ -236,7 +166,7 @@ buildDictionary env dflags guts inScope goalTy =
         cacheDict goalTy dict
         pure dict
   where
-    binder = localId inScope name goalTy
+    binder = Plugins.localId inScope name goalTy
     name = "cccDict"
     scopedDicts = Plugins.filterVarSet keepVar (Plugins.getInScopeVars (fst inScope))
     -- This /should/ return `True` when @v@'s an applicable instance related to our @goalTy@,
@@ -257,7 +187,7 @@ buildDictionary env dflags guts inScope goalTy =
     -- problem, as this is a useful feature to keep.
     keepVar v =
       let varName = Plugins.occNameString . Plugins.nameOccName $ Plugins.varName v
-       in Core.isEvVar v
+       in Plugins.isEvVar v
             &&
             -- Here we remove all the "cccDict" vars from the `inScope`. Why? Because when there
             -- are multiple functions (say `foo` and `bar`) being categorified in parallel, a
@@ -278,11 +208,7 @@ buildDictionary env dflags guts inScope goalTy =
                   --         terms of the `Plugins.CompilerPhase` they run in (this is
                   --        `Plugins.InitialPhase` vs @`Plugins.Phase` 0@ in Conal's. AFAICT, that
                   --         shouldn't matter, but if it does, come back here.
-#if MIN_VERSION_ghc(9, 0, 0)
-                  . ( lift . simplifyExpr env
-#else
-                  . ( lift . simplifyExpr dflags
-#endif
+                  . ( lift . Plugins.simplifyExpr env
                         &&& ExceptT
                           . pure
                           . traverse_ (Left . pure . FreeIds)
@@ -319,24 +245,6 @@ hasCoercionHole = getAny . everything (<>) (mkQ mempty (Any . isHole))
     isHole :: Plugins.CoercionHole -> Bool
     isHole = const True
 
--- | Make a unique identifier for a specified type, using a provided name.
-localId :: Plugins.InScopeEnv -> String -> Plugins.Type -> Plugins.Id
-#if MIN_VERSION_ghc(9, 0, 0)
-localId (inScopeSet, _) str ty =
-  Plugins.uniqAway inScopeSet $ Plugins.mkLocalId (stringToName str) ty ty
-#else
-localId (inScopeSet, _) str =
-  Plugins.uniqAway inScopeSet . Plugins.mkLocalId (stringToName str)
-#endif
-
-stringToName :: String -> Plugins.Name
-stringToName str =
-  Plugins.mkSystemVarName
-    -- When mkUniqueGrimily's argument is negative, we see something like
-    -- "Exception: Prelude.chr: bad argument: (-52)". Hence the abs.
-    (mkUniqueGrimily (abs (fromIntegral (Plugins.hashString str))))
-    (Plugins.mkFastString str)
-
 cacheKey :: Plugins.Type -> DictCacheKey
 cacheKey ty = [fmt|{modu}.{Plugins.showSDocUnsafe $ Plugins.ppr ty}|]
   where
@@ -364,17 +272,6 @@ cacheDict goalTy dict = lift . modify $ \(CategoryState uniqS idx cache) -> case
         name =
           Plugins.mkInternalName u (Plugins.mkVarOcc "cccDict") $
             Plugins.mkGeneralSrcSpan "oops"
-#if MIN_VERSION_ghc(9, 0, 0)
-        v = Plugins.mkLocalVar (Plugins.DFunId False) name goalTy goalTy Plugins.vanillaIdInfo
-#else
         v = Plugins.mkLocalVar (Plugins.DFunId False) name goalTy Plugins.vanillaIdInfo
-#endif
      in CategoryState uniqS' (idx + 1) $
           Map.insert (cacheKey goalTy) (DictCacheEntry goalTy v dict (Just idx)) cache
-
--- Maybe place in a GHC utils module.
-
-newtype WithType = WithType Plugins.CoreExpr
-
-instance Plugins.Outputable WithType where
-  ppr (WithType e) = Plugins.ppr e <+> Plugins.dcolon <+> Plugins.ppr (Plugins.exprType e)

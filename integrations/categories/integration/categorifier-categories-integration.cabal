@@ -24,8 +24,8 @@ library
     , base
     , bytestring
     , categorifier-duoids
+    , categorifier-ghc
     , categorifier-plugin
-    , ghc
     , ghc-prim
     , transformers
   default-language: Haskell2010

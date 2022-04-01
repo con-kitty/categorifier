@@ -18,6 +18,10 @@ where
 
 import Categorifier.Core.BuildDictionary (buildDictionary)
 import Categorifier.Core.Types (CategoricalFailure (..), CategoryStack)
+import qualified Categorifier.GHC.Core as Plugins
+import qualified Categorifier.GHC.Driver as Plugins
+import qualified Categorifier.GHC.Types as Plugins
+import qualified Categorifier.GHC.Unit as Plugins
 import Categorifier.Hierarchy (HaskOps (..), Hierarchy (..))
 import Control.Monad ((<=<))
 import Control.Monad.Trans.Except (ExceptT (..), runExceptT, throwE)
@@ -26,15 +30,6 @@ import Data.Bifunctor (Bifunctor (..))
 import Data.Bitraversable (Bitraversable (..))
 import Data.Either.Extra (maybeToEither)
 import Data.Generics.Uniplate.Data (universeBi)
-#if MIN_VERSION_ghc(9, 0, 0)
-import qualified GHC.Core.TyCo.Rep as TyCoRep
-import qualified GHC.Plugins as Plugins
-#else
-import qualified GhcPlugins as Plugins
-#if MIN_VERSION_ghc(8, 10, 0)
-import qualified TyCoRep
-#endif
-#endif
 
 -- Need Uniplate for traversals on GHC-provided recursive types
 {-# ANN module ("HLint: ignore Avoid restricted module" :: String) #-}
@@ -189,7 +184,6 @@ data Makers = Makers
   }
 
 haskMakers ::
-  Plugins.DynFlags ->
   Plugins.InScopeEnv ->
   Plugins.ModGuts ->
   Plugins.HscEnv ->
@@ -197,7 +191,7 @@ haskMakers ::
   Hierarchy CategoryStack ->
   Plugins.Type ->
   Makers
-haskMakers dflags inScope guts hscEnv HaskOps {..} Hierarchy {..} cat =
+haskMakers inScope guts hscEnv HaskOps {..} Hierarchy {..} cat =
   Makers
     { mkAbs = tys1 "abs" absV,
       mkAbstC = tys1 "abstC" abstCV,
@@ -338,7 +332,7 @@ haskMakers dflags inScope guts hscEnv HaskOps {..} Hierarchy {..} cat =
     -- required.
     onDicts :: Plugins.CoreExpr -> CategoryStack Plugins.CoreExpr
     onDicts e =
-      case invisFunArg (Plugins.exprType e) of
+      case Plugins.invisFunArg (Plugins.exprType e) of
         Just ty
           | isPredTy' ty ->
               -- Find the wanted type class instance in the environment, apply `e` to it,
@@ -348,38 +342,9 @@ haskMakers dflags inScope guts hscEnv HaskOps {..} Hierarchy {..} cat =
                   . withRWST (const ((),))
                   . fmap (bimap (pure . CouldNotBuildDictionary ty e) (Plugins.App e))
                   . runExceptT
-                  . buildDictionary hscEnv dflags guts inScope
+                  . buildDictionary hscEnv guts inScope
                 $ ty
         _ -> pure e
-
-    {-
-    Like `Plugins.splitFunTy_maybe`, but only returns `Just` if the argument is invisible.
-
-    When applying `categorifyLambda` to `\(x :: X) -> ($fFoo :: Foo Bar)` where
-    `Foo` is a typeclass and `$fFoo` is its dictionary, the plugin would invoke
-    `mkConst' X (Foo Bar)`, which ends up applying `onDicts` to
-
-    ```
-    (ConstCat Hask (Foo Bar), Ok Hask X) => Foo Bar -> Hask X (Foo Bar)
-    ```
-
-    Here we need two dictionaries, not three, i.e., it should only proceed if the
-    arrow is "=>", not "->".
-    -}
-    invisFunArg :: Plugins.Type -> Maybe Plugins.Type
-#if MIN_VERSION_ghc(8, 10, 0)
-    invisFunArg = \case
-      ty | Just ty' <- Plugins.coreView ty -> invisFunArg ty'
-#if MIN_VERSION_ghc(9, 0, 0)
-      TyCoRep.FunTy Plugins.InvisArg _ arg _ -> Just arg
-#else
-      TyCoRep.FunTy Plugins.InvisArg arg _ -> Just arg
-#endif
-      _ -> Nothing
-#else
-    invisFunArg =
-      (\(arg, _) -> if Plugins.isPredTy arg then pure arg else Nothing) <=< Plugins.splitFunTy_maybe
-#endif
 
     isPredTy' :: Plugins.Type -> Bool
     isPredTy' ty = Plugins.isPredTy ty || others ty

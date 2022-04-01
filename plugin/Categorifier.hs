@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 
@@ -15,6 +14,8 @@ where
 import Categorifier.CommandLineOptions (OptionGroup, partitionOptions)
 import Categorifier.Common.IO.Exception (throwIOAsException)
 import qualified Categorifier.Core
+import qualified Categorifier.GHC.Core as GhcPlugins
+import qualified Categorifier.GHC.Driver as GhcPlugins
 import Control.Applicative (liftA2)
 import Control.Monad (join)
 import Data.Either.Validation (Validation (..))
@@ -22,31 +23,14 @@ import Data.Foldable (toList)
 import Data.Map (Map)
 import Data.Text (Text)
 import qualified Data.Text as Text
-#if MIN_VERSION_ghc(9, 0, 0)
-import qualified GHC.Plugins as GhcPlugins
-#else
-import qualified GhcPlugins
-#endif
 import PyF (fmt)
 
 -- | The required plugin entry-point. See [the GHC User's Guide section on Compiler
 --   Plugins](https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/extending_ghc.html#compiler-plugins) [ ](DONTLINTLINELENGTH)
 --   for more information.
 plugin :: GhcPlugins.Plugin
-#if MIN_VERSION_ghc(8, 6, 0)
 plugin =
-  GhcPlugins.defaultPlugin
-    { GhcPlugins.installCoreToDos =
-        \opts ->
-          join
-            . GhcPlugins.liftIO
-            . liftA2 Categorifier.Core.install (partitionOptions' opts)
-            . pure,
-      GhcPlugins.pluginRecompile = GhcPlugins.purePlugin
-    }
-#else
-plugin =
-  GhcPlugins.defaultPlugin
+  GhcPlugins.defaultPurePlugin
     { GhcPlugins.installCoreToDos =
         \opts ->
           join
@@ -54,7 +38,6 @@ plugin =
             . liftA2 Categorifier.Core.install (partitionOptions' opts)
             . pure
     }
-#endif
 
 partitionOptions' :: [GhcPlugins.CommandLineOption] -> IO (Map OptionGroup [Text])
 partitionOptions' opts =

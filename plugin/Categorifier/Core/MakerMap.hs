@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -11,7 +10,6 @@ module Categorifier.Core.MakerMap
     MakerMapFun,
     combineMakerMapFuns,
     baseMakerMapFun,
-    adjunctionsMakerMapFun,
 
     -- * Helper functions for combining categorified expressions
     applyCat,
@@ -36,7 +34,12 @@ import qualified Categorifier.Core.Functions
 import Categorifier.Core.Makers (Makers (..), extract2TypeArgs, getMorphismType)
 import Categorifier.Core.Types (CategoricalFailure (..), CategoryStack)
 import Categorifier.Duoidal (joinD, traverseD, (<*\>), (<=\<), (=<\<))
-import Categorifier.Hierarchy (properFunTy)
+import qualified Categorifier.GHC.Builtin as Plugins
+import qualified Categorifier.GHC.Core as Plugins
+import qualified Categorifier.GHC.Driver as Plugins
+import qualified Categorifier.GHC.Types as Plugins
+import qualified Categorifier.GHC.Unit as Plugins
+import qualified Categorifier.GHC.Utils as Plugins
 import qualified Control.Arrow
 import qualified Control.Category
 import Control.Monad.Trans.Except (throwE)
@@ -48,7 +51,6 @@ import Data.Foldable (foldlM)
 import qualified Data.Foldable
 import qualified Data.Function
 import qualified Data.Functor
-import qualified Data.Functor.Rep
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Maybe (fromMaybe)
@@ -61,15 +63,6 @@ import qualified GHC.Float
 import qualified GHC.Num
 import qualified GHC.Real
 import qualified GHC.Word
-#if MIN_VERSION_ghc(9, 0, 0)
-import qualified GHC.Builtin.Types as TysWiredIn
-import GHC.Core.Opt.Arity (etaExpand)
-import qualified GHC.Plugins as Plugins
-#else
-import CoreArity (etaExpand)
-import qualified GhcPlugins as Plugins
-import qualified TysWiredIn
-#endif
 import qualified Language.Haskell.TH as TH
 import qualified Unsafe.Coerce
 
@@ -90,6 +83,7 @@ type MakerMap = Map TH.Name ([Plugins.CoreExpr] -> Maybe (CategoryStack Plugins.
 --   directly than simply being inlined.
 type MakerMapFun =
   Plugins.DynFlags ->
+  Plugins.Logger ->
   Makers ->
   -- | Lambda-bound var
   Plugins.Var ->
@@ -113,89 +107,15 @@ type MakerMapFun =
 
 -- | Right-based combination.
 combineMakerMapFuns :: [MakerMapFun] -> MakerMapFun
-combineMakerMapFuns fs dflags m n target expr cat var args modu catFun catLambda =
+combineMakerMapFuns fs dflags logger m n target expr cat var args modu catFun catLambda =
   Map.unionsWith (\_ x -> x) maps
   where
-    maps = fmap (\f -> f dflags m n target expr cat var args modu catFun catLambda) fs
-
-adjunctionsMakerMapFun :: MakerMapFun
-adjunctionsMakerMapFun
-  dflags
-  m@Makers {..}
-  n
-  target
-  expr
-  cat
-  var
-  args
-  modu
-  categorifyFun
-  categorifyLambda =
-    Map.fromListWith
-      const
-      [ ( 'Data.Functor.Rep.apRep,
-          \case
-            f : a : b : representable : rest ->
-              ($ (f : representable : a : b : rest)) =<< Map.lookup '(GHC.Base.<*>) baseMakerMap
-            _ -> Nothing
-        ),
-        ( 'Data.Functor.Rep.bindRep,
-          \case
-            f : a : b : representable : rest ->
-              ($ (f : representable : a : b : rest)) =<< Map.lookup '(GHC.Base.>>=) baseMakerMap
-            _ -> Nothing
-        ),
-        ( 'Data.Functor.Rep.fmapRep,
-          \case
-            f : a : b : representable : rest ->
-              ($ (f : representable : a : b : rest)) =<< Map.lookup 'GHC.Base.fmap baseMakerMap
-            _ -> Nothing
-        ),
-        ( 'Data.Functor.Rep.index,
-          \case
-            Plugins.Type f : _representable : Plugins.Type a : rest ->
-              pure $ maker1 rest =<\< mkIndex f a
-            _ -> Nothing
-        ),
-        ( 'Data.Functor.Rep.liftR2,
-          \case
-            f : a : b : c : representable : rest ->
-              ($ (f : representable : a : b : c : rest))
-                =<< Map.lookup 'GHC.Base.liftA2 baseMakerMap
-            _ -> Nothing
-        ),
-        ( 'Data.Functor.Rep.pureRep,
-          \case
-            f : a : representable : rest ->
-              ($ (f : representable : a : rest)) =<< Map.lookup 'GHC.Base.pure baseMakerMap
-            _ -> Nothing
-        ),
-        ( 'Data.Functor.Rep.tabulate,
-          \case
-            Plugins.Type f : _representable : Plugins.Type a : rest ->
-              pure $ maker1 rest =<\< mkTabulate f a
-            _ -> Nothing
-        )
-      ]
-    where
-      baseMakerMap =
-        baseMakerMapFun
-          dflags
-          m
-          n
-          target
-          expr
-          cat
-          var
-          args
-          modu
-          categorifyFun
-          categorifyLambda
-      maker1 = makeMaker1 m categorifyLambda
+    maps = fmap (\f -> f dflags logger m n target expr cat var args modu catFun catLambda) fs
 
 baseMakerMapFun :: MakerMapFun
 baseMakerMapFun
   _dflags
+  _logger
   m@Makers {..}
   n
   _target
@@ -221,7 +141,7 @@ baseMakerMapFun
                   : u
                   : v
                   : rest
-                    | Plugins.eqType c properFunTy ->
+                    | Plugins.eqType c Plugins.properFunTy ->
                         -- from: (\n -> {{u}} &&& {{v}}) :: n -> a -> (b1, b2)
                         -- to:   curry (uncurry (categorifyLambda n {{u}})
                         --         &&& uncurry (categorifyLambda n {{v}})) ::
@@ -235,26 +155,26 @@ baseMakerMapFun
             ( '(Control.Arrow.|||),
               \case
                 Plugins.Type c : _arr : rest
-                  | Plugins.eqType c properFunTy ->
+                  | Plugins.eqType c Plugins.properFunTy ->
                       ($ rest) =<< Map.lookup 'Data.Either.either makerMap
                 _ -> Nothing
             ),
             ( 'Control.Arrow.arr,
               \case
                 Plugins.Type c : _arrow : Plugins.Type _a : Plugins.Type _b : fn : rest
-                  | Plugins.eqType c properFunTy -> pure $ maker1 rest =<\< categorifyFun fn
+                  | Plugins.eqType c Plugins.properFunTy -> pure $ maker1 rest =<\< categorifyFun fn
                 _ -> Nothing
             ),
             ( '(Control.Category..),
               \case
                 Plugins.Type _ : Plugins.Type k : _category : rest
-                  | Plugins.eqType k properFunTy -> ($ rest) =<< Map.lookup '(GHC.Base..) makerMap
+                  | Plugins.eqType k Plugins.properFunTy -> ($ rest) =<< Map.lookup '(GHC.Base..) makerMap
                 _ -> Nothing
             ),
             ( 'Control.Category.id,
               \case
                 Plugins.Type _ : Plugins.Type c : _category : rest
-                  | Plugins.eqType c properFunTy -> ($ rest) =<< Map.lookup 'GHC.Base.id makerMap
+                  | Plugins.eqType c Plugins.properFunTy -> ($ rest) =<< Map.lookup 'GHC.Base.id makerMap
                 _ -> Nothing
             ),
             -- __TODO__: This is not partially-applicable enough
@@ -950,7 +870,7 @@ makeMaker2 ::
 makeMaker2 m categorifyLambda e rest op =
   case rest of
     [] -> curryCat m op
-    [_] -> categorifyLambda $ etaExpand 1 e -- NON-INDUCTIVE
+    [_] -> categorifyLambda $ Plugins.etaExpand 1 e -- NON-INDUCTIVE
     (u : v : xs) ->
       handleAdditionalArgs m categorifyLambda xs
         =<\< composeCat m op
@@ -1000,7 +920,7 @@ applyEnrichedCat' m categorifyLambda morphs rest op dist =
     =<\< traverseD (uncurryCat m <=\< categorifyLambda) morphs
 
 makeTupleTyWithVar :: Plugins.Var -> Plugins.Type -> Plugins.Type
-makeTupleTyWithVar n a = TysWiredIn.mkBoxedTupleTy [Plugins.varType n, a]
+makeTupleTyWithVar n a = Plugins.mkBoxedTupleTy [Plugins.varType n, a]
 
 -- TODO(ian): The check whether the function is id or not should be generic.
 --            A safer way to do this at this moment would be to use temporarily

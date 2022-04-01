@@ -53,6 +53,7 @@ test-suite categories-hierarchy
   main-is: Categories/Main.hs
   ghc-options:
     -fplugin Categorifier
+    -- -fplugin-opt Categorifier:defer-failures
     -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.Categories.hierarchy
     -O0
   build-depends:
@@ -78,6 +79,7 @@ test-suite categories-hierarchy-optimized
   main-is: Categories/Main.hs
   ghc-options:
     -fplugin Categorifier
+    -- -fplugin-opt Categorifier:defer-failures
     -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.Categories.hierarchy
     -O2
     -fignore-interface-pragmas

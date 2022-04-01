@@ -26,8 +26,6 @@ library
       Categorifier.Core.Makers
       -- __TODO__: move ...PrimOp to other-modules
       Categorifier.Core.PrimOp
-      -- __TODO__: move ...Simplify to other-modules
-      Categorifier.Core.Simplify
       Categorifier.Core.Types
       Categorifier.Hierarchy
   other-modules:
@@ -47,7 +45,6 @@ library
     -Wall
   build-depends:
     , PyF
-    , adjunctions
     , barbies
     , base
     , bytestring
@@ -55,6 +52,7 @@ library
     , categorifier-client
     , categorifier-common
     , categorifier-duoids
+    , categorifier-ghc
     , categorifier-th
     , containers
     , either

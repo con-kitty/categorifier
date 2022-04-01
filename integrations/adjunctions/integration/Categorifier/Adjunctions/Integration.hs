@@ -1,5 +1,4 @@
 {-# LANGUAGE ApplicativeDo #-}
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -18,22 +17,17 @@ import Categorifier.Core.MakerMap (MakerMapFun, baseMakerMapFun, makeMaker1)
 import Categorifier.Core.Makers (Makers (..))
 import Categorifier.Core.Types (CategoryStack, Lookup)
 import Categorifier.Duoidal ((=<\<))
+import qualified Categorifier.GHC.Core as Plugins
 import Categorifier.Hierarchy
   ( Hierarchy (..),
     emptyHierarchy,
     findTyCon,
-    funTy,
     identifier,
     mkMethodApps,
   )
 import qualified Data.Functor.Rep
 import qualified Data.Map as Map
 import qualified GHC.Base
-#if MIN_VERSION_ghc(9, 0, 0)
-import qualified GHC.Plugins as Plugins
-#else
-import qualified GhcPlugins as Plugins
-#endif
 
 hierarchy :: Lookup (Hierarchy CategoryStack)
 hierarchy = do
@@ -45,7 +39,7 @@ hierarchy = do
       pure $ \onDict cat f a -> do
         let repfTy = Plugins.mkTyConApp rep [f]
         op' <- mkMethodApps onDict op [f] [a] []
-        mkMethodApps onDict arr [cat] [Plugins.mkAppTy f a, funTy repfTy a] [op']
+        mkMethodApps onDict arr [cat] [Plugins.mkAppTy f a, Plugins.funTy repfTy a] [op']
   ktabulateV <-
     pure <$> do
       arr <- identifier "Control.Arrow" "arr"
@@ -54,12 +48,13 @@ hierarchy = do
       pure $ \onDict cat f a -> do
         let repfTy = Plugins.mkTyConApp rep [f]
         op' <- mkMethodApps onDict op [f] [a] []
-        mkMethodApps onDict arr [cat] [funTy repfTy a, Plugins.mkAppTy f a] [op']
+        mkMethodApps onDict arr [cat] [Plugins.funTy repfTy a, Plugins.mkAppTy f a] [op']
   pure emptyHierarchy {indexV = kindexV, tabulateV = ktabulateV}
 
 makerMapFun :: MakerMapFun
 makerMapFun
   dflags
+  logger
   m@Makers {..}
   n
   target
@@ -120,6 +115,7 @@ makerMapFun
       baseMakerMap =
         baseMakerMapFun
           dflags
+          logger
           m
           n
           target

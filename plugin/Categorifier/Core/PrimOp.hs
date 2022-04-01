@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE QuasiQuotes #-}
@@ -31,8 +30,6 @@ module Categorifier.Core.PrimOp
     -- * Constructor map table construction
     defaultConMap,
     mkConMap,
-
-    splitFunTy_maybe,
   )
 where
 
@@ -40,6 +37,12 @@ import Categorifier.Core.Makers (Makers (..), isFreeIn)
 import Categorifier.Core.Trace (addIdInfo, maybeTraceWith, renderSDoc)
 import Categorifier.Core.Types (CategoricalFailure (..), CategoryStack)
 import Categorifier.Duoidal (sequenceD, traverseD, (<*\>))
+import qualified Categorifier.GHC.Builtin as Plugins
+import qualified Categorifier.GHC.Core as Plugins
+import qualified Categorifier.GHC.Data as Plugins
+import qualified Categorifier.GHC.Driver as Plugins
+import qualified Categorifier.GHC.Types as Plugins
+import qualified Categorifier.GHC.Utils as Plugins
 import Categorifier.Hierarchy
   ( BaseIdentifiers (..),
     GetTagInfo (..),
@@ -64,43 +67,10 @@ import qualified Data.Map as Map
 import Data.Maybe (listToMaybe, mapMaybe)
 import Data.Monoid (Any (..))
 import qualified Data.Tuple as Tuple (swap)
-#if MIN_VERSION_ghc(9, 0, 0)
-import qualified GHC.Builtin.Names as Plugins
-import qualified GHC.Builtin.PrimOps as PrimOp
-import qualified GHC.Builtin.Types.Prim as TysPrim
-import qualified GHC.Core.TyCo.Rep as TyCoRep
-import qualified GHC.Data.Pair as Pair
-import qualified GHC.Plugins as Plugins
-import qualified GHC.Types.ForeignCall as Plugins
-#else
-import qualified ForeignCall as Plugins
-import qualified GhcPlugins as Plugins
-import qualified Pair
-import qualified PrelNames as Plugins
-import qualified PrimOp
-import qualified TysPrim
-#endif
 import PyF (fmt)
 
 -- Need Uniplate for traversals on GHC-provided recursive types
 {-# ANN module ("HLint: ignore Avoid restricted module" :: String) #-}
-
-#if MIN_VERSION_ghc(9, 2, 0)
-pattern Alt :: Plugins.AltCon -> [b] -> Plugins.Expr b -> Plugins.Alt b
-pattern Alt x y z = Plugins.Alt x y z
-#else
-pattern Alt :: Plugins.AltCon -> [b] -> Plugins.Expr b -> (Plugins.AltCon, [b], Plugins.Expr b)
-pattern Alt x y z = (x, y, z)
-#endif
-{-# COMPLETE Alt #-}
-
-{-# ANN splitFunTy_maybe ("HLint: ignore Use camelCase" :: String) #-}
-splitFunTy_maybe :: Plugins.Type -> Maybe (Plugins.Type, Plugins.Type)
-#if MIN_VERSION_ghc(9, 0, 0)
-splitFunTy_maybe = fmap (\(_, b, c) -> (b, c)) . Plugins.splitFunTy_maybe
-#else
-splitFunTy_maybe = Plugins.splitFunTy_maybe
-#endif
 
 data Boxer = Boxer
   { _modu :: String,
@@ -111,7 +81,7 @@ data Boxer = Boxer
 
 type OpMap opType = Map opType [(([Plugins.TyCon], Plugins.TyCon), Boxer)]
 
-type PrimOpMap = OpMap PrimOp.PrimOp
+type PrimOpMap = OpMap Plugins.PrimOp
 
 -- |
 --
@@ -146,7 +116,7 @@ constructNoInlinePrimFunctionMap makers =
         (intConstructorTyCon intCon)
         (intConstructorDataCon intCon)
 
-type DeleteOpMap = Map PrimOp.PrimOp Plugins.Type
+type DeleteOpMap = Map Plugins.PrimOp Plugins.Type
 
 constructDeleteOpMap :: [IntConstructor] -> DeleteOpMap
 constructDeleteOpMap =
@@ -160,22 +130,15 @@ ensureUnique elems = case List.nub elems of
   _ -> empty
 
 fromIntegralNames :: [(Plugins.Name, Plugins.Type)]
-#if MIN_VERSION_ghc(9, 0, 0)
 fromIntegralNames =
   [ (Plugins.integerToDoubleName, Plugins.doubleTy),
     (Plugins.integerToFloatName, Plugins.floatTy)
   ]
-#else
-fromIntegralNames =
-  [ (Plugins.doubleFromIntegerName, Plugins.doubleTy),
-    (Plugins.floatFromIntegerName, Plugins.floatTy)
-  ]
-#endif
 
 -- | If the given primitive operation always corresponds to a fixed result type, return that type.
 getInvariantResultType ::
   PrimOpMap ->
-  PrimOp.PrimOp ->
+  Plugins.PrimOp ->
   Maybe Plugins.Type
 getInvariantResultType opMap =
   fmap Plugins.mkTyConTy . ensureUnique . fmap (snd . fst) <=< flip Map.lookup opMap
@@ -196,7 +159,7 @@ deduceResultType opMap var argType = do
 
 deduceResultType' ::
   PrimOpMap ->
-  PrimOp.PrimOp ->
+  Plugins.PrimOp ->
   Plugins.Type ->
   Maybe Plugins.Type
 deduceResultType' opMap primOp argType = do
@@ -291,7 +254,8 @@ lookupOpTyCons dflags debug convVar opMap (var, argCons, resCon) =
   go
     <|> maybeTraceWith
       debug
-      ( const [fmt|"lookupOpTyCons: boxed equivalent for
+      ( const
+          [fmt|"lookupOpTyCons: boxed equivalent for
   {dbg var} :: {dbg $ Plugins.mkTyConTy <$> argCons} -> {dbg $ Plugins.mkTyConTy resCon}
 not found.|]
       )
@@ -439,12 +403,7 @@ withNewBinding unboxedBinder boxedBinder =
 
 -- | This is only extracted in order to work with Ormolu's CPP support.
 extractCallSpecTarget :: Plugins.IdDetails -> Maybe Plugins.CCallTarget
-#if MIN_VERSION_ghc(8, 10, 7) && !MIN_VERSION_ghc(9, 0, 0)
-extractCallSpecTarget (Plugins.FCallId (Plugins.CCall (Plugins.CCallSpec target _ _ _ _))) =
-  pure target
-#else
 extractCallSpecTarget (Plugins.FCallId (Plugins.CCall (Plugins.CCallSpec target _ _))) = pure target
-#endif
 extractCallSpecTarget _ = Nothing
 
 -- | @replacePrimOps@ is responsible for replacing occurrences of primitive operations with their
@@ -463,7 +422,7 @@ extractCallSpecTarget _ = Nothing
 --
 -- Currently we replace 3 kinds of operation:
 --
---  * Actual compiler primops, `PrimOp.PrimOp`
+--  * Actual compiler primops, `Plugins.PrimOp`
 --
 --  * C FFI calls to basic mathematical operations (e.g. @fmod@)
 --
@@ -532,7 +491,7 @@ replacePrimOps resultType replaceExpr = do
     -- undo this specialization.
     tagToEnumCase@(Plugins.collectArgs -> (Plugins.Var f, [Plugins.Type hopeIt'sBool, cmpExpr]))
       | hopeIt'sBool `Plugins.eqType` Plugins.boolTy,
-        Just PrimOp.TagToEnumOp <- Plugins.isPrimOpId_maybe f,
+        Just Plugins.TagToEnumOp <- Plugins.isPrimOpId_maybe f,
         (Plugins.Var mbCmpPrimOp, args) <- Plugins.collectArgs cmpExpr,
         -- Remove `getTag` calls from all arguments.
         Just [enumA, enumB] <- traverse (stripGetTag getTagInfo) args ->
@@ -550,7 +509,7 @@ replacePrimOps resultType replaceExpr = do
     --
     -- 4a. `tagToEnum#` deletion
     tagToEnumCase@(Plugins.App (Plugins.App (Plugins.Var f) (Plugins.Type ty)) unboxedRelation)
-      | Just PrimOp.TagToEnumOp <- Plugins.isPrimOpId_maybe f,
+      | Just Plugins.TagToEnumOp <- Plugins.isPrimOpId_maybe f,
         pure Plugins.boolTyCon == Plugins.tyConAppTyCon_maybe ty ->
           rpoLabel "4a" tagToEnumCase <$> replacePrimOps (pure Plugins.boolTy) unboxedRelation
     appCase@(Plugins.App (Plugins.Var f) v)
@@ -604,12 +563,8 @@ replacePrimOps resultType replaceExpr = do
       -- support.
       | (Plugins.Var f, arguments) <- Plugins.collectArgs e,
         Just mbDiv <- Plugins.isPrimOpId_maybe f,
-        PrimOp.DoubleDivOp == mbDiv,
-#if MIN_VERSION_ghc(8, 8, 0)
+        Plugins.DoubleDivOp == mbDiv,
         [Plugins.Lit (Plugins.LitDouble 1), x] <- arguments -> do
-#else
-        [Plugins.Lit (Plugins.MachDouble 1), x] <- arguments -> do
-#endif
           rcp <- lift (mkRecip makers Plugins.doubleTy)
           arg <- replacePrimOps (pure Plugins.doubleTy) x
           pure $ Plugins.mkCoreApps rcp [arg]
@@ -617,12 +572,8 @@ replacePrimOps resultType replaceExpr = do
       -- into `1 /## x`, and replaces them with boxed `recip` calls.
       | (Plugins.Var f, arguments) <- Plugins.collectArgs e,
         Just mbDiv <- Plugins.isPrimOpId_maybe f,
-        PrimOp.FloatDivOp == mbDiv,
-#if MIN_VERSION_ghc(8, 8, 0)
+        Plugins.FloatDivOp == mbDiv,
         [Plugins.Lit (Plugins.LitFloat 1), x] <- arguments -> do
-#else
-        [Plugins.Lit (Plugins.MachFloat 1), x] <- arguments -> do
-#endif
           rcp <- lift (mkRecip makers Plugins.floatTy)
           arg <- replacePrimOps (pure Plugins.floatTy) x
           pure $ Plugins.mkCoreApps rcp [arg]
@@ -661,17 +612,13 @@ replacePrimOps resultType replaceExpr = do
           --   Int64 -> Double
           --
           -- and this case removes the second step in the original conversion.
-          | [Alt (Plugins.DataAlt con) [_unb] (Plugins.App (Plugins.Var si) _unbv)] <- alts,
+          | [Plugins.Alt (Plugins.DataAlt con) [_unb] (Plugins.App (Plugins.Var si) _unbv)] <- alts,
             con `elem` fmap snd boxers,
-#if MIN_VERSION_ghc(9, 0, 0)
             Plugins.varName si == Plugins.integerFromInt64Name ->
-#else
-            Plugins.varName si == Plugins.smallIntegerName ->
-#endif
               pure sc
           -- This is a case statement that unboxes an existing variable.  Replace it with a
           -- `let`-binding, extend the replacement table and continue descending.
-          | [Alt (Plugins.DataAlt con) [unb] e] <- alts,
+          | [Plugins.Alt (Plugins.DataAlt con) [unb] e] <- alts,
             con `elem` fmap snd boxers ->
               let -- The type of the binder does not change (it's already boxed if we are unboxing
                   -- in the sole alternative); we just reset the occurrence info before using it
@@ -709,14 +656,8 @@ replacePrimOps resultType replaceExpr = do
              where `trueExpr' = replacePrimOps resultType trueExpr`. Same for `falseExpr'`.
           -}
           | Plugins.boolTy `Plugins.eqType` newScTy,
-            [Alt Plugins.DEFAULT [] falseExpr, Alt (Plugins.LitAlt one) [] trueExpr] <- alts,
-#if MIN_VERSION_ghc(9, 0, 0)
-            Plugins.LitNumber _litCoreTy 1 <- one ->
-#elif MIN_VERSION_ghc(8, 6, 0)
-            Plugins.LitNumber _litCoreTy 1 _litHsTy <- one ->
-#else
-            Plugins.LitInteger 1 _litHsTy <- one ->
-#endif
+            [Plugins.Alt Plugins.DEFAULT [] falseExpr, Plugins.Alt (Plugins.LitAlt one) [] trueExpr] <- alts,
+            Plugins.LitNumber 1 <- one ->
               fmap
                 (rpoLabel "4b Bool" caseExpr)
                 $ do
@@ -724,9 +665,9 @@ replacePrimOps resultType replaceExpr = do
                   withNewBinding bndr bndr' $
                     Plugins.Case sc' bndr' ty
                       <$> sequenceD
-                        [ Alt (Plugins.DataAlt Plugins.falseDataCon) []
+                        [ Plugins.Alt (Plugins.DataAlt Plugins.falseDataCon) []
                             <$> replacePrimOps resultType falseExpr,
-                          Alt (Plugins.DataAlt Plugins.trueDataCon) []
+                          Plugins.Alt (Plugins.DataAlt Plugins.trueDataCon) []
                             <$> replacePrimOps resultType trueExpr
                         ]
           {- Rewrite
@@ -739,19 +680,13 @@ replacePrimOps resultType replaceExpr = do
 
              into `x > 3`.
           -}
-          | [ Alt Plugins.DEFAULT [] (Plugins.Var t),
-              Alt (Plugins.LitAlt zero) [] (Plugins.Var f)
+          | [ Plugins.Alt Plugins.DEFAULT [] (Plugins.Var t),
+              Plugins.Alt (Plugins.LitAlt zero) [] (Plugins.Var f)
               ] <-
               alts,
-            Plugins.varType bndr `Plugins.eqType` TysPrim.intPrimTy,
+            Plugins.varType bndr `Plugins.eqType` Plugins.intPrimTy,
             ty `Plugins.eqType` Plugins.boolTy,
-#if MIN_VERSION_ghc(9, 0, 0)
-            Plugins.LitNumber _litCoreTy 0 <- zero,
-#elif MIN_VERSION_ghc(8, 6, 0)
-            Plugins.LitNumber _litCoreTy 0 _litHsTy <- zero,
-#else
-            Plugins.LitInteger 0 _litHsTy <- zero,
-#endif
+            Plugins.LitNumber 0 <- zero,
             Just tdc <- Plugins.isDataConId_maybe t,
             tdc == Plugins.trueDataCon,
             Just fdc <- Plugins.isDataConId_maybe f,
@@ -778,7 +713,7 @@ replacePrimOps resultType replaceExpr = do
           --
           -- TODO(MP): We could get slightly more safety by checking the `cUnit` in the table
           -- lookup as well.
-          | [Alt _alt [_realWorld, conBind] e] <- alts,
+          | [Plugins.Alt _alt [_realWorld, conBind] e] <- alts,
             (Plugins.Var f, arguments) <- Plugins.collectArgs sc,
             Just target <- extractCallSpecTarget $ Plugins.idDetails f,
             Plugins.StaticTarget _source functionName _cUnit True <- target,
@@ -802,7 +737,7 @@ replacePrimOps resultType replaceExpr = do
                 <$> do
                   bndr' <- mkBoxedVarFrom "ccc_boxed" newScTy bndr
                   withNewBinding bndr bndr' . fmap (newApp bndr' sc') $ case alts of
-                    [Alt Plugins.DEFAULT [] e] ->
+                    [Plugins.Alt Plugins.DEFAULT [] e] ->
                       -- If there is only one branch, the solution is easy.
                       replacePrimOps resultType e
                     _ -> do
@@ -822,25 +757,19 @@ replacePrimOps resultType replaceExpr = do
                         -- Here we also replacePrimOps on the right-hand sides of all valid
                         -- branches.
                         cleanAlt t = \case
-                          Alt Plugins.DEFAULT _binds defExpr ->
+                          Plugins.Alt Plugins.DEFAULT _binds defExpr ->
                             Left <$> replacePrimOps resultType defExpr
-                          -- __TODO__: We've run into Core Lint complaints here when dealing with
-                          -- negative literals (e.g., @-1# :: Int32@), but we've managed to avoid them
-                          -- by interpreting operations where they occur.
-#if MIN_VERSION_ghc(9, 0, 0)
-                          Alt (Plugins.LitAlt (Plugins.LitNumber nt i)) _binds litExpr ->
-                            Right . (Plugins.LitNumber nt i,)
-#elif MIN_VERSION_ghc(8, 6, 0)
-                          Alt (Plugins.LitAlt (Plugins.LitNumber nt i _oldTy)) _binds litExpr ->
-                            Right . (Plugins.LitNumber nt i t,)
-#else
-                          Alt (Plugins.LitAlt (Plugins.LitInteger i _oldTy)) _binds litExpr ->
-                            Right . (Plugins.LitInteger i t,)
-#endif
-                              <$> replacePrimOps resultType litExpr
-                          Alt (Plugins.LitAlt x) _binds _e ->
-                            lift . throwE . pure $ UnsupportedPrimitiveLiteral x caseExpr
-                          Alt (Plugins.DataAlt dc) _binds _e ->
+                          Plugins.Alt (Plugins.LitAlt x) _binds litExpr ->
+                            case x of
+                              -- __TODO__: We've run into Core Lint complaints here when dealing
+                              --           with negative literals (e.g., @-1# :: Int32@), but we've
+                              --           managed to avoid them by interpreting operations where
+                              --           they occur.
+                              Plugins.LitNumber _ ->
+                                Right . (Plugins.setLiteralType t x,)
+                                  <$> replacePrimOps resultType litExpr
+                              _ -> lift . throwE . pure $ UnsupportedPrimitiveLiteral x caseExpr
+                          Plugins.Alt (Plugins.DataAlt dc) _binds _e ->
                             lift . throwE . pure $ UnsupportedPrimitiveDataAlt dc caseExpr
                         -- Step 2 is to transform situations like
                         --
@@ -877,8 +806,8 @@ replacePrimOps resultType replaceExpr = do
                                     eqScrut
                                     eqBndr
                                     (Plugins.exprType litExpr)
-                                    [ Alt (Plugins.DataAlt Plugins.falseDataCon) [] (acc k),
-                                      Alt (Plugins.DataAlt Plugins.trueDataCon) [] litExpr
+                                    [ Plugins.Alt (Plugins.DataAlt Plugins.falseDataCon) [] (acc k),
+                                      Plugins.Alt (Plugins.DataAlt Plugins.trueDataCon) [] litExpr
                                     ],
                                 mbDefault
                               )
@@ -897,7 +826,8 @@ replacePrimOps resultType replaceExpr = do
                   <*\> pure bndr
                   <*\> pure ty
                   <*\> traverseD
-                    ( \(Alt con bind expr) -> Alt con bind <$> replacePrimOps (pure ty) expr
+                    ( \(Plugins.Alt con bind expr) ->
+                        Plugins.Alt con bind <$> replacePrimOps (pure ty) expr
                     )
                     alts
           -- TODO(MP): what error conditions should be caught here?
@@ -915,7 +845,7 @@ replacePrimOps resultType replaceExpr = do
       fmap (rpoLabel "10" coerceExpr) $
         flip Plugins.Cast coercion
           -- TODO(MP): how to make sure we get the right type out of the coercion?
-          <$> replacePrimOps (pure . Pair.pSnd $ Plugins.coercionKind coercion) expr
+          <$> replacePrimOps (pure . Plugins.pSnd $ Plugins.coercionKind coercion) expr
     -- This is hopefully a boxed variable.
     Plugins.Var v -> pure $ Plugins.Var v
     lit@(Plugins.Lit l)
@@ -945,7 +875,7 @@ replacePrimOps resultType replaceExpr = do
                 --
                 -- My best idea for how to resolve this situation nicely is to wrap
                 -- `Plugins.isPrimitiveType` in our own logic which handles `Plugins.Literal` values.
-                (pure . Plugins.Lit $ maybe l (`setLiteralType` l) resultType)
+                (pure . Plugins.Lit $ maybe l (`Plugins.setLiteralType` l) resultType)
                 (pure . flip Plugins.mkCoreConApps [lit])
                 dataCon
       | otherwise -> pure lit
@@ -988,7 +918,7 @@ replacePrimOps resultType replaceExpr = do
       where
         fThenX = do
           f' <- replacePrimOps Nothing f
-          let argTy = fmap fst . splitFunTy_maybe $ Plugins.exprType f'
+          let argTy = fmap fst . Plugins.splitFunTy_maybe $ Plugins.exprType f'
           Plugins.App f' <$> replacePrimOps argTy x
         xThenF = do
           x' <- replacePrimOps Nothing x
@@ -1025,7 +955,7 @@ replacePrimOps resultType replaceExpr = do
           rpoLabel "13c" lam . Plugins.Lam binder <$> replacePrimOps resTy body
       where
         bt, resTy :: Maybe Plugins.Type
-        (bt, resTy) = NonEmpty.unzip $ splitFunTy_maybe =<< resultType
+        (bt, resTy) = NonEmpty.unzip $ Plugins.splitFunTy_maybe =<< resultType
         predictedBinderBoxedType = deduceEBTFrom boxers binder $ universe body
         bindTy' = bt <|> predictedBinderBoxedType
     -- TODO(MP): Here we assume the types are already boxed.
@@ -1072,9 +1002,6 @@ mkBoxedVarFrom pfx ty v = do
         ( Plugins.mkInternalName u (Plugins.mkVarOcc nm) $
             Plugins.mkGeneralSrcSpan errString
         )
-#if MIN_VERSION_ghc(9, 0, 0)
-        vt
-#endif
         vt
         Plugins.vanillaIdInfo
 
@@ -1114,11 +1041,11 @@ matchFloatFromIntegralApp = \case
     | Just toTy <- List.lookup (Plugins.varName conv) fromIntegralNames -> pure toTy
   _ -> Nothing
 
-matchTagToEnumApp :: Plugins.CoreExpr -> Maybe PrimOp.PrimOp
+matchTagToEnumApp :: Plugins.CoreExpr -> Maybe Plugins.PrimOp
 matchTagToEnumApp = \case
   Plugins.App (Plugins.collectArgs -> (Plugins.Var couldBeTagToEnum, _arg)) _arg'
     | Just t2e <- Plugins.isPrimOpId_maybe couldBeTagToEnum,
-      t2e == PrimOp.TagToEnumOp ->
+      t2e == Plugins.TagToEnumOp ->
         pure t2e
   _ -> Nothing
 
@@ -1147,8 +1074,8 @@ deduceEBTFrom boxers binder expression =
     -- types will fail with integral types, but in the floating-point cases, we can proceed without
     -- even looking through the expression.
     staticRules mbBinderTyCon
-      | mbBinderTyCon == Just TysPrim.doublePrimTyCon = pure Plugins.doubleTy
-      | mbBinderTyCon == Just TysPrim.floatPrimTyCon = pure Plugins.floatTy
+      | mbBinderTyCon == Just Plugins.doublePrimTyCon = pure Plugins.doubleTy
+      | mbBinderTyCon == Just Plugins.floatPrimTyCon = pure Plugins.floatTy
       | otherwise = Nothing
 
 scanForBinderEBTViaReboxing ::
@@ -1165,27 +1092,13 @@ scanForBinderEBTViaReboxing boxers binder = \case
         pure binderTy
   _ -> Nothing
 
-setLiteralType :: Plugins.Type -> Plugins.Literal -> Plugins.Literal
-#if MIN_VERSION_ghc(9, 0, 0)
-#elif MIN_VERSION_ghc(8, 6, 0)
-setLiteralType toType (Plugins.LitNumber litNumTy litNumVal _oldType) =
-  Plugins.LitNumber litNumTy litNumVal toType
-#else
-setLiteralType toType (Plugins.LitInteger litNumVal _oldType) = Plugins.LitInteger litNumVal toType
-#endif
-setLiteralType _ x = x
-
 -- | Determines whether the given type is a primitive type, or a function type
 -- whose argument types or result type contains a primitive type.
 containsPrimitiveType :: Plugins.Type -> Bool
 containsPrimitiveType ty
   | Plugins.isFunTy ty,
     (args, res) <- Plugins.splitFunTys ty =
-#if MIN_VERSION_ghc(9, 0, 0)
-      any containsPrimitiveType (res : (TyCoRep.scaledThing <$> args))
-#else
       any containsPrimitiveType (res : args)
-#endif
   | otherwise = Plugins.isPrimitiveType ty
 
 replacePrimOpFunCall ::
@@ -1294,159 +1207,150 @@ mkFloatingPrimOps :: Makers -> PrimOpMap
 mkFloatingPrimOps makers =
   Map.fromListWith
     const
-    [ ( PrimOp.DoubleAddOp,
+    [ ( Plugins.DoubleAddOp,
         pure (([dt, dt], dt), Boxer "GHC.Num" "+" [dd, dd] . mkPlus makers $ Plugins.mkTyConTy dt)
       ),
-      ( PrimOp.DoubleSubOp,
+      ( Plugins.DoubleSubOp,
         pure (([dt, dt], dt), Boxer "GHC.Num" "-" [dd, dd] . mkMinus makers $ Plugins.mkTyConTy dt)
       ),
-      ( PrimOp.DoubleMulOp,
+      ( Plugins.DoubleMulOp,
         pure (([dt, dt], dt), Boxer "GHC.Num" "*" [dd, dd] . mkTimes makers $ Plugins.mkTyConTy dt)
       ),
-      ( PrimOp.DoubleCosOp,
+      ( Plugins.DoubleCosOp,
         pure (([dt], dt), Boxer "GHC.Float" "cos" [dd] . mkCos makers $ Plugins.mkTyConTy dt)
       ),
-      ( PrimOp.DoubleLogOp,
+      ( Plugins.DoubleLogOp,
         pure (([dt], dt), Boxer "GHC.Float" "log" [dd] . mkLog makers $ Plugins.mkTyConTy dt)
       ),
-      ( PrimOp.DoubleSinOp,
+      ( Plugins.DoubleSinOp,
         pure (([dt], dt), Boxer "GHC.Float" "sin" [dd] . mkSin makers $ Plugins.mkTyConTy dt)
       ),
-      ( PrimOp.DoubleDivOp,
+      ( Plugins.DoubleDivOp,
         pure
           (([dt, dt], dt), Boxer "GHC.Real" "/" [dd, dd] . mkDivide makers $ Plugins.mkTyConTy dt)
       ),
-      ( PrimOp.DoubleExpOp,
+      ( Plugins.DoubleExpOp,
         pure (([dt], dt), Boxer "GHC.Real" "exp" [dd] . mkExp makers $ Plugins.mkTyConTy dt)
       ),
-      ( PrimOp.DoubleSqrtOp,
+      ( Plugins.DoubleSqrtOp,
         pure (([dt], dt), Boxer "GHC.Float" "sqrt" [dd] . mkSqrt makers $ Plugins.mkTyConTy dt)
       ),
-      ( PrimOp.DoubleNegOp,
+      ( Plugins.DoubleNegOp,
         pure (([dt], dt), Boxer "GHC.Num" "negate" [dd] . mkNegate makers $ Plugins.mkTyConTy dt)
       ),
-      ( PrimOp.DoubleFabsOp,
+      ( Plugins.DoubleFabsOp,
         pure (([dt], dt), Boxer "GHC.Num" "abs" [dd] . mkAbs makers $ Plugins.mkTyConTy dt)
       ),
-#if MIN_VERSION_ghc(9, 2, 0)
-      ( PrimOp.DoubleToFloatOp,
+      ( Plugins.DoubleToFloatOp,
         pure (([dt], ft), Boxer "GHC.Float" "double2float" [dd] $ mkDoubleToFloat makers)
       ),
-      ( PrimOp.FloatToDoubleOp,
+      ( Plugins.FloatToDoubleOp,
         pure (([ft], dt), Boxer "GHC.Float" "float2Double" [fd] $ mkFloatToDouble makers)
       ),
-#else
-      ( PrimOp.Double2FloatOp,
-        pure (([dt], ft), Boxer "GHC.Float" "double2float" [dd] $ mkDoubleToFloat makers)
-      ),
-      ( PrimOp.Float2DoubleOp,
-        pure (([ft], dt), Boxer "GHC.Float" "float2Double" [fd] $ mkFloatToDouble makers)
-      ),
-#endif
-      ( PrimOp.DoubleEqOp,
+      ( Plugins.DoubleEqOp,
         pure
           ( ([dt, dt], Plugins.boolTyCon),
             Boxer "GHC.Classes" "==" [dd] . mkEqual makers $ Plugins.mkTyConTy dt
           )
       ),
-      ( PrimOp.DoubleLeOp,
+      ( Plugins.DoubleLeOp,
         pure
           ( ([dt, dt], Plugins.boolTyCon),
             Boxer "GHC.Classes" "<=" [dd] . mkLE makers $ Plugins.mkTyConTy dt
           )
       ),
-      ( PrimOp.DoubleLtOp,
+      ( Plugins.DoubleLtOp,
         pure
           ( ([dt, dt], Plugins.boolTyCon),
             Boxer "GHC.Classes" "<" [dd] . mkLT makers $ Plugins.mkTyConTy dt
           )
       ),
-      ( PrimOp.DoubleGeOp,
+      ( Plugins.DoubleGeOp,
         pure
           ( ([dt, dt], Plugins.boolTyCon),
             Boxer "GHC.Classes" ">=" [dd] . mkGE makers $ Plugins.mkTyConTy dt
           )
       ),
-      ( PrimOp.DoubleGtOp,
+      ( Plugins.DoubleGtOp,
         pure
           ( ([dt, dt], Plugins.boolTyCon),
             Boxer "GHC.Classes" ">" [dd] . mkGT makers $ Plugins.mkTyConTy dt
           )
       ),
-      ( PrimOp.DoubleNeOp,
+      ( Plugins.DoubleNeOp,
         pure
           ( ([dt, dt], Plugins.boolTyCon),
             Boxer "GHC.Classes" "/=" [dd] . mkNotEqual makers $ Plugins.mkTyConTy dt
           )
       ),
-      ( PrimOp.FloatAddOp,
+      ( Plugins.FloatAddOp,
         pure
           (([ft, ft], ft), Boxer "GHC.Num" "+" [fd, fd] . mkPlus makers $ Plugins.mkTyConTy ft)
       ),
-      ( PrimOp.FloatSubOp,
+      ( Plugins.FloatSubOp,
         pure
           (([ft, ft], ft), Boxer "GHC.Num" "-" [fd, fd] . mkMinus makers $ Plugins.mkTyConTy ft)
       ),
-      ( PrimOp.FloatMulOp,
+      ( Plugins.FloatMulOp,
         pure
           (([ft, ft], ft), Boxer "GHC.Num" "*" [fd, fd] . mkTimes makers $ Plugins.mkTyConTy ft)
       ),
-      ( PrimOp.FloatCosOp,
+      ( Plugins.FloatCosOp,
         pure (([ft], ft), Boxer "GHC.Float" "cos" [fd] . mkCos makers $ Plugins.mkTyConTy ft)
       ),
-      ( PrimOp.FloatLogOp,
+      ( Plugins.FloatLogOp,
         pure (([ft], ft), Boxer "GHC.Float" "log" [fd] . mkLog makers $ Plugins.mkTyConTy ft)
       ),
-      ( PrimOp.FloatSinOp,
+      ( Plugins.FloatSinOp,
         pure (([ft], ft), Boxer "GHC.Float" "sin" [fd] . mkSin makers $ Plugins.mkTyConTy ft)
       ),
-      ( PrimOp.FloatDivOp,
+      ( Plugins.FloatDivOp,
         pure
           (([ft, ft], ft), Boxer "GHC.Real" "/" [fd, fd] . mkDivide makers $ Plugins.mkTyConTy ft)
       ),
-      ( PrimOp.FloatExpOp,
+      ( Plugins.FloatExpOp,
         pure (([ft], ft), Boxer "GHC.Real" "exp" [fd] . mkExp makers $ Plugins.mkTyConTy ft)
       ),
-      ( PrimOp.FloatSqrtOp,
+      ( Plugins.FloatSqrtOp,
         pure (([ft], ft), Boxer "GHC.Float" "sqrt" [fd] . mkSqrt makers $ Plugins.mkTyConTy ft)
       ),
-      ( PrimOp.FloatNegOp,
+      ( Plugins.FloatNegOp,
         pure (([ft], ft), Boxer "GHC.Num" "negate" [fd] . mkNegate makers $ Plugins.mkTyConTy ft)
       ),
-      ( PrimOp.FloatFabsOp,
+      ( Plugins.FloatFabsOp,
         pure (([ft], ft), Boxer "GHC.Num" "abs" [fd] . mkAbs makers $ Plugins.mkTyConTy ft)
       ),
-      ( PrimOp.FloatEqOp,
+      ( Plugins.FloatEqOp,
         pure
           ( ([ft, ft], Plugins.boolTyCon),
             Boxer "GHC.Classes" "==" [fd] . mkEqual makers $ Plugins.mkTyConTy ft
           )
       ),
-      ( PrimOp.FloatLeOp,
+      ( Plugins.FloatLeOp,
         pure
           ( ([ft, ft], Plugins.boolTyCon),
             Boxer "GHC.Classes" "<=" [fd] . mkLE makers $ Plugins.mkTyConTy ft
           )
       ),
-      ( PrimOp.FloatLtOp,
+      ( Plugins.FloatLtOp,
         pure
           ( ([ft, ft], Plugins.boolTyCon),
             Boxer "GHC.Classes" "<" [fd] . mkLT makers $ Plugins.mkTyConTy ft
           )
       ),
-      ( PrimOp.FloatGeOp,
+      ( Plugins.FloatGeOp,
         pure
           ( ([ft, ft], Plugins.boolTyCon),
             Boxer "GHC.Classes" ">=" [fd] . mkGE makers $ Plugins.mkTyConTy ft
           )
       ),
-      ( PrimOp.FloatGtOp,
+      ( Plugins.FloatGtOp,
         pure
           ( ([ft, ft], Plugins.boolTyCon),
             Boxer "GHC.Classes" ">" [fd] . mkGT makers $ Plugins.mkTyConTy ft
           )
       ),
-      ( PrimOp.FloatNeOp,
+      ( Plugins.FloatNeOp,
         pure
           ( ([ft, ft], Plugins.boolTyCon),
             Boxer "GHC.Classes" "/=" [fd] . mkNotEqual makers $ Plugins.mkTyConTy ft
@@ -1463,181 +1367,147 @@ mkWordPrimOps :: Makers -> Plugins.TyCon -> Plugins.DataCon -> PrimOpMap
 mkWordPrimOps makers tc dc =
   Map.fromListWith
     const
-    [ ( PrimOp.WordAddOp,
+    [ ( Plugins.WordAddOp,
         pure (([tc, tc], tc), Boxer "GHC.Num" "+" [dc, dc] . mkPlus makers $ Plugins.mkTyConTy tc)
       ),
-      ( PrimOp.WordSubOp,
+      ( Plugins.WordSubOp,
         pure (([tc, tc], tc), Boxer "GHC.Num" "-" [dc, dc] . mkMinus makers $ Plugins.mkTyConTy tc)
       ),
-      ( PrimOp.WordMulOp,
+      ( Plugins.WordMulOp,
         pure (([tc, tc], tc), Boxer "GHC.Num" "*" [dc, dc] . mkTimes makers $ Plugins.mkTyConTy tc)
       ),
-      ( PrimOp.WordQuotOp,
+      ( Plugins.WordQuotOp,
         pure
           (([tc, tc], tc), Boxer "GHC.Real" "quot" [dc, dc] . mkQuot makers $ Plugins.mkTyConTy tc)
       ),
-      ( PrimOp.WordRemOp,
+      ( Plugins.WordRemOp,
         pure (([tc, tc], tc), Boxer "GHC.Real" "rem" [dc, dc] . mkRem makers $ Plugins.mkTyConTy tc)
       ),
-      ( PrimOp.WordEqOp,
+      ( Plugins.WordEqOp,
         pure
           ( ([tc, tc], Plugins.boolTyCon),
             Boxer "GHC.Classes" "==" [dc] . mkEqual makers $ Plugins.mkTyConTy tc
           )
       ),
-      ( PrimOp.WordLeOp,
+      ( Plugins.WordLeOp,
         pure
           ( ([tc, tc], Plugins.boolTyCon),
             Boxer "GHC.Classes" "<=" [dc] . mkLE makers $ Plugins.mkTyConTy tc
           )
       ),
-      ( PrimOp.WordLtOp,
+      ( Plugins.WordLtOp,
         pure
           ( ([tc, tc], Plugins.boolTyCon),
             Boxer "GHC.Classes" "<" [dc] . mkLT makers $ Plugins.mkTyConTy tc
           )
       ),
-      ( PrimOp.WordGeOp,
+      ( Plugins.WordGeOp,
         pure
           ( ([tc, tc], Plugins.boolTyCon),
             Boxer "GHC.Classes" ">=" [dc] . mkGE makers $ Plugins.mkTyConTy tc
           )
       ),
-      ( PrimOp.WordGtOp,
+      ( Plugins.WordGtOp,
         pure
           ( ([tc, tc], Plugins.boolTyCon),
             Boxer "GHC.Classes" ">" [dc] . mkGT makers $ Plugins.mkTyConTy tc
           )
       ),
-      ( PrimOp.WordNeOp,
+      ( Plugins.WordNeOp,
         pure
           ( ([tc, tc], Plugins.boolTyCon),
             Boxer "GHC.Classes" "/=" [dc] . mkNotEqual makers $ Plugins.mkTyConTy tc
           )
       ),
-#if MIN_VERSION_ghc(9, 2, 0)
-      ( PrimOp.WordToDoubleOp,
+      ( Plugins.WordToDoubleOp,
         pure
           ( ([tc], Plugins.doubleTyCon),
             Boxer "GHC.Classes" "fromIntegral" [dc] $
               mkFromIntegral makers (Plugins.mkTyConTy tc) Plugins.doubleTy
           )
       ),
-      ( PrimOp.WordToFloatOp,
+      ( Plugins.WordToFloatOp,
         pure
           ( ([tc], Plugins.floatTyCon),
             Boxer "GHC.Classes" "fromIntegral" [dc] $
               mkFromIntegral makers (Plugins.mkTyConTy tc) Plugins.floatTy
           )
       )
-#else
-      ( PrimOp.Word2DoubleOp,
-        pure
-          ( ([tc], Plugins.doubleTyCon),
-            Boxer "GHC.Classes" "fromIntegral" [dc] $
-              mkFromIntegral makers (Plugins.mkTyConTy tc) Plugins.doubleTy
-          )
-      ),
-      ( PrimOp.Word2FloatOp,
-        pure
-          ( ([tc], Plugins.floatTyCon),
-            Boxer "GHC.Classes" "fromIntegral" [dc] $
-              mkFromIntegral makers (Plugins.mkTyConTy tc) Plugins.floatTy
-          )
-      )
-#endif
     ]
 
 mkIntPrimOps :: Makers -> Plugins.TyCon -> Plugins.DataCon -> PrimOpMap
 mkIntPrimOps makers tc dc =
   Map.fromListWith
     const
-    [ ( PrimOp.IntAddOp,
+    [ ( Plugins.IntAddOp,
         pure (([tc, tc], tc), Boxer "GHC.Num" "+" [dc, dc] . mkPlus makers $ Plugins.mkTyConTy tc)
       ),
-      ( PrimOp.IntSubOp,
+      ( Plugins.IntSubOp,
         pure (([tc, tc], tc), Boxer "GHC.Num" "-" [dc, dc] . mkMinus makers $ Plugins.mkTyConTy tc)
       ),
-      ( PrimOp.IntMulOp,
+      ( Plugins.IntMulOp,
         pure (([tc, tc], tc), Boxer "GHC.Num" "*" [dc, dc] . mkTimes makers $ Plugins.mkTyConTy tc)
       ),
-      ( PrimOp.IntQuotOp,
+      ( Plugins.IntQuotOp,
         pure
           (([tc, tc], tc), Boxer "GHC.Real" "quot" [dc, dc] . mkQuot makers $ Plugins.mkTyConTy tc)
       ),
-      ( PrimOp.IntRemOp,
+      ( Plugins.IntRemOp,
         pure (([tc, tc], tc), Boxer "GHC.Real" "rem" [dc, dc] . mkRem makers $ Plugins.mkTyConTy tc)
       ),
-      ( PrimOp.IntNegOp,
+      ( Plugins.IntNegOp,
         pure (([tc], tc), Boxer "GHC.Num" "negate" [dc] . mkNegate makers $ Plugins.mkTyConTy tc)
       ),
-      ( PrimOp.IntEqOp,
+      ( Plugins.IntEqOp,
         pure
           ( ([tc, tc], Plugins.boolTyCon),
             Boxer "GHC.Classes" "==" [dc] . mkEqual makers $ Plugins.mkTyConTy tc
           )
       ),
-      ( PrimOp.IntLeOp,
+      ( Plugins.IntLeOp,
         pure
           ( ([tc, tc], Plugins.boolTyCon),
             Boxer "GHC.Classes" "<=" [dc] . mkLE makers $ Plugins.mkTyConTy tc
           )
       ),
-      ( PrimOp.IntLtOp,
+      ( Plugins.IntLtOp,
         pure
           ( ([tc, tc], Plugins.boolTyCon),
             Boxer "GHC.Classes" "<" [dc] . mkLT makers $ Plugins.mkTyConTy tc
           )
       ),
-      ( PrimOp.IntGeOp,
+      ( Plugins.IntGeOp,
         pure
           ( ([tc, tc], Plugins.boolTyCon),
             Boxer "GHC.Classes" ">=" [dc] . mkGE makers $ Plugins.mkTyConTy tc
           )
       ),
-      ( PrimOp.IntGtOp,
+      ( Plugins.IntGtOp,
         pure
           ( ([tc, tc], Plugins.boolTyCon),
             Boxer "GHC.Classes" ">" [dc] . mkGT makers $ Plugins.mkTyConTy tc
           )
       ),
-      ( PrimOp.IntNeOp,
+      ( Plugins.IntNeOp,
         pure
           ( ([tc, tc], Plugins.boolTyCon),
             Boxer "GHC.Classes" "/=" [dc] . mkNotEqual makers $ Plugins.mkTyConTy tc
           )
       ),
-#if MIN_VERSION_ghc(9, 2, 0)
-      ( PrimOp.IntToDoubleOp,
+      ( Plugins.IntToDoubleOp,
         pure
           ( ([tc], Plugins.doubleTyCon),
             Boxer "GHC.Classes" "fromIntegral" [dc] $
               mkFromIntegral makers (Plugins.mkTyConTy tc) Plugins.doubleTy
           )
       ),
-      ( PrimOp.IntToFloatOp,
+      ( Plugins.IntToFloatOp,
         pure
           ( ([tc], Plugins.floatTyCon),
             Boxer "GHC.Classes" "fromIntegral" [dc] $
               mkFromIntegral makers (Plugins.mkTyConTy tc) Plugins.floatTy
           )
       )
-#else
-      ( PrimOp.Int2DoubleOp,
-        pure
-          ( ([tc], Plugins.doubleTyCon),
-            Boxer "GHC.Classes" "fromIntegral" [dc] $
-              mkFromIntegral makers (Plugins.mkTyConTy tc) Plugins.doubleTy
-          )
-      ),
-      ( PrimOp.Int2FloatOp,
-        pure
-          ( ([tc], Plugins.floatTyCon),
-            Boxer "GHC.Classes" "fromIntegral" [dc] $
-              mkFromIntegral makers (Plugins.mkTyConTy tc) Plugins.floatTy
-          )
-      )
-#endif
     ]
 
 mkFpCCallBoxers ::
@@ -1783,18 +1653,18 @@ mkNoInlinePrimIntFunctions makers tc dc =
 
 -- Enum comparison is handled slightly differently; we don't do type deduction or type-based lookup.
 
-type EnumCmpMap = Map PrimOp.PrimOp (Makers -> Plugins.Type -> CategoryStack Plugins.CoreExpr)
+type EnumCmpMap = Map Plugins.PrimOp (Makers -> Plugins.Type -> CategoryStack Plugins.CoreExpr)
 
 enumCmpMap :: EnumCmpMap
 enumCmpMap =
   Map.fromListWith
     const
-    [ (PrimOp.IntEqOp, mkEqual),
-      (PrimOp.IntLeOp, mkLE),
-      (PrimOp.IntLtOp, mkLT),
-      (PrimOp.IntGeOp, mkGE),
-      (PrimOp.IntGtOp, mkGT),
-      (PrimOp.IntNeOp, mkNotEqual)
+    [ (Plugins.IntEqOp, mkEqual),
+      (Plugins.IntLeOp, mkLE),
+      (Plugins.IntLtOp, mkLT),
+      (Plugins.IntGeOp, mkGE),
+      (Plugins.IntGtOp, mkGT),
+      (Plugins.IntNeOp, mkNotEqual)
     ]
 
 reboxEnumCmp ::

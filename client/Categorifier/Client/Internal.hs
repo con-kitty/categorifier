@@ -246,8 +246,7 @@ deriveHasRep' = \case
       TH.instanceD
         (pure [])
         [t|HasRep $type0|]
-        [
-          TH.tySynInstD' ''Rep [type0] repTy,
+        [ TH.tySynInstD' ''Rep [type0] repTy,
           TH.funD 'abst abstClauses,
           TH.pragInlD 'abst TH.Inline TH.FunLike TH.AllPhases,
           TH.funD 'repr reprClauses,

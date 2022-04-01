@@ -18,7 +18,7 @@ import qualified Categorifier.Categorify
 import Categorifier.CommandLineOptions (OptionGroup (..))
 import Categorifier.Common.IO.Exception (SomeException, handle, throwIOAsException)
 import qualified Categorifier.Core.BuildDictionary as BuildDictionary
-import Categorifier.Core.Categorify (Logger, categorify)
+import Categorifier.Core.Categorify (categorify)
 import qualified Categorifier.Core.ErrorHandling as Errors
 import Categorifier.Core.MakerMap (MakerMapFun, baseMakerMapFun, combineMakerMapFuns)
 import Categorifier.Core.Makers (Makers, haskMakers)
@@ -33,6 +33,14 @@ import Categorifier.Core.Types
     neverAutoInterpret,
   )
 import Categorifier.Duoidal (Parallel (..), foldMapD, traverseD, (=<\<))
+import qualified Categorifier.GHC.Builtin as Plugins
+import qualified Categorifier.GHC.Core as Plugins
+import qualified Categorifier.GHC.Data as Plugins
+import qualified Categorifier.GHC.Driver as Plugins
+import qualified Categorifier.GHC.Runtime as Runtime
+import qualified Categorifier.GHC.Types as Plugins
+import qualified Categorifier.GHC.Unit as Plugins
+import qualified Categorifier.GHC.Utils as Plugins
 import Categorifier.Hierarchy
   ( First (..),
     Hierarchy,
@@ -41,7 +49,6 @@ import Categorifier.Hierarchy
     findId,
     findName,
     getBaseIdentifiers,
-    properFunTy,
   )
 import qualified Categorifier.TH as TH
 import Control.Monad (unless, (<=<))
@@ -58,42 +65,12 @@ import qualified Data.Map as Map
 import Data.Text (Text)
 import qualified Data.Text as Text
 import qualified GHC.CString
-#if MIN_VERSION_ghc(9, 0, 0)
-#if MIN_VERSION_ghc(9, 2, 0)
-import GHC.Core.Unfold (defaultUnfoldingOpts)
-import qualified GHC.Utils.Logger as Logger
-#endif
-import GHC.Data.Bag (isEmptyBag)
-import qualified GHC.Plugins as Plugins
-import qualified GHC.Runtime.Loader as Dynamic
-import qualified GHC.Types.ForeignCall as Plugins
-import GHC.Utils.Error (WarningMessages)
-#else
-import Bag (isEmptyBag)
-import qualified DynamicLoading as Dynamic
-import ErrUtils (WarningMessages)
-import qualified ForeignCall as Plugins
-import qualified GhcPlugins as Plugins
-#endif
 import PyF (fmt)
 import System.IO (hPutStrLn, stderr)
 import System.IO.Unsafe (unsafePerformIO)
 
 -- We need @MagicHash@ to load some GHC-internal identifiers
 {-# ANN module ("HLint: ignore Avoid restricted extensions" :: String) #-}
-
-#if MIN_VERSION_ghc(9, 2, 0)
-type HasLogger = Logger.HasLogger
-#else
-type HasLogger = Applicative
-#endif
-
-getLogger :: HasLogger m => m Logger
-#if MIN_VERSION_ghc(9, 2, 0)
-getLogger = Logger.getLogger
-#else
-getLogger = pure ()
-#endif
 
 -- | The name of the pseudo-function that triggers the execution of our simplifier rule.
 conversionFunction :: TH.Name
@@ -120,12 +97,12 @@ install opts todos = do
   convert <-
     either (throwIOAsException $ prettyMissingSymbols dflags) pure <=< runExceptT . getParallel $
       idFromTHName conversionFunction
-  logger <- getLogger
+  logger <- Plugins.getLogger
   -- TODO: support partial application of `Categorify.expression` (#33).
   let allOurTodos = [categorifyTodo, postsimplifier convert logger dflags, removeCategorify]
       categorifyTodo =
         Plugins.CoreDoPluginPass [fmt|add {Plugins.getOccString convert} rules|] $
-          addCategorifyRules dflags convert opts
+          addCategorifyRules convert opts
       removeCategorify =
         Plugins.CoreDoPluginPass [fmt|remove {Plugins.getOccString convert} rules|] $
           removeBuiltinRules ruleNames
@@ -157,14 +134,14 @@ removeBuiltinRules names = pure . mapModGutsRules (filter (not . ruleMatches))
 --   This is the most minimal simplifier possible, as we try not to affect whatever else the user
 --   wants, we only need a pass so that categorification is performed. If there is already a
 --   simplifier in the pipeline, we should prefer that to adding our own.
-postsimplifier :: Plugins.Id -> Logger -> Plugins.DynFlags -> Plugins.CoreToDo
+postsimplifier :: Plugins.Id -> Plugins.Logger -> Plugins.DynFlags -> Plugins.CoreToDo
 #if MIN_VERSION_ghc(9, 2, 0)
 postsimplifier convert logger dflags =
   Plugins.CoreDoSimplify
     1
     Plugins.SimplMode
       { Plugins.sm_case_case = False,
-        Plugins.sm_uf_opts = defaultUnfoldingOpts,
+        Plugins.sm_uf_opts = Plugins.defaultUnfoldingOpts,
         Plugins.sm_pre_inline = False,
         Plugins.sm_logger = logger,
         Plugins.sm_dflags = dflags,
@@ -212,14 +189,14 @@ prettyMissingSymbols dflags =
 --
 --  __NB__: We're forced to fold our failures into `IO` here.
 addCategorifyRules ::
-  Plugins.DynFlags ->
   Plugins.Id ->
   Map OptionGroup [Text] ->
   Plugins.ModGuts ->
   Plugins.CoreM Plugins.ModGuts
-addCategorifyRules dflags convert opts guts =
+addCategorifyRules convert opts guts = do
+  dflags <- Plugins.getDynFlags
   either (throwIOAsException $ prettyMissingSymbols dflags) (\r -> pure (mapModGutsRules (r <>) guts))
-    =<< categorifyRules dflags convert opts guts
+    =<< categorifyRules convert opts guts
 
 -- | Given the arguments for a `Plugins.BuiltinRule`, this builds a list of rules that try to handle
 --   partial application of the original rule. One caveat is that the provided `Plugins.RuleFun` has
@@ -293,11 +270,7 @@ deferFailures throw str cat a b calls =
         )
         . Plugins.App (Plugins.Var str)
         . Plugins.Lit
-#if MIN_VERSION_ghc(8, 8, 0)
         $ Plugins.mkLitString
-#else
-        $ Plugins.mkMachString
-#endif
           [fmt|A call to `{TH.nameQualified convertFn}` failed to be eliminated by
 the "Categorifier" plugin. But errors from the plugin have been deferred to runtime,
 so you see this message instead of the actual compile-time failure. Compile
@@ -331,7 +304,7 @@ nameFromTHName name =
 -- __TODO__: `Dynamic.getValueSafely` throws in many cases. Try to catch, accumulate, return in
 --           `Either` (not that we can drop the IO regardless).
 getDynamicValueSafely :: Plugins.HscEnv -> Plugins.Name -> Plugins.Type -> IO (Maybe a)
-getDynamicValueSafely = Dynamic.getValueSafely
+getDynamicValueSafely = Runtime.getValueSafely
 
 nameFromText :: Text -> Lookup Plugins.Name
 nameFromText =
@@ -353,12 +326,11 @@ makerMapTy = Plugins.exprType . Plugins.Var <$> idFromTHName 'baseMakerMapFun
 
 -- | Wiring our function into a `Plugins.BuiltInRule` for the plugin system.
 categorifyRules ::
-  Plugins.DynFlags ->
   Plugins.Id ->
   Map OptionGroup [Text] ->
   Plugins.ModGuts ->
   Plugins.CoreM (Either (NonEmpty MissingSymbol) [Plugins.CoreRule])
-categorifyRules dflags convert opts guts =
+categorifyRules convert opts guts =
   runExceptT $ do
     -- __TODO__: This @do@ block currently has monadic semantics, but it should have duoidal
     --           ones. It's a bit complicated to get it to applicative with manual duoidal handling
@@ -429,12 +401,12 @@ categorifyRules dflags convert opts guts =
     makerMapFun <- makerMap
     baseIdentifiers <- getParallel getBaseIdentifiers
     uniqS <- lift Plugins.getUniqueSupplyM
-    logger <- lift getLogger
+    logger <- lift Plugins.getLogger
     hierarchyOptions' <- hierarchyOptions
     pure $
       partialAppRules apply (Plugins.varName convert) 5 $
         \_ inScope ident exprs ->
-          let baseArrowMakers = haskMakers dflags inScope guts hscEnv hask bh properFunTy
+          let baseArrowMakers = haskMakers inScope guts hscEnv hask bh Plugins.properFunTy
            in if ident == convert
                 then
                   unsafePerformIO $
@@ -445,19 +417,19 @@ categorifyRules dflags convert opts guts =
                           then pure $ deferFailures throw str
                           else Nothing
                       )
-                      dflags
+                      (Plugins.hsc_dflags hscEnv)
                       uniqS
                       ( \cat ->
                           categorify
                             (Map.member DebugOption opts)
                             (Map.member BenchmarkOption opts)
-                            dflags
+                            (Plugins.hsc_dflags hscEnv)
                             logger
                             cat
-                            (BuildDictionary.buildDictionary hscEnv dflags guts inScope)
+                            (BuildDictionary.buildDictionary hscEnv guts inScope)
                             baseIdentifiers
                             baseArrowMakers
-                            (haskMakers dflags inScope guts hscEnv hask h cat)
+                            (haskMakers inScope guts hscEnv hask h cat)
                             tryAutoInterpret
                             makerMapFun
                             additionalBoxers
@@ -493,11 +465,12 @@ runStack hierarchyOptions defer dflags uniqS calls f =
     handlePanic :: IO b -> IO b
     handlePanic = handle (throwIOAsException (Text.unpack . Errors.displayPanic dflags calls))
     printWarnings ::
-      RWST (Map Plugins.Var Plugins.CoreExpr) WarningMessages CategoryState IO a ->
+      RWST (Map Plugins.Var Plugins.CoreExpr) Plugins.WarningMessages CategoryState IO a ->
       IO a
     printWarnings wt = do
       (val, _newState, warns) <- runRWST wt Map.empty (CategoryState uniqS 0 mempty)
-      unless (isEmptyBag warns) . hPutStrLn stderr . Text.unpack $ Errors.showWarnings dflags warns
+      unless (Plugins.isEmptyBag warns) . hPutStrLn stderr . Text.unpack $
+        Errors.showWarnings dflags warns
       pure val
     printFailure :: NonEmpty CategoricalFailure -> IO a
     printFailure = throwIOAsException (Text.unpack . Errors.showFailures dflags hierarchyOptions f)

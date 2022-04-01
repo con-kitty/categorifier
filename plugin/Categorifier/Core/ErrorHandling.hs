@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TupleSections #-}
@@ -12,8 +11,12 @@ module Categorifier.Core.ErrorHandling
 where
 
 import Categorifier.Common.IO.Exception (displayException)
-import Categorifier.Core.Trace (Unpretty (..), WithIdInfo, renderSDoc)
+import Categorifier.Core.Trace (renderSDoc)
 import Categorifier.Core.Types (CategoricalFailure (..), DictionaryFailure (..))
+import qualified Categorifier.GHC.Core as Plugins
+import qualified Categorifier.GHC.Driver as Plugins
+import qualified Categorifier.GHC.Types as Plugins
+import qualified Categorifier.GHC.Utils as Plugins
 import qualified Data.ByteString.Char8 as BS
 import Data.Foldable (fold, toList)
 import Data.List.NonEmpty.Extra (NonEmpty, intersperse)
@@ -21,38 +24,9 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Text (Text)
 import qualified Data.Text as Text
-#if MIN_VERSION_ghc(9, 0, 0)
-import GHC.Data.Bag (Bag)
-import qualified GHC.Plugins as Plugins
-#if MIN_VERSION_ghc(9, 2, 0)
-import GHC.Utils.Error
-  ( DecoratedSDoc,
-    ErrorMessages,
-    MsgEnvelope,
-    WarningMessages,
-    pprMsgEnvelopeBagWithLoc,
-  )
-#else
-import GHC.Utils.Error (ErrMsg, ErrorMessages, WarningMessages, pprErrMsgBagWithLoc)
-#endif
-import GHC.Utils.Panic (GhcException (..))
-#else
-import Bag (Bag)
-import ErrUtils (ErrMsg, ErrorMessages, WarningMessages, pprErrMsgBagWithLoc)
-import qualified GhcPlugins as Plugins
-import Panic (GhcException (..))
-#endif
 import GHC.Stack (CallStack, SrcLoc (..), fromCallSiteList, prettyCallStack)
 import Numeric.Natural (Natural)
 import PyF (fmt)
-
-#if MIN_VERSION_GLASGOW_HASKELL(9, 2, 0, 0)
-pprMsgEnvelopeBagWithLoc' :: Bag (MsgEnvelope DecoratedSDoc) -> [Plugins.SDoc]
-pprMsgEnvelopeBagWithLoc' = pprMsgEnvelopeBagWithLoc
-#else
-pprMsgEnvelopeBagWithLoc' :: Bag ErrMsg -> [Plugins.SDoc]
-pprMsgEnvelopeBagWithLoc' = pprErrMsgBagWithLoc
-#endif
 
 -- | Deduplicates a structure, maintaining a count for each element.
 --
@@ -63,11 +37,11 @@ countOccurances = Map.fromListWith (+) . fmap (,1 :: Natural) . toList
 
 -- | GHC gives us a `Bag.Bag` of random `Outputable.SDoc` (text) errors when something fails. This
 --   tries to format them nicely and rephrase them when possible.
-formatTcErrs :: Plugins.DynFlags -> Int -> ErrorMessages -> Text
+formatTcErrs :: Plugins.DynFlags -> Int -> Plugins.ErrorMessages -> Text
 formatTcErrs dflags _indent =
   Text.intercalate "\n"
     . fmap (Text.pack . renderSDoc dflags . (Plugins.text "-" Plugins.<+>) . rephraseErrMsg)
-    . pprMsgEnvelopeBagWithLoc'
+    . Plugins.pprMsgEnvelopeBagWithLoc
   where
     -- TODO: This should use regex to match and replace error messages that we can report more
     --       effectively for plugin users.
@@ -89,39 +63,18 @@ runtimeCallStack = \case
       _ -> Nothing
     decodeFrame = \case
       Plugins.App
-#if MIN_VERSION_ghc(8, 8, 0)
         (Plugins.App _tuple (Plugins.App _ (Plugins.Lit (Plugins.LitString function))))
         ( Plugins.collectArgs ->
             ( _srcLoc,
               [ Plugins.App _ (Plugins.Lit (Plugins.LitString package)),
                 Plugins.App _ (Plugins.Lit (Plugins.LitString modu)),
                 Plugins.App _ (Plugins.Lit (Plugins.LitString file)),
-#else
-        (Plugins.App _tuple (Plugins.App _ (Plugins.Lit (Plugins.MachStr function))))
-        ( Plugins.collectArgs ->
-            ( _srcLoc,
-              [ Plugins.App _ (Plugins.Lit (Plugins.MachStr package)),
-                Plugins.App _ (Plugins.Lit (Plugins.MachStr modu)),
-                Plugins.App _ (Plugins.Lit (Plugins.MachStr file)),
-#endif
-#if MIN_VERSION_ghc(9, 0, 0)
-                Plugins.App _ (Plugins.Lit (Plugins.LitNumber _ startLine)),
-                Plugins.App _ (Plugins.Lit (Plugins.LitNumber _ startCol)),
-                Plugins.App _ (Plugins.Lit (Plugins.LitNumber _ endLine)),
-                Plugins.App _ (Plugins.Lit (Plugins.LitNumber _ endCol))
-#elif MIN_VERSION_ghc(8, 6, 0)
-                Plugins.App _ (Plugins.Lit (Plugins.LitNumber _ startLine _)),
-                Plugins.App _ (Plugins.Lit (Plugins.LitNumber _ startCol _)),
-                Plugins.App _ (Plugins.Lit (Plugins.LitNumber _ endLine _)),
-                Plugins.App _ (Plugins.Lit (Plugins.LitNumber _ endCol _))
-#else
-                Plugins.App _ (Plugins.Lit (Plugins.LitInteger startLine _)),
-                Plugins.App _ (Plugins.Lit (Plugins.LitInteger startCol _)),
-                Plugins.App _ (Plugins.Lit (Plugins.LitInteger endLine _)),
-                Plugins.App _ (Plugins.Lit (Plugins.LitInteger endCol _))
-#endif
-              ]
-            )
+                Plugins.App _ (Plugins.Lit (Plugins.LitNumber startLine)),
+                Plugins.App _ (Plugins.Lit (Plugins.LitNumber startCol)),
+                Plugins.App _ (Plugins.Lit (Plugins.LitNumber endLine)),
+                Plugins.App _ (Plugins.Lit (Plugins.LitNumber endCol))
+                ]
+              )
           ) ->
           pure
             ( BS.unpack function,
@@ -136,10 +89,10 @@ runtimeCallStack = \case
             )
       _ -> Nothing
 
-displayPanic :: Plugins.DynFlags -> Plugins.CoreExpr -> GhcException -> Text
+displayPanic :: Plugins.DynFlags -> Plugins.CoreExpr -> Plugins.GhcException -> Text
 displayPanic dflags calls = \case
-  Panic s -> pretty (Text.pack s) Nothing
-  PprPanic s doc -> pretty (Text.pack s) (Just doc)
+  Plugins.Panic s -> pretty (Text.pack s) Nothing
+  Plugins.PprPanic s doc -> pretty (Text.pack s) (Just doc)
   x -> Text.pack $ displayException x
   where
     pretty = prettyPanic dflags calls
@@ -159,10 +112,10 @@ Please report the following information to the categorify plugin maintainers:
         prettyCallStack
         $ runtimeCallStack calls
 
-showWarnings :: Plugins.DynFlags -> WarningMessages -> Text
+showWarnings :: Plugins.DynFlags -> Plugins.WarningMessages -> Text
 showWarnings dflags warns =
   [fmt|warnings during categorification:
-{renderSDoc dflags . Plugins.vcat $ pprMsgEnvelopeBagWithLoc' warns}|]
+{renderSDoc dflags . Plugins.vcat $ Plugins.pprMsgEnvelopeBagWithLoc warns}|]
 
 showFailures ::
   Plugins.DynFlags -> NonEmpty Plugins.Name -> Plugins.CoreExpr -> NonEmpty CategoricalFailure -> Text
@@ -301,7 +254,7 @@ required by {showE expr}.|]
         )
         unf
   UnsupportedCast expr co ->
-    [fmt|Categorifier can't apply the coercion `{showP $ Unpretty co}` to the expression
+    [fmt|Categorifier can't apply the coercion `{showP $ Plugins.Unpretty co}` to the expression
     {showP expr} :: {showP $ Plugins.exprType expr}|]
   UnsupportedDependentType name ty ->
     [fmt|Categorifier has no support for dependent types but one was encountered:
@@ -357,5 +310,5 @@ result type: {showP boxedType}|]
     showE = showP
     showP :: Plugins.Outputable a => a -> Text
     showP = Text.pack . Plugins.showPpr dflags
-    showW :: Plugins.Expr WithIdInfo -> Text
+    showW :: Plugins.Expr Plugins.WithIdInfo -> Text
     showW = showP

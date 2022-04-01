@@ -67,6 +67,7 @@ packages:
   ./client/categorifier-client.cabal
   ./common/categorifier-common.cabal
   ./duoids/categorifier-duoids.cabal
+  ./ghc/categorifier-ghc.cabal
   ./hedgehog/categorifier-hedgehog.cabal
   ./integrations/adjunctions/integration/categorifier-adjunctions-integration.cabal
   ./integrations/adjunctions/integration-test/categorifier-adjunctions-integration-test.cabal

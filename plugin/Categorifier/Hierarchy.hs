@@ -1,5 +1,4 @@
 {-# LANGUAGE ApplicativeDo #-}
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
@@ -49,15 +48,18 @@ module Categorifier.Hierarchy
     -- ** `GHC.Base.getTag`
     GetTagInfo (..),
     getGetTagInfo,
-
-    -- * Other things
-    properFunTy,
-    funTy,
   )
 where
 
 import Categorifier.Core.Types (CategoryStack, Lookup, MissingSymbol (..))
 import Categorifier.Duoidal (Parallel (..))
+import qualified Categorifier.GHC.Builtin as Plugins
+import Categorifier.GHC.Core (CoreExpr, CoreM, Type)
+import qualified Categorifier.GHC.Core as Plugins
+import qualified Categorifier.GHC.Data as Plugins
+import qualified Categorifier.GHC.Runtime as Plugins
+import qualified Categorifier.GHC.Types as Plugins
+import qualified Categorifier.GHC.Unit as Plugins
 import Control.Applicative (Alternative (..))
 import Control.Monad ((<=<))
 import Control.Monad.Trans.Except (ExceptT (..))
@@ -65,62 +67,7 @@ import Data.Bits (FiniteBits (..))
 import Data.Functor.Identity (Identity (..))
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Dual (..))
-import GHC (Id, ModuleName, Name, RdrName (..), mkModuleName)
-#if MIN_VERSION_ghc(9, 0, 0)
-import qualified GHC.Builtin.PrimOps as PrimOp
-import GHC.Core.Opt.Monad (CoreM, getHscEnv, liftIO)
-#if MIN_VERSION_ghc(9, 2, 0)
-import GHC.Types.TyThing (lookupDataCon, lookupId, lookupTyCon)
-import qualified GHC.Builtin.Uniques as Unique
-#else
-import GHC.Driver.Types (lookupDataCon, lookupId, lookupTyCon)
-import qualified GHC.Types.Unique as Unique
-#endif
-import GHC.Plugins (CoreExpr, Type)
-import qualified GHC.Plugins as Plugins
-import GHC.Runtime.Loader (lookupRdrNameInModuleForPlugins)
-#else
-import CoreMonad (CoreM, getHscEnv, liftIO)
-import DynamicLoading (lookupRdrNameInModuleForPlugins)
-import GhcPlugins (CoreExpr, Type)
-import qualified GhcPlugins as Plugins
-import HscTypes (lookupDataCon, lookupId, lookupTyCon)
-import qualified PrimOp
-import qualified Unique
-#endif
 import Prelude hiding (mod)
-
-lookupRdrNameInModuleForPlugins' :: Plugins.HscEnv -> ModuleName -> RdrName -> IO (Maybe Name)
-#if MIN_VERSION_ghc(8, 6, 0)
-lookupRdrNameInModuleForPlugins' hscEnv modu =
-  fmap (fmap fst) . lookupRdrNameInModuleForPlugins hscEnv modu
-#else
-lookupRdrNameInModuleForPlugins' = lookupRdrNameInModuleForPlugins
-#endif
-
--- | This is the type for @(->)@ when you want to apply it to types of kind `Data.Kind.Type`. It's
---   easy to build this incorrectly and Core won't tell you that you have, so use this instead.
-properFunTy :: Type
-#if MIN_VERSION_ghc(9, 0, 0)
-properFunTy =
-  Plugins.mkTyConApp
-    Plugins.funTyCon
-    [Plugins.manyDataConTy, Plugins.liftedRepTy, Plugins.liftedRepTy]
-#else
-properFunTy = Plugins.mkTyConApp Plugins.funTyCon [Plugins.liftedRepTy, Plugins.liftedRepTy]
-#endif
-
--- | Similar to `properFunTy`, but fully-applied, inferring the kind arguments from the kinds of the
---   provided types.
-funTy :: Type -> Type -> Type
-#if MIN_VERSION_ghc(9, 0, 0)
-funTy a b =
-  Plugins.mkTyConApp
-    Plugins.funTyCon
-    [Plugins.manyDataConTy, Plugins.typeKind a, Plugins.typeKind b, a, b]
-#else
-funTy a b = Plugins.mkTyConApp Plugins.funTyCon [Plugins.typeKind a, Plugins.typeKind b, a, b]
-#endif
 
 -- | These are operations that we need to use in __Hask__, rather than in the target category.
 data HaskOps f = HaskOps
@@ -654,20 +601,25 @@ emptyHierarchy =
       uncurryV = Nothing
     }
 
-lookupName :: ModuleName -> (String -> Plugins.OccName) -> String -> CoreM (Maybe Plugins.Name)
+lookupName ::
+  Plugins.ModuleName -> (String -> Plugins.OccName) -> String -> CoreM (Maybe Plugins.Name)
 lookupName modu mkOcc str = do
-  hscEnv <- getHscEnv
-  liftIO . lookupRdrNameInModuleForPlugins' hscEnv modu . Unqual $ mkOcc str
+  hscEnv <- Plugins.getHscEnv
+  Plugins.liftIO . Plugins.lookupRdrNameInModuleForPlugins hscEnv modu . Plugins.Unqual $ mkOcc str
 
 -- __TODO__: This can throw in `lookupRdrNameInModuleForPlugins` if it can't find the module. We
 --           should capture that.
 lookupRdr ::
-  ModuleName -> (String -> Plugins.OccName) -> (Name -> CoreM a) -> String -> CoreM (Maybe a)
+  Plugins.ModuleName ->
+  (String -> Plugins.OccName) ->
+  (Plugins.Name -> CoreM a) ->
+  String ->
+  CoreM (Maybe a)
 lookupRdr modu mkOcc mkThing = traverse mkThing <=< lookupName modu mkOcc
 
 findName :: String -> String -> Lookup Plugins.Name
 findName modu str =
-  let mod = mkModuleName modu
+  let mod = Plugins.mkModuleName modu
    in Parallel
         ( ExceptT
             (maybe (Left . pure $ MissingName mod str) pure <$> lookupName mod Plugins.mkVarOcc str)
@@ -675,33 +627,33 @@ findName modu str =
 
 findDataCon :: String -> String -> Lookup Plugins.DataCon
 findDataCon modu str =
-  let mod = mkModuleName modu
+  let mod = Plugins.mkModuleName modu
    in Parallel
         ( ExceptT
             ( maybe (Left . pure $ MissingDataCon mod str) pure
-                <$> lookupRdr mod Plugins.mkDataOcc lookupDataCon str
+                <$> lookupRdr mod Plugins.mkDataOcc Plugins.lookupDataCon str
             )
         )
 
 -- | A helper for building `Hierarchy`s, also useful for looking up other `Plugins.Id`s in the
 --   appropriate context.
-findId :: String -> String -> Lookup Id
+findId :: String -> String -> Lookup Plugins.Id
 findId modu str =
-  let mod = mkModuleName modu
+  let mod = Plugins.mkModuleName modu
    in Parallel
         ( ExceptT
             ( maybe (Left . pure $ MissingId mod str) pure
-                <$> lookupRdr mod Plugins.mkVarOcc lookupId str
+                <$> lookupRdr mod Plugins.mkVarOcc Plugins.lookupId str
             )
         )
 
 findTyCon :: String -> String -> Lookup Plugins.TyCon
 findTyCon modu str =
-  let mod = mkModuleName modu
+  let mod = Plugins.mkModuleName modu
    in Parallel
         ( ExceptT
             ( maybe (Left . pure $ MissingTyCon mod str) pure
-                <$> lookupRdr mod Plugins.mkTcOcc lookupTyCon str
+                <$> lookupRdr mod Plugins.mkTcOcc Plugins.lookupTyCon str
             )
         )
 
@@ -827,7 +779,7 @@ baseHierarchy = do
         ( \onDict cat f a b -> do
             let fa = Plugins.mkAppTy f a
                 fb = Plugins.mkAppTy f b
-                ffun = Plugins.mkAppTy f (Plugins.mkAppTys properFunTy [a, b])
+                ffun = Plugins.mkAppTy f (Plugins.mkAppTys Plugins.properFunTy [a, b])
             op' <- mkMethodApps onDict op [f] [a, b] []
             uncur' <- mkFunctionApps onDict uncur [ffun, fa, fb] [op']
             mkMethodApps onDict arr [cat] [Plugins.mkBoxedTupleTy [ffun, fa], fb] [uncur']
@@ -840,7 +792,7 @@ baseHierarchy = do
       uncur <- identifier "Data.Tuple" "uncurry"
       pure $
         \onDict cat a b -> do
-          let fun = Plugins.mkAppTys properFunTy [a, b]
+          let fun = Plugins.mkAppTys Plugins.properFunTy [a, b]
           op' <- mkFunctionApps onDict op [Plugins.liftedRepTy, a, b] []
           uncur' <- mkFunctionApps onDict uncur [fun, a, b] [op']
           mkMethodApps onDict arr [cat] [Plugins.mkBoxedTupleTy [fun, a], b] [uncur']
@@ -859,7 +811,7 @@ baseHierarchy = do
         \onDict cat m a b -> do
           let ma = Plugins.mkAppTy m a
               mb = Plugins.mkAppTy m b
-              fun = Plugins.mkAppTys properFunTy [a, mb]
+              fun = Plugins.mkAppTys Plugins.properFunTy [a, mb]
           op' <- mkMethodApps onDict op [m] [a, b] []
           uncur' <- mkFunctionApps onDict uncur [ma, fun, mb] [op']
           mkMethodApps onDict arr [cat] [Plugins.mkBoxedTupleTy [ma, fun], mb] [uncur']
@@ -869,7 +821,7 @@ baseHierarchy = do
       op <- identifier "GHC.Err" "undefined"
       pure $ \onDict cat a b ->
         mkMethodApps onDict arr [cat] [a, b] . pure
-          =<< mkFunctionApps onDict op [Plugins.liftedRepTy, funTy a b] []
+          =<< mkFunctionApps onDict op [Plugins.liftedRepTy, Plugins.funTy a b] []
   coerceV <-
     pure <$> do
       arr <- identifier "Control.Arrow" "arr"
@@ -890,11 +842,7 @@ baseHierarchy = do
         \onDict cat a b ->
           -- Builds a lambda expecting the expression we want to return before applying `arr`. I.e.,
           -- @\bang -> arr (const bang) :: b -> cat a b@.
-#if MIN_VERSION_ghc(9, 0, 0)
-          let v = Plugins.mkSysLocal (Plugins.fsLit "bang") (Unique.mkBuiltinUnique 17) b b
-#else
-          let v = Plugins.mkSysLocal (Plugins.fsLit "bang") (Unique.mkBuiltinUnique 17) b
-#endif
+          let v = Plugins.mkSysLocal (Plugins.fsLit "bang") (Plugins.mkBuiltinUnique 17) b
            in Plugins.Lam v
                 <$> ( mkMethodApps onDict arr [cat] [a, b] . pure
                         =<< mkFunctionApps onDict op [b, a] [Plugins.Var v]
@@ -1175,12 +1123,12 @@ data IntConstructor = IntConstructor
     intConstructorSigned :: Bool,
     intConstructorTyCon :: Plugins.TyCon,
     intConstructorDataCon :: Plugins.DataCon,
-    intConstructorNarrowOp :: Maybe PrimOp.PrimOp
+    intConstructorNarrowOp :: Maybe Plugins.PrimOp
   }
 
 intConstructorToOpTyPair ::
   IntConstructor ->
-  Maybe (PrimOp.PrimOp, Plugins.TyCon)
+  Maybe (Plugins.PrimOp, Plugins.TyCon)
 intConstructorToOpTyPair IntConstructor {..} =
   (,intConstructorTyCon) <$> intConstructorNarrowOp
 
@@ -1194,26 +1142,26 @@ getIntegerConstructors :: Lookup [IntConstructor]
 getIntegerConstructors = traverse mkIntCons ints
   where
     mkIntCons ::
-      (Integer, Bool, String, String, String, Maybe PrimOp.PrimOp) ->
+      (Integer, Bool, String, String, String, Maybe Plugins.PrimOp) ->
       Lookup IntConstructor
     mkIntCons (i, s, m, t, d, n) =
       (\tc dc -> IntConstructor i s tc dc n) <$> findTyCon m t <*> findDataCon m d
     ints =
       -- (size, is signed, module, boxed type, boxing data con, narrowing op)
-      [ (8, True, "GHC.Int", "Int8", "I8#", pure PrimOp.Narrow8IntOp),
-        (16, True, "GHC.Int", "Int16", "I16#", pure PrimOp.Narrow16IntOp),
-        (32, True, "GHC.Int", "Int32", "I32#", pure PrimOp.Narrow32IntOp),
+      [ (8, True, "GHC.Int", "Int8", "I8#", pure Plugins.Narrow8IntOp),
+        (16, True, "GHC.Int", "Int16", "I16#", pure Plugins.Narrow16IntOp),
+        (32, True, "GHC.Int", "Int32", "I32#", pure Plugins.Narrow32IntOp),
         (64, True, "GHC.Int", "Int64", "I64#", Nothing),
         (toInteger $ finiteBitSize (0 :: Int), True, "GHC.Int", "Int", "I#", Nothing),
-        (8, False, "GHC.Word", "Word8", "W8#", pure PrimOp.Narrow8WordOp),
-        (16, False, "GHC.Word", "Word16", "W16#", pure PrimOp.Narrow16WordOp),
-        (32, False, "GHC.Word", "Word32", "W32#", pure PrimOp.Narrow32WordOp),
+        (8, False, "GHC.Word", "Word8", "W8#", pure Plugins.Narrow8WordOp),
+        (16, False, "GHC.Word", "Word16", "W16#", pure Plugins.Narrow16WordOp),
+        (32, False, "GHC.Word", "Word32", "W32#", pure Plugins.Narrow32WordOp),
         (64, False, "GHC.Word", "Word64", "W64#", Nothing),
         (toInteger $ finiteBitSize (0 :: Word), False, "GHC.Word", "Word", "W#", Nothing)
       ]
 
 newtype GetTagInfo = GetTagInfo
-  { getTagId :: Id
+  { getTagId :: Plugins.Id
   }
 
 getGetTagInfo :: Lookup GetTagInfo

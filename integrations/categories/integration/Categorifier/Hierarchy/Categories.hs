@@ -1,5 +1,4 @@
 {-# LANGUAGE ApplicativeDo #-}
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
 
@@ -11,6 +10,9 @@ module Categorifier.Hierarchy.Categories
 where
 
 import Categorifier.Core.Types (CategoryStack, Lookup)
+import qualified Categorifier.GHC.Builtin as Plugins
+import qualified Categorifier.GHC.Core as Plugins
+import qualified Categorifier.GHC.Types as Plugins
 import Categorifier.Hierarchy
   ( First (..),
     Hierarchy (..),
@@ -18,11 +20,6 @@ import Categorifier.Hierarchy
     identifier,
     mkMethodApps,
   )
-#if MIN_VERSION_ghc(9, 0, 0)
-import qualified GHC.Plugins as Plugins
-#else
-import qualified GhcPlugins as Plugins
-#endif
 
 -- | A hierarchy using the type classes available in the
 --   [@categories@](https://hackage.haskell.org/package/categories) library. This includes
