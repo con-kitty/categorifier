@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -20,6 +19,7 @@ import Categorifier.Test.Tests
   ( TestCases (..),
     TestCategory (..),
     TestStrategy (..),
+    builtinTestCategories,
     mkTestTerms,
   )
 import Data.Bool (bool)
@@ -34,13 +34,12 @@ import System.Exit (exitFailure, exitSuccess)
 
 mkTestTerms
   Adjunctions.testTerms
-  --             name   type      prefix       strategy
-  [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
-#if MIN_VERSION_GLASGOW_HASKELL(8, 6, 0, 0)
-    TestCategory ''(->) [t|(->)|] "plainArrow" (ComputeFromInput [|id|]),
-#endif
-    TestCategory ''Hask [t|Hask|] "hask" (ComputeFromInput [|runHask|])
-  ]
+  --               name   type      prefix       strategy
+  ( [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
+      TestCategory ''Hask [t|Hask|] "hask" (ComputeFromInput [|runHask|])
+    ]
+      <> builtinTestCategories
+  )
   -- adjunctions
   . HCons1 (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HCons1 (TestCases (const []))

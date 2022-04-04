@@ -4,19 +4,16 @@
 {-# OPTIONS_GHC -Wno-partial-type-signatures #-}
 
 module Categorifier.GHC.Tc
-  (
-#if MIN_VERSION_ghc(8, 10, 0)
-    module Constraint,
-    module TcOrigin,
-#endif
-    module TcErrors,
+  ( module TcErrors,
     module TcEvidence,
     module TcHsSyn,
     module TcInteract,
     module TcRnDriver,
     module TcRnMonad,
+    module TcRnTypes,
     module TcSMonad,
     module TcSimplify,
+    module TcType,
     emptyZonkEnv,
     runTcInteractive,
   )
@@ -33,16 +30,19 @@ import GHC.Tc.Solver as TcSimplify
 import GHC.Tc.Solver.Interact as TcInteract
 import GHC.Tc.Solver.Monad as TcSMonad (TcS, runTcS)
 import GHC.Tc.Types as TcRnTypes
-import GHC.Tc.Types.Constraint as Constraint
+import GHC.Tc.Types.Constraint as TcRnTypes
 import GHC.Tc.Types.Evidence as TcEvidence
-import GHC.Tc.Types.Origin as TcOrigin
+import GHC.Tc.Types.Origin as TcType
 import GHC.Tc.Utils.Monad as TcRnMonad
 import GHC.Tc.Utils.Zonk as TcHsSyn hiding (emptyZonkEnv)
 import qualified GHC.Tc.Utils.Zonk as TcHsSyn
 #else
 #if MIN_VERSION_ghc(8, 10, 0)
-import Constraint
-import TcOrigin
+import Constraint as TcRnTypes
+import TcOrigin as TcType
+#else
+import TcRnTypes
+import TcType
 #endif
 import TcErrors
 import TcEvidence

@@ -185,14 +185,13 @@ funTy a b = mkTyConApp funTyCon [typeKind a, typeKind b, a, b]
 --    arrow is "=>", not "->".
 invisFunArg :: Type -> Maybe Type
 #if MIN_VERSION_ghc(8, 10, 0)
-invisFunArg = \case
-  ty | Just ty' <- coreView ty -> invisFunArg ty'
+invisFunArg ty | Just ty' <- coreView ty = invisFunArg ty'
 #if MIN_VERSION_ghc(9, 0, 0)
-  TyCoRep.FunTy InvisArg _ arg _ -> Just arg
+invisFunArg (TyCoRep.FunTy InvisArg _ arg _) = Just arg
 #else
-  TyCoRep.FunTy InvisArg arg _ -> Just arg
+invisFunArg (TyCoRep.FunTy InvisArg arg _) = Just arg
 #endif
-  _ -> Nothing
+invisFunArg _ = Nothing
 #else
 invisFunArg =
   (\(arg, _) -> if isPredTy arg then pure arg else Nothing) <=< splitFunTy_maybe
@@ -321,47 +320,51 @@ substExpr = CoreSubst.substExpr (Utils.text "categorifier")
 newtype Unpretty a = Unpretty a
 
 instance Utils.Outputable (Unpretty Coercion) where
-  ppr (Unpretty coercion) = case coercion of
+  ppr (Unpretty coercion) = pprCoercion coercion
+
+pprCoercion :: Coercion -> Utils.SDoc
 #if MIN_VERSION_ghc(8, 8, 0)
-    TyCoRep.Refl ty -> "Refl" <+> Utils.ppr ty
-    TyCoRep.GRefl role ty mco -> "GRefl" <+> Utils.ppr role <+> Utils.ppr ty <+> nestedCo mco
+pprCoercion (TyCoRep.Refl ty) = "Refl" <+> Utils.ppr ty
+pprCoercion (TyCoRep.GRefl role ty mco) =
+  "GRefl" <+> Utils.ppr role <+> Utils.ppr ty <+> nestedCo mco
 #else
-    TyCoRep.CoherenceCo co kCo -> "CoherenceCo" <+> nestedCo co <+> nestedCo kCo
-    TyCoRep.Refl role ty -> "Refl" <+> Utils.ppr role <+> Utils.ppr ty
+pprCoercion (TyCoRep.CoherenceCo co kCo) = "CoherenceCo" <+> nestedCo co <+> nestedCo kCo
+pprCoercion (TyCoRep.Refl role ty) = "Refl" <+> Utils.ppr role <+> Utils.ppr ty
 #endif
-    TyCoRep.TyConAppCo role tyCon coes ->
-      "TyConAppCo" <+> Utils.ppr role <+> Utils.ppr tyCon <+> Utils.ppr (Unpretty <$> coes)
-    TyCoRep.AppCo co coN -> "AppCo" <+> nestedCo co <+> nestedCo coN
-    TyCoRep.ForAllCo tyCoVar kCo co ->
-      "ForAllCo" <+> Utils.ppr tyCoVar <+> nestedCo kCo <+> nestedCo co
+pprCoercion (TyCoRep.TyConAppCo role tyCon coes) =
+  "TyConAppCo" <+> Utils.ppr role <+> Utils.ppr tyCon <+> Utils.ppr (Unpretty <$> coes)
+pprCoercion (TyCoRep.AppCo co coN) = "AppCo" <+> nestedCo co <+> nestedCo coN
+pprCoercion (TyCoRep.ForAllCo tyCoVar kCo co) =
+  "ForAllCo" <+> Utils.ppr tyCoVar <+> nestedCo kCo <+> nestedCo co
 #if MIN_VERSION_ghc(9, 0, 0)
-    TyCoRep.FunCo role coN co co' ->
-      "FunCo" <+> Utils.ppr role <+> nestedCo coN <+> nestedCo co <+> nestedCo co'
+pprCoercion (TyCoRep.FunCo role coN co co') =
+  "FunCo" <+> Utils.ppr role <+> nestedCo coN <+> nestedCo co <+> nestedCo co'
 #else
-    TyCoRep.FunCo role co co' -> "FunCo" <+> Utils.ppr role <+> nestedCo co <+> nestedCo co'
+pprCoercion (TyCoRep.FunCo role co co') =
+  "FunCo" <+> Utils.ppr role <+> nestedCo co <+> nestedCo co'
 #endif
-    TyCoRep.CoVarCo coVar -> "CoVarCo" <+> Utils.ppr coVar
-    TyCoRep.AxiomInstCo coA brI coes ->
-      "AxiomInstCo" <+> Utils.ppr coA <+> Utils.ppr brI <+> Utils.ppr (Unpretty <$> coes)
-    TyCoRep.AxiomRuleCo coARule coes ->
-      "AxiomRuleCo" <+> Utils.ppr coARule <+> Utils.ppr (Unpretty <$> coes)
-    TyCoRep.UnivCo prov role ty ty' ->
-      "UnivCo" <+> Utils.ppr prov <+> Utils.ppr role <+> Utils.ppr ty <+> Utils.ppr ty'
-    TyCoRep.SymCo co -> "SymCo" <+> nestedCo co
-    TyCoRep.TransCo co co' -> "TransCo" <+> nestedCo co <+> nestedCo co'
+pprCoercion (TyCoRep.CoVarCo coVar) = "CoVarCo" <+> Utils.ppr coVar
+pprCoercion (TyCoRep.AxiomInstCo coA brI coes) =
+  "AxiomInstCo" <+> Utils.ppr coA <+> Utils.ppr brI <+> Utils.ppr (Unpretty <$> coes)
+pprCoercion (TyCoRep.AxiomRuleCo coARule coes) =
+  "AxiomRuleCo" <+> Utils.ppr coARule <+> Utils.ppr (Unpretty <$> coes)
+pprCoercion (TyCoRep.UnivCo prov role ty ty') =
+  "UnivCo" <+> Utils.ppr prov <+> Utils.ppr role <+> Utils.ppr ty <+> Utils.ppr ty'
+pprCoercion (TyCoRep.SymCo co) = "SymCo" <+> nestedCo co
+pprCoercion (TyCoRep.TransCo co co') = "TransCo" <+> nestedCo co <+> nestedCo co'
 #if MIN_VERSION_ghc(8, 6, 0)
-    TyCoRep.NthCo rule i co -> "NthCo" <+> Utils.ppr rule <+> Utils.ppr i <+> nestedCo co
+pprCoercion (TyCoRep.NthCo rule i co) = "NthCo" <+> Utils.ppr rule <+> Utils.ppr i <+> nestedCo co
 #else
-    TyCoRep.NthCo i co -> "NthCo" <+> Utils.ppr i <+> nestedCo co
+pprCoercion (TyCoRep.NthCo i co) = "NthCo" <+> Utils.ppr i <+> nestedCo co
 #endif
-    TyCoRep.LRCo lr coN -> "LRCo" <+> Utils.ppr lr <+> nestedCo coN
-    TyCoRep.InstCo co coN -> "InstCo" <+> nestedCo co <+> nestedCo coN
-    TyCoRep.KindCo co -> "KindCo" <+> nestedCo co
-    TyCoRep.SubCo coN -> "SubCo" <+> nestedCo coN
-    TyCoRep.HoleCo coH -> "HoleCo" <+> Utils.ppr coH
-    where
-      nestedCo :: Utils.Outputable (Unpretty a) => a -> Utils.SDoc
-      nestedCo = Utils.parens . Utils.ppr . Unpretty
+pprCoercion (TyCoRep.LRCo lr coN) = "LRCo" <+> Utils.ppr lr <+> nestedCo coN
+pprCoercion (TyCoRep.InstCo co coN) = "InstCo" <+> nestedCo co <+> nestedCo coN
+pprCoercion (TyCoRep.KindCo co) = "KindCo" <+> nestedCo co
+pprCoercion (TyCoRep.SubCo coN) = "SubCo" <+> nestedCo coN
+pprCoercion (TyCoRep.HoleCo coH) = "HoleCo" <+> Utils.ppr coH
+
+nestedCo :: Utils.Outputable (Unpretty a) => a -> Utils.SDoc
+nestedCo = Utils.parens . Utils.ppr . Unpretty
 
 #if MIN_VERSION_ghc(8, 6, 0)
 instance Utils.Outputable (Unpretty MCoercion) where

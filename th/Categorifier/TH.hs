@@ -139,41 +139,44 @@ alphaEquiv' ty = case ty of
 
 -- | Renames the varibles in a type according to some equivalence mapping.
 alphaRename :: [(TH.Name, TH.Name)] -> TH.Type -> Either (NonEmpty TH.Name) TH.Type
-alphaRename mapping = first NE.nub . alphaRename'
-  where
-    alphaRename' = \case
+alphaRename mapping = first NE.nub . alphaRename' mapping
+
+alphaRename' :: [(TH.Name, TH.Name)] -> TH.Type -> Either (NonEmpty TH.Name) TH.Type
 #if MIN_VERSION_template_haskell(2, 17, 0)
-      TH.MulArrowT -> pure TH.MulArrowT
+alphaRename' _ TH.MulArrowT = pure TH.MulArrowT
 #endif
 #if MIN_VERSION_template_haskell(2, 16, 0)
-      TH.ForallVisT b t -> TH.ForallVisT b <$> alphaRename' t
+alphaRename' m (TH.ForallVisT b t) = TH.ForallVisT b <$> alphaRename' m t
 #endif
 #if MIN_VERSION_template_haskell(2, 15, 0)
-      TH.AppKindT t k -> TH.AppKindT <$> alphaRename' t <*\> alphaRename' k
-      TH.ImplicitParamT s t -> TH.ImplicitParamT s <$> alphaRename' t
+alphaRename' m (TH.AppKindT t k) = TH.AppKindT <$> alphaRename' m t <*\> alphaRename' m k
+alphaRename' m (TH.ImplicitParamT s t) = TH.ImplicitParamT s <$> alphaRename' m t
 #endif
-      TH.ForallT b c t -> TH.ForallT b <$> traverseD alphaRename' c <*\> alphaRename' t
-      TH.AppT c e -> TH.AppT <$> alphaRename' c <*\> alphaRename' e
-      TH.SigT t k -> TH.SigT <$> alphaRename' t <*\> alphaRename' k
-      TH.VarT n -> fmap TH.VarT . getParallel $ noteAccum (flip lookup mapping) n
-      TH.ConT n -> pure $ TH.ConT n
-      TH.PromotedT n -> pure $ TH.PromotedT n
-      TH.InfixT t n t' -> TH.InfixT <$> alphaRename' t <*\> pure n <*\> alphaRename' t'
-      TH.UInfixT t n t' -> TH.UInfixT <$> alphaRename' t <*\> pure n <*\> alphaRename' t'
-      TH.ParensT t -> TH.ParensT <$> alphaRename' t
-      TH.TupleT i -> pure $ TH.TupleT i
-      TH.UnboxedTupleT i -> pure $ TH.UnboxedTupleT i
-      TH.UnboxedSumT i -> pure $ TH.UnboxedSumT i
-      TH.ArrowT -> pure TH.ArrowT
-      TH.EqualityT -> pure TH.EqualityT
-      TH.ListT -> pure TH.ListT
-      TH.PromotedTupleT i -> pure $ TH.PromotedTupleT i
-      TH.PromotedNilT -> pure TH.PromotedNilT
-      TH.PromotedConsT -> pure TH.PromotedConsT
-      TH.StarT -> pure TH.StarT
-      TH.ConstraintT -> pure TH.ConstraintT
-      TH.LitT l -> pure $ TH.LitT l
-      TH.WildCardT -> pure TH.WildCardT
+alphaRename' m (TH.ForallT b c t) =
+  TH.ForallT b <$> traverseD (alphaRename' m) c <*\> alphaRename' m t
+alphaRename' m (TH.AppT c e) = TH.AppT <$> alphaRename' m c <*\> alphaRename' m e
+alphaRename' m (TH.SigT t k) = TH.SigT <$> alphaRename' m t <*\> alphaRename' m k
+alphaRename' m (TH.VarT n) = fmap TH.VarT . getParallel $ noteAccum (flip lookup m) n
+alphaRename' _ (TH.ConT n) = pure $ TH.ConT n
+alphaRename' _ (TH.PromotedT n) = pure $ TH.PromotedT n
+alphaRename' m (TH.InfixT t n t') =
+  TH.InfixT <$> alphaRename' m t <*\> pure n <*\> alphaRename' m t'
+alphaRename' m (TH.UInfixT t n t') =
+  TH.UInfixT <$> alphaRename' m t <*\> pure n <*\> alphaRename' m t'
+alphaRename' m (TH.ParensT t) = TH.ParensT <$> alphaRename' m t
+alphaRename' _ (TH.TupleT i) = pure $ TH.TupleT i
+alphaRename' _ (TH.UnboxedTupleT i) = pure $ TH.UnboxedTupleT i
+alphaRename' _ (TH.UnboxedSumT i) = pure $ TH.UnboxedSumT i
+alphaRename' _ TH.ArrowT = pure TH.ArrowT
+alphaRename' _ TH.EqualityT = pure TH.EqualityT
+alphaRename' _ TH.ListT = pure TH.ListT
+alphaRename' _ (TH.PromotedTupleT i) = pure $ TH.PromotedTupleT i
+alphaRename' _ TH.PromotedNilT = pure TH.PromotedNilT
+alphaRename' _ TH.PromotedConsT = pure TH.PromotedConsT
+alphaRename' _ TH.StarT = pure TH.StarT
+alphaRename' _ TH.ConstraintT = pure TH.ConstraintT
+alphaRename' _ (TH.LitT l) = pure $ TH.LitT l
+alphaRename' _ TH.WildCardT = pure TH.WildCardT
 
 data SpecializationFailure
   = NotAParameterizedType
@@ -193,92 +196,99 @@ specializeT ::
   --   unspecialized.
   [Maybe TH.TypeQ] ->
   TH.TypeQ
-specializeT typ typs = do
-  baseTy <- typ
-  case baseTy of
-    TH.ForallT bs ctx t -> flip evalStateT mempty $ do
-      -- Like `TH.ForallVisT`, but also has to specialize the context and remove any constraints
-      -- that have no vars left.
-      (vars, newType) <- applySubsts t bs typs
-      if null vars && null ctx
-        then pure newType
-        else TH.ForallT vars <$> fmap (filter hasVarT) (traverse go ctx) <*> pure newType
+specializeT typ typs = flip toplevelSpecializeT typs =<< typ
+
+toplevelSpecializeT :: TH.Type -> [Maybe TH.TypeQ] -> TH.TypeQ
+toplevelSpecializeT (TH.ForallT bs ctx t) typs =
+  flip evalStateT mempty $ do
+    -- Like `TH.ForallVisT`, but also has to specialize the context and remove any constraints
+    -- that have no vars left.
+    (vars, newType) <- applySubsts t bs typs
+    if null vars && null ctx
+      then pure newType
+      else TH.ForallT vars <$> fmap (filter hasVarT) (traverse specializeT' ctx) <*> pure newType
 #if MIN_VERSION_template_haskell(2, 16, 0)
-    TH.ForallVisT bs t -> flip evalStateT mempty $ do
-      -- Add substitutions for as many args as we can. Leave the tail of the binders alone.
-      (vars, newType) <- applySubsts t bs typs
-      pure $
-        if null vars
-          then newType
-          else TH.ForallVisT vars newType
+toplevelSpecializeT (TH.ForallVisT bs t) typs =
+  flip evalStateT mempty $ do
+    -- Add substitutions for as many args as we can. Leave the tail of the binders alone.
+    (vars, newType) <- applySubsts t bs typs
+    pure $
+      if null vars
+        then newType
+        else TH.ForallVisT vars newType
 #endif
-    _ ->
-      if null typs
-        then typ
-        else liftIO $ Exception.throwIOAsException prettySpecializationFailure NotAParameterizedType
-  where
-    go :: TH.Type -> StateT (Map TH.Name TH.TypeQ) TH.Q TH.Type
-    go = \case
+toplevelSpecializeT baseTy typs =
+  if null typs
+    then pure baseTy
+    else liftIO $ Exception.throwIOAsException prettySpecializationFailure NotAParameterizedType
+
+specializeT' :: TH.Type -> StateT (Map TH.Name TH.TypeQ) TH.Q TH.Type
 #if MIN_VERSION_template_haskell(2, 17, 0)
-      TH.MulArrowT -> pure TH.MulArrowT
+specializeT' TH.MulArrowT = pure TH.MulArrowT
 #endif
 #if MIN_VERSION_template_haskell(2, 16, 0)
-      TH.ForallVisT bs t -> TH.ForallVisT bs <$> go t
+specializeT' (TH.ForallVisT bs t) = TH.ForallVisT bs <$> specializeT' t
 #endif
 #if MIN_VERSION_template_haskell(2, 15, 0)
-      TH.AppKindT t k -> TH.AppKindT <$> go t <*> pure k
-      TH.ImplicitParamT s t -> TH.ImplicitParamT s <$> go t
+specializeT' (TH.AppKindT t k) = TH.AppKindT <$> specializeT' t <*> pure k
+specializeT' (TH.ImplicitParamT s t) = TH.ImplicitParamT s <$> specializeT' t
 #endif
-      TH.ForallT bs ctx t -> TH.ForallT bs <$> fmap (filter hasVarT) (traverse go ctx) <*> go t
-      TH.AppT a b -> TH.AppT <$> go a <*> go b
-      TH.SigT t k -> TH.SigT <$> go t <*> pure k
-      TH.VarT n ->
-        -- If @n@ is substitutable, do so, otherwise leave the `TH.VarT` alone.
-        lift . fromMaybe (pure $ TH.VarT n) . Map.lookup n =<< get
-      TH.ConT n -> pure $ TH.ConT n
-      TH.PromotedT n -> pure $ TH.ConT n
-      TH.InfixT a n b -> TH.InfixT <$> go a <*> pure n <*> go b
-      TH.UInfixT a n b -> TH.UInfixT <$> go a <*> pure n <*> go b
-      TH.ParensT t -> TH.ParensT <$> go t
-      TH.TupleT i -> pure $ TH.TupleT i
-      TH.UnboxedTupleT i -> pure $ TH.UnboxedTupleT i
-      TH.UnboxedSumT a -> pure $ TH.UnboxedSumT a
-      TH.ArrowT -> pure TH.ArrowT
-      TH.EqualityT -> pure TH.EqualityT
-      TH.ListT -> pure TH.ListT
-      TH.PromotedTupleT i -> pure $ TH.PromotedTupleT i
-      TH.PromotedNilT -> pure TH.PromotedNilT
-      TH.PromotedConsT -> pure TH.PromotedConsT
-      TH.StarT -> pure TH.StarT
-      TH.ConstraintT -> pure TH.ConstraintT
-      TH.LitT l -> pure $ TH.LitT l
-      TH.WildCardT -> pure TH.WildCardT
-    applySubsts t bs args =
-      let (varsM, substsM, remainingArgsM) =
-            unzip3 $
-              alignWith
-                ( \case
-                    This v -> (Just v, Nothing, Nothing)
-                    That a -> (Nothing, Nothing, Just a)
-                    These v Nothing -> (Just v, Nothing, Nothing)
-                    These v (Just a) -> (Nothing, Just (tyVarBndrName v, a), Nothing)
-                )
-                bs
-                args
-          vars = catMaybes varsM
-          substs = Map.fromListWith const $ catMaybes substsM
-          remainingArgs = catMaybes remainingArgsM
-       in maybe
-            ( do
-                modify (substs <>)
-                sequenceA (vars, go t)
+specializeT' (TH.ForallT bs ctx t) =
+  TH.ForallT bs <$> fmap (filter hasVarT) (traverse specializeT' ctx) <*> specializeT' t
+specializeT' (TH.AppT a b) = TH.AppT <$> specializeT' a <*> specializeT' b
+specializeT' (TH.SigT t k) = TH.SigT <$> specializeT' t <*> pure k
+-- If @n@ is substitutable, do so, otherwise leave the `TH.VarT` alone.
+specializeT' (TH.VarT n) = lift . fromMaybe (pure $ TH.VarT n) . Map.lookup n =<< get
+specializeT' (TH.ConT n) = pure $ TH.ConT n
+specializeT' (TH.PromotedT n) = pure $ TH.ConT n
+specializeT' (TH.InfixT a n b) = TH.InfixT <$> specializeT' a <*> pure n <*> specializeT' b
+specializeT' (TH.UInfixT a n b) = TH.UInfixT <$> specializeT' a <*> pure n <*> specializeT' b
+specializeT' (TH.ParensT t) = TH.ParensT <$> specializeT' t
+specializeT' (TH.TupleT i) = pure $ TH.TupleT i
+specializeT' (TH.UnboxedTupleT i) = pure $ TH.UnboxedTupleT i
+specializeT' (TH.UnboxedSumT a) = pure $ TH.UnboxedSumT a
+specializeT' TH.ArrowT = pure TH.ArrowT
+specializeT' TH.EqualityT = pure TH.EqualityT
+specializeT' TH.ListT = pure TH.ListT
+specializeT' (TH.PromotedTupleT i) = pure $ TH.PromotedTupleT i
+specializeT' TH.PromotedNilT = pure TH.PromotedNilT
+specializeT' TH.PromotedConsT = pure TH.PromotedConsT
+specializeT' TH.StarT = pure TH.StarT
+specializeT' TH.ConstraintT = pure TH.ConstraintT
+specializeT' (TH.LitT l) = pure $ TH.LitT l
+specializeT' TH.WildCardT = pure TH.WildCardT
+
+applySubsts ::
+  TH.Type ->
+  [TyVarBndr flag] ->
+  [Maybe TH.TypeQ] ->
+  StateT (Map TH.Name TH.TypeQ) TH.Q ([TyVarBndr flag], TH.Type)
+applySubsts t bs args =
+  let (varsM, substsM, remainingArgsM) =
+        unzip3 $
+          alignWith
+            ( \case
+                This v -> (Just v, Nothing, Nothing)
+                That a -> (Nothing, Nothing, Just a)
+                These v Nothing -> (Just v, Nothing, Nothing)
+                These v (Just a) -> (Nothing, Just (tyVarBndrName v, a), Nothing)
             )
-            ( liftIO
-                . Exception.throwIOAsException prettySpecializationFailure
-                . TooManySpecializers
-                <=< lift . traverse sequenceA
-            )
-            $ nonEmpty remainingArgs
+            bs
+            args
+      vars = catMaybes varsM
+      substs = Map.fromListWith const $ catMaybes substsM
+      remainingArgs = catMaybes remainingArgsM
+   in maybe
+        ( do
+            modify (substs <>)
+            sequenceA (vars, specializeT' t)
+        )
+        ( liftIO
+            . Exception.throwIOAsException prettySpecializationFailure
+            . TooManySpecializers
+            <=< lift . traverse sequenceA
+        )
+        $ nonEmpty remainingArgs
 
 hasVarT :: TH.Type -> Bool
 #if MIN_VERSION_template_haskell(2, 17, 0)

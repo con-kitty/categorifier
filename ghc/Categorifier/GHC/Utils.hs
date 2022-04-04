@@ -3,9 +3,6 @@
 
 module Categorifier.GHC.Utils
   ( module ErrUtils,
-#if MIN_VERSION_ghc(9, 2, 0)
-    module GHC.Utils.Logger,
-#endif
     module Outputable,
     module Panic,
     module Util,

@@ -3,9 +3,6 @@
 module Categorifier.GHC.Unit
   ( module Finder,
     module Module,
-#if MIN_VERSION_ghc(9, 0, 0)
-    module GHC.Unit.Types,
-#endif
   )
 where
 
@@ -18,7 +15,7 @@ import GHC.Unit.Module.ModGuts as Module
 import GHC.Driver.Finder as Finder
 #endif
 import GHC.Unit.Module.Name as Module
-import GHC.Unit.Types
+import GHC.Unit.Types as Module
 #else
 import Finder
 import Module

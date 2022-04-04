@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -- To avoid having to specify massive HList types.
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -14,6 +15,7 @@
 -- handles exactly what's written.
 module Categorifier.Test.Tests
   ( TestTerms,
+    builtinTestCategories,
     defaultTestTerms,
     coreTestTerms,
     pluginTestTerms,
@@ -85,6 +87,15 @@ zerosafeUnsignedPrimitiveCases =
       pure ([|(,) <$> Gen.enumBounded <*> Gen.integral (Range.linear 1 maxBound)|], [|show|])
     )
   ]
+
+-- | Before GHC 8.6, `->` is an illegal type constructor and can't be TH-quoted, so we do it
+--   conditionally here to avoid needing to use CPP everywhere.
+builtinTestCategories :: [TestCategory]
+#if MIN_VERSION_GLASGOW_HASKELL(8, 6, 0, 0)
+builtinTestCategories = [TestCategory ''(->) [t|(->)|] "plainArrow" $ ComputeFromInput [|id|]]
+#else
+builtinTestCategories = []
+#endif
 
 -- | A list of type-parameterized expressions to test.
 --
