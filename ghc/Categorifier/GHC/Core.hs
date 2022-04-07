@@ -247,7 +247,26 @@ simplifyExpr' ::
   Types.UniqSupply ->
   CoreExpr ->
   IO CoreExpr
-#if MIN_VERSION_ghc(9, 2, 0)
+#if MIN_VERSION_ghc(9, 2, 2)
+simplifyExpr' logger dflags trans _ expr =
+  fmap fst . initSmpl logger dflags emptyRuleEnv emptyFamInstEnvs (exprSize expr) $
+    doSimplify
+      1
+      SimplMode
+        { sm_case_case = CaseOfCase `Set.member` trans,
+          sm_cast_swizzle = True,
+          sm_uf_opts = defaultUnfoldingOpts,
+          sm_pre_inline = Inline `Set.member` trans,
+          sm_logger = logger,
+          sm_dflags = dflags,
+          sm_eta_expand = EtaExpand `Set.member` trans,
+          sm_inline = Inline `Set.member` trans,
+          sm_names = ["categorify internal"],
+          sm_phase = Types.Phase 1,
+          sm_rules = Rules `Set.member` trans -- this improves specialisation
+        }
+      expr
+#elif MIN_VERSION_ghc(9, 2, 0)
 simplifyExpr' logger dflags trans _ expr =
   fmap fst . initSmpl logger dflags emptyRuleEnv emptyFamInstEnvs (exprSize expr) $
     doSimplify

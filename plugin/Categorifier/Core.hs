@@ -135,7 +135,24 @@ removeBuiltinRules names = pure . mapModGutsRules (filter (not . ruleMatches))
 --   wants, we only need a pass so that categorification is performed. If there is already a
 --   simplifier in the pipeline, we should prefer that to adding our own.
 postsimplifier :: Plugins.Id -> Plugins.Logger -> Plugins.DynFlags -> Plugins.CoreToDo
-#if MIN_VERSION_ghc(9, 2, 0)
+#if MIN_VERSION_ghc(9, 2, 2)
+postsimplifier convert logger dflags =
+  Plugins.CoreDoSimplify
+    1
+    Plugins.SimplMode
+      { Plugins.sm_case_case = False,
+        Plugins.sm_cast_swizzle = True,
+        Plugins.sm_uf_opts = Plugins.defaultUnfoldingOpts,
+        Plugins.sm_pre_inline = False,
+        Plugins.sm_logger = logger,
+        Plugins.sm_dflags = dflags,
+        Plugins.sm_eta_expand = False,
+        Plugins.sm_inline = False,
+        Plugins.sm_names = [[fmt|{Plugins.getOccString convert} minimal|]],
+        Plugins.sm_phase = Plugins.InitialPhase,
+        Plugins.sm_rules = False
+      }
+#elif MIN_VERSION_ghc(9, 2, 0)
 postsimplifier convert logger dflags =
   Plugins.CoreDoSimplify
     1

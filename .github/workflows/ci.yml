@@ -21,6 +21,7 @@ jobs:
           - "8.10.7" # there's an API breakage that only affects 8.10.7
           - "9.0.1"
           - "9.2.1"
+          - "9.2.2" # there's an API breakage introduced here
     env:
       CONFIG: "--enable-tests --enable-benchmarks"
     steps:
