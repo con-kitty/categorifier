@@ -47,6 +47,7 @@ import Categorifier.Test.Tests
   ( TestCases (..),
     TestCategory (..),
     TestStrategy (..),
+    builtinTestCategories,
     defaultTestTerms,
     mkTestTerms,
   )
@@ -68,14 +69,15 @@ import System.Exit (exitFailure, exitSuccess)
 
 mkTestTerms
   (HList.append defaultTestTerms Adjunctions.testTerms)
-  --             name     type         prefix       strategy
-  [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
-    TestCategory ''(->) [t|(->)|] "plainArrow" (ComputeFromInput [|id|]),
-    TestCategory ''Hask [t|Hask|] "hask" (ComputeFromInput [|runHask|]),
-    TestCategory ''TotOrd [t|TotOrd|] "totOrd" (ComputeFromInput [|runTotOrd|]),
-    TestCategory ''(:>) [t|(:>)|] "circuit" CheckCompileOnly,
-    TestCategory ''Syn [t|Syn|] "syn" CheckCompileOnly
-  ]
+  --               name     type         prefix       strategy
+  ( [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
+      TestCategory ''Hask [t|Hask|] "hask" (ComputeFromInput [|runHask|]),
+      TestCategory ''TotOrd [t|TotOrd|] "totOrd" (ComputeFromInput [|runTotOrd|]),
+      TestCategory ''(:>) [t|(:>)|] "circuit" CheckCompileOnly,
+      TestCategory ''Syn [t|Syn|] "syn" CheckCompileOnly
+    ]
+      <> builtinTestCategories
+  )
   -- core
   . HCons1 (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))
   . HCons1 (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))

@@ -9,6 +9,7 @@ module Categorifier.CommandLineOptions
   )
 where
 
+import qualified Categorifier.GHC.Driver as GhcPlugins
 import Data.Bifunctor (Bifunctor (..))
 import Data.Either.Validation (Validation (..))
 import Data.List (elemIndex)
@@ -18,7 +19,6 @@ import qualified Data.Map as Map
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Data.Tuple.Extra (firstM)
-import qualified GhcPlugins
 
 -- | An enumeration of the various command-line option groups the plugin supports.
 data OptionGroup

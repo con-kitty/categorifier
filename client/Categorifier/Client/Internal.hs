@@ -1,3 +1,4 @@
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -12,10 +13,10 @@ module Categorifier.Client.Internal
 where
 
 import qualified Categorifier.Common.IO.Exception as Exception
-import Categorifier.Duoidal (Parallel (..), traverseD, (<*\>))
+import Categorifier.Duoidal (Parallel (..), traverseD)
 import Categorifier.Duoidal.Either (noteAccum)
+import qualified Categorifier.TH as TH
 import Data.Bifunctor (Bifunctor (..))
-import Data.Bool (bool)
 import Data.Constraint (Dict (..))
 import Data.Foldable (foldl', toList)
 import Data.List.NonEmpty (NonEmpty (..))
@@ -24,7 +25,7 @@ import Data.Maybe (listToMaybe)
 import Data.Semigroup (Any (..))
 import Data.Tuple.Extra (fst3, snd3, thd3)
 import Data.Void (Void)
-import qualified Language.Haskell.TH as TH
+import PyF (fmt)
 
 -- | Convert to and from standard representations. Used for transforming case expression scrutinees
 --   and constructor applications. The 'repr' method should convert to a standard representation
@@ -139,96 +140,19 @@ deriveHasRep name =
   where
     explainDeriveCallFailure = \case
       GadtProcessingFailures failures ->
-        "Some GADT alternatives had errors while processing:"
-          <> mconcat (toList $ fmap (("\n- " <>) . explainGadtProcessingFailure) failures)
-      InvalidName info -> "expected type constructor for " <> show name <> " but got " <> show info
+        [fmt|Some GADT alternatives had errors while processing: \
+{mconcat (toList $ fmap (("\n- " <>) . explainGadtProcessingFailure) failures)}|]
+      InvalidName info -> [fmt|expected type constructor for {show name} but got {show info}|]
       MisquotedName ->
-        "expected type constructor for "
-          <> show name
-          <> " but got Data Constructor. Did you only put one apostrophe on your thingy?"
+        [fmt|expected type constructor for {show name} but got data constructor. Did you only put\
+one apostrophe on your thingy?|]
 
 explainGadtProcessingFailure :: GadtProcessingFailure -> String
 explainGadtProcessingFailure = \case
   GadtMissingName ty ->
-    "a GADT constructor with type "
-      <> show ty
-      <> " has no constructor name. This should be impossible."
+    [fmt|a GADT constructor with type {show ty} has no constructor name. \
+This should be impossible.|]
   UnableToAlphaRename _ -> ""
-
--- | Checks if two types are alpha equivalent. If so, it returns a mapping between the variable
---   names, usable in `alphaRename`.
---
---  __TODO__: Currently just ignores var names, but should eventually keep track of them.
-alphaEquiv :: TH.Type -> TH.Type -> Maybe [(TH.Name, TH.Name)]
-alphaEquiv = curry $ \case
-  (TH.ForallT b c t, TH.ForallT b' c' t') ->
-    -- __TODO__: Ensure that the kinds of @b@ match, and that those names are added to the map
-    --          (order of @b@ matters)
-    bool Nothing (alphaEquiv t t') $ length b == length b' && c == c'
-  (TH.ForallVisT b t, TH.ForallVisT b' t') ->
-    -- __TODO__: Ensure that the kinds of @b@ match, and that those names are added to the map
-    --          (order of @b@ matters)
-    bool Nothing (alphaEquiv t t') $ length b == length b'
-  (TH.AppT c e, TH.AppT c' e') -> (<>) <$> alphaEquiv c c' <*> alphaEquiv e e'
-  (TH.AppKindT t k, TH.AppKindT t' k') -> (<>) <$> alphaEquiv t t' <*> alphaEquiv k k'
-  (TH.SigT t k, TH.SigT t' k') -> (<>) <$> alphaEquiv t t' <*> alphaEquiv k k'
-  (TH.VarT n, TH.VarT n') ->
-    -- __TODO__: If neither has been seen before, add them both with the same index, otherwise they
-    --           must already have the same index to be the same
-    pure [(n, n')]
-  (TH.ConT n, TH.ConT n') -> bool Nothing (pure []) $ n == n'
-  (TH.PromotedT n, TH.PromotedT n') -> bool Nothing (pure []) $ n == n'
-  (TH.InfixT t n u, TH.InfixT t' n' u') ->
-    bool Nothing ((<>) <$> alphaEquiv t t' <*> alphaEquiv u u') $ n == n'
-  (TH.UInfixT t n u, TH.UInfixT t' n' u') ->
-    bool Nothing ((<>) <$> alphaEquiv t t' <*> alphaEquiv u u') $ n == n'
-  (TH.ParensT t, TH.ParensT t') -> alphaEquiv t t'
-  (TH.TupleT i, TH.TupleT i') -> bool Nothing (pure []) $ i == i'
-  (TH.UnboxedTupleT i, TH.UnboxedTupleT i') -> bool Nothing (pure []) $ i == i'
-  (TH.UnboxedSumT i, TH.UnboxedSumT i') -> bool Nothing (pure []) $ i == i'
-  (TH.ArrowT, TH.ArrowT) -> pure []
-  (TH.EqualityT, TH.EqualityT) -> pure []
-  (TH.ListT, TH.ListT) -> pure []
-  (TH.PromotedTupleT i, TH.PromotedTupleT i') -> bool Nothing (pure []) $ i == i'
-  (TH.PromotedNilT, TH.PromotedNilT) -> pure []
-  (TH.PromotedConsT, TH.PromotedConsT) -> pure []
-  (TH.StarT, TH.StarT) -> pure []
-  (TH.ConstraintT, TH.ConstraintT) -> pure []
-  (TH.LitT t, TH.LitT t') -> bool Nothing (pure []) $ t == t'
-  (TH.WildCardT, TH.WildCardT) -> pure []
-  (TH.ImplicitParamT s t, TH.ImplicitParamT s' t') -> bool Nothing (alphaEquiv t t') $ s == s'
-  (_, _) -> Nothing -- any structural mismatch is not equivalent
-
--- | Renames the varibles in a type according to some equivalence mapping.
-alphaRename :: [(TH.Name, TH.Name)] -> TH.Type -> Either (NonEmpty TH.Name) TH.Type
-alphaRename mapping = first NE.nub . alphaRename'
-  where
-    alphaRename' = \case
-      TH.ForallT b c t -> TH.ForallT b <$> traverseD alphaRename' c <*\> alphaRename' t
-      TH.ForallVisT b t -> TH.ForallVisT b <$> alphaRename' t
-      TH.AppT c e -> TH.AppT <$> alphaRename' c <*\> alphaRename' e
-      TH.AppKindT t k -> TH.AppKindT <$> alphaRename' t <*\> alphaRename' k
-      TH.SigT t k -> TH.SigT <$> alphaRename' t <*\> alphaRename' k
-      TH.VarT n -> fmap TH.VarT . getParallel $ noteAccum (flip lookup mapping) n
-      TH.ConT n -> pure $ TH.ConT n
-      TH.PromotedT n -> pure $ TH.PromotedT n
-      TH.InfixT t n t' -> TH.InfixT <$> alphaRename' t <*\> pure n <*\> alphaRename' t'
-      TH.UInfixT t n t' -> TH.UInfixT <$> alphaRename' t <*\> pure n <*\> alphaRename' t'
-      TH.ParensT t -> TH.ParensT <$> alphaRename' t
-      TH.TupleT i -> pure $ TH.TupleT i
-      TH.UnboxedTupleT i -> pure $ TH.UnboxedTupleT i
-      TH.UnboxedSumT i -> pure $ TH.UnboxedSumT i
-      TH.ArrowT -> pure TH.ArrowT
-      TH.EqualityT -> pure TH.EqualityT
-      TH.ListT -> pure TH.ListT
-      TH.PromotedTupleT i -> pure $ TH.PromotedTupleT i
-      TH.PromotedNilT -> pure TH.PromotedNilT
-      TH.PromotedConsT -> pure TH.PromotedConsT
-      TH.StarT -> pure TH.StarT
-      TH.ConstraintT -> pure TH.ConstraintT
-      TH.LitT l -> pure $ TH.LitT l
-      TH.WildCardT -> pure TH.WildCardT
-      TH.ImplicitParamT s t -> TH.ImplicitParamT s <$> alphaRename' t
 
 groupByType :: [(TH.Type, (TH.TypeQ, a, b))] -> [(TH.Type, NonEmpty (TH.TypeQ, a, b))]
 groupByType = foldr gbt []
@@ -253,7 +177,7 @@ groupByType = foldr gbt []
                                       . UnableToAlphaRename
                                   )
                                   pure
-                                  . alphaRename m
+                                  . TH.alphaRename m
                                   =<< tq,
                                 p,
                                 e
@@ -262,7 +186,7 @@ groupByType = foldr gbt []
                           )
                         )
                     )
-                    $ alphaEquiv ty t
+                    $ TH.alphaEquiv ty t
               )
               existing
        in if hasMatched then updatedMap else (ty, pure (tq, p, e)) : updatedMap
@@ -276,9 +200,7 @@ deriveHasRep' = \case
     first GadtProcessingFailures $ hasReps (applyType name tyVarBndrs) ctx $ pure dataCon
   info -> Left $ InvalidName info
   where
-    applyType name = foldl' TH.AppT (TH.ConT name) . fmap (TH.VarT . nameOfBinder)
-    nameOfBinder (TH.PlainTV n) = n
-    nameOfBinder (TH.KindedTV n _) = n
+    applyType name = foldl' TH.AppT (TH.ConT name) . fmap (TH.VarT . TH.tyVarBndrName)
 
     -- Produces one or more `HasRep` instances for the given `TH.Type`. It can be more than one in
     -- the case of GADTs.
@@ -324,7 +246,7 @@ deriveHasRep' = \case
       TH.instanceD
         (pure [])
         [t|HasRep $type0|]
-        [ TH.tySynInstD $ TH.tySynEqn Nothing [t|Rep $type0|] repTy,
+        [ TH.tySynInstD' ''Rep [type0] repTy,
           TH.funD 'abst abstClauses,
           TH.pragInlD 'abst TH.Inline TH.FunLike TH.AllPhases,
           TH.funD 'repr reprClauses,
@@ -338,10 +260,10 @@ deriveHasRep' = \case
        in ( mkNestedPairs (\x y -> [t|($x, $y)|]) [t|()|] $
               fmap (TH.AppT $ TH.ConT ''Dict) predTypes <> fieldTypes,
             ( mkNestedPairs (\x y -> [p|($x, $y)|]) [p|()|] $
-                fmap (`TH.ConP` []) dicts <> fmap TH.VarP vars,
+                fmap (`TH.conP` []) dicts <> fmap TH.VarP vars,
               pure $ foldl' (\e -> TH.AppE e . TH.VarE) (TH.ConE conName) vars
             ),
-            ( pure $ TH.ConP conName . fmap TH.VarP $ toList vars,
+            ( pure $ TH.conP conName . fmap TH.VarP $ toList vars,
               mkNestedPairs (\x y -> [|($x, $y)|]) [|()|] $ fmap TH.ConE dicts <> fmap TH.VarE vars
             )
           )
@@ -363,4 +285,4 @@ deriveHasRep' = \case
          in (mkL <$> mkNestedSums mkL mkR ys) <> (mkR <$> mkNestedSums mkL mkR zs)
 
     varSupply :: [TH.Name]
-    varSupply = TH.mkName <$> ["hasrep_" <> i | i <- show <$> [0 :: Int ..]]
+    varSupply = TH.mkName <$> [[fmt|hasrep_{i}|] | i <- show <$> [0 :: Int ..]]

@@ -1,8 +1,8 @@
 cabal-version:  2.4
 
-name:           categorifier-concat-extensions-integration
+name:           categorifier-ghc
 version:        0.1
-description:    Extensions to Conal's ConCat to improve plugin coverage.
+description:    GHC-as-a-library conditionalization for Categorifier
 homepage:       https://github.com/con-kitty/categorifier#readme
 bug-reports:    https://github.com/con-kitty/categorifier/issues
 build-type:     Simple
@@ -14,20 +14,29 @@ source-repository head
 
 library
   exposed-modules:
-      Categorifier.Hierarchy.ConCatExtensions
-  other-modules:
-      Paths_categorifier_concat_extensions_integration
+      Categorifier.GHC.Builtin
+      Categorifier.GHC.Core
+      Categorifier.GHC.Data
+      Categorifier.GHC.Driver
+      Categorifier.GHC.HsToCore
+      Categorifier.GHC.Runtime
+      Categorifier.GHC.Tc
+      Categorifier.GHC.Types
+      Categorifier.GHC.Unit
+      Categorifier.GHC.Utils
+      Paths_categorifier_ghc
   autogen-modules:
-      Paths_categorifier_concat_extensions_integration
-  ghc-options: -Wall
+      Paths_categorifier_ghc
+  ghc-options:
+    -O2
+    -fignore-interface-pragmas
+    -Wall
   build-depends:
+    , PyF
     , base
     , bytestring
-    , categorifier-duoids
-    , categorifier-ghc
-    , categorifier-plugin
-    , ghc-prim
-    , transformers
+    , containers
+    , ghc
   default-language: Haskell2010
   default-extensions:
       InstanceSigs

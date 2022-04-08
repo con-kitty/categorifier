@@ -11,6 +11,7 @@ module Categorifier.Hierarchy.ConCat
 where
 
 import Categorifier.Core.Types (CategoryStack, Lookup)
+import qualified Categorifier.GHC.Core as Plugins
 import Categorifier.Hierarchy
   ( Hierarchy (..),
     findTyCon,
@@ -18,7 +19,6 @@ import Categorifier.Hierarchy
     mkFunctionApps,
     mkMethodApps,
   )
-import qualified GhcPlugins as Plugins
 
 -- | ConCat effectively provides us with two hierarchies. One is standard type classes, the other
 --   lowers all of the methods from those classes to functions. These should behave the same for our

@@ -14,6 +14,8 @@ where
 import Categorifier.CommandLineOptions (OptionGroup, partitionOptions)
 import Categorifier.Common.IO.Exception (throwIOAsException)
 import qualified Categorifier.Core
+import qualified Categorifier.GHC.Core as GhcPlugins
+import qualified Categorifier.GHC.Driver as GhcPlugins
 import Control.Applicative (liftA2)
 import Control.Monad (join)
 import Data.Either.Validation (Validation (..))
@@ -21,7 +23,6 @@ import Data.Foldable (toList)
 import Data.Map (Map)
 import Data.Text (Text)
 import qualified Data.Text as Text
-import qualified GhcPlugins
 import PyF (fmt)
 
 -- | The required plugin entry-point. See [the GHC User's Guide section on Compiler
@@ -29,14 +30,13 @@ import PyF (fmt)
 --   for more information.
 plugin :: GhcPlugins.Plugin
 plugin =
-  GhcPlugins.defaultPlugin
+  GhcPlugins.defaultPurePlugin
     { GhcPlugins.installCoreToDos =
         \opts ->
           join
             . GhcPlugins.liftIO
             . liftA2 Categorifier.Core.install (partitionOptions' opts)
-            . pure,
-      GhcPlugins.pluginRecompile = GhcPlugins.purePlugin
+            . pure
     }
 
 partitionOptions' :: [GhcPlugins.CommandLineOption] -> IO (Map OptionGroup [Text])

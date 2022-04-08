@@ -1,7 +1,6 @@
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TupleSections #-}
 -- To avoid turning @if then else@ into `ifThenElse`.
 {-# LANGUAGE NoRebindableSyntax #-}
 
@@ -20,6 +19,7 @@ import Categorifier.Test.Tests
   ( TestCases (..),
     TestCategory (..),
     TestStrategy (..),
+    builtinTestCategories,
     mkTestTerms,
   )
 import Data.Bool (bool)
@@ -34,18 +34,24 @@ import System.Exit (exitFailure, exitSuccess)
 
 mkTestTerms
   Adjunctions.testTerms
-  --             name   type      prefix       strategy
-  [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
-    TestCategory ''Hask [t|Hask|] "hask" (ComputeFromInput [|runHask|]),
-    TestCategory ''(->) [t|(->)|] "plainArrow" (ComputeFromInput [|id|])
-  ]
+  --               name   type      prefix       strategy
+  ( [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
+      TestCategory ''Hask [t|Hask|] "hask" (ComputeFromInput [|runHask|])
+    ]
+      <> builtinTestCategories
+  )
   -- adjunctions
   . HCons1 (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HCons1 (TestCases (const []))
   . HCons1 (TestCases (const [([t|Int64|], pure ([|Gen.enumBounded|], [|show|]))]))
   . HCons1
     ( TestCases
-        (const [([t|Word8|], pure ([|(,pure) . Identity <$> Gen.enumBounded|], [|show . fst|]))])
+        ( const
+            [ ( [t|Word8|],
+                pure ([|(\x -> (x, pure)) . Identity <$> Gen.enumBounded|], [|show . fst|])
+              )
+            ]
+        )
     )
   . HCons1
     ( TestCases

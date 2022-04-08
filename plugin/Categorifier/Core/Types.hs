@@ -1,8 +1,5 @@
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections #-}
--- -Wno-orphans is so we can add missing instances to `Bag.Bag`
-{-# OPTIONS_GHC -Wno-orphans #-}
 
 module Categorifier.Core.Types
   ( AutoInterpreter,
@@ -15,7 +12,6 @@ module Categorifier.Core.Types
     CategoricalFailure (..),
     Lookup,
     MissingSymbol (..),
-    WithIdInfo (..),
     DictionaryFailure (..),
     liftDictionaryStack,
     neverAutoInterpret,
@@ -23,34 +19,26 @@ module Categorifier.Core.Types
   )
 where
 
-import qualified Bag
 import Categorifier.Duoidal (Parallel)
+import qualified Categorifier.GHC.Core as Plugins
+import qualified Categorifier.GHC.Types as Plugins
+import qualified Categorifier.GHC.Unit as Plugins
+import qualified Categorifier.GHC.Utils as Plugins
 import Control.Monad.Trans.Except (ExceptT (..), mapExceptT)
 import Control.Monad.Trans.RWS.Strict (RWST (..), withRWST)
-import CoreMonad (CoreM)
 import Data.Bifunctor (Bifunctor (..))
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
-import ErrUtils (ErrorMessages, WarningMessages)
-import qualified GhcPlugins as Plugins
-
--- | Need this instance to use a `Bag.Bag` as the output of @RWST@.
-instance Semigroup (Bag.Bag a) where
-  (<>) = Bag.unionBags
-
--- | Need this instance to use a `Bag.Bag` as the output of @RWST@.
-instance Monoid (Bag.Bag a) where
-  mempty = Bag.emptyBag
 
 type CategoryStack =
   ExceptT
     (NonEmpty CategoricalFailure)
-    (RWST (Map Plugins.Var Plugins.CoreExpr) WarningMessages CategoryState IO)
+    (RWST (Map Plugins.Var Plugins.CoreExpr) Plugins.WarningMessages CategoryState IO)
 
 type DictionaryStack =
   ExceptT
     (NonEmpty DictionaryFailure)
-    (RWST () WarningMessages CategoryState IO)
+    (RWST () Plugins.WarningMessages CategoryState IO)
 
 liftDictionaryStack :: Plugins.Type -> Plugins.CoreExpr -> DictionaryStack a -> CategoryStack a
 liftDictionaryStack ty expr =
@@ -70,10 +58,10 @@ data MissingSymbol
   | MissingName Plugins.ModuleName String
   | MissingTyCon Plugins.ModuleName String
 
--- | This type lets us perform everything in `CoreM` while tracking failures properly. It uses
---  `Parallel` explicitly rather than relying on the `Categorifier.Duoid` operations because we want
---   to take advantage of @do@ notation for building up our records.
-type Lookup = Parallel (ExceptT (NonEmpty MissingSymbol) CoreM)
+-- | This type lets us perform everything in `Plugins.CoreM` while tracking failures properly. It
+--   uses `Parallel` explicitly rather than relying on the `Categorifier.Duoid` operations because
+--   we want to take advantage of @do@ notation for building up our records.
+type Lookup = Parallel (ExceptT (NonEmpty MissingSymbol) Plugins.CoreM)
 
 -- | A mechanism to bypass the plugin, providing a mapping @(a -> b) -> cat a b@ for any special
 --   cases.
@@ -108,7 +96,7 @@ data DictCacheEntry = DictCacheEntry
 
 -- | Various ways in which the plugin can fail to transform a term.
 data CategoricalFailure
-  = BareUnboxedVar Plugins.Var (Plugins.Expr WithIdInfo)
+  = BareUnboxedVar Plugins.Var (Plugins.Expr Plugins.WithIdInfo)
   | CouldNotBuildDictionary Plugins.Type Plugins.CoreExpr (NonEmpty DictionaryFailure)
   | FailureToUnfix Plugins.Id Plugins.CoreExpr Plugins.CoreExpr
   | InvalidUnfixTyArgs Plugins.Id [Plugins.Var] [Plugins.Type]
@@ -133,40 +121,12 @@ data CategoricalFailure
   | UnsupportedPrimOpApplication Plugins.Var [Plugins.CoreExpr] (Maybe Plugins.Type)
   | UnsupportedPrimOpExpression String Plugins.CoreExpr
 
-newtype WithIdInfo = WithIdInfo Plugins.Id
-
-instance Plugins.Outputable WithIdInfo where
-  -- I wanted the full IdInfo, but it's not Outputtable
-  ppr (WithIdInfo v) =
-    Plugins.sdocWithDynFlags $ \dflags ->
-      let ident =
-            ( if Plugins.gopt Plugins.Opt_SuppressModulePrefixes dflags
-                then id
-                else
-                  ( maybe
-                      ""
-                      (\m -> Plugins.text $ Plugins.moduleNameString (Plugins.moduleName m) <> ".")
-                      (Plugins.nameModule_maybe $ Plugins.varName v)
-                      Plugins.<>
-                  )
-            )
-              $ Plugins.ppr v
-       in if Plugins.gopt Plugins.Opt_SuppressTypeSignatures dflags
-            then ident
-            else
-              Plugins.sep
-                [ident, Plugins.nest 2 $ Plugins.dcolon Plugins.<+> Plugins.ppr (Plugins.varType v)]
-
-instance Plugins.OutputableBndr WithIdInfo where
-  pprInfixOcc = Plugins.ppr
-  pprPrefixOcc = Plugins.ppr
-
 data DictionaryFailure
-  = TypecheckFailure ErrorMessages
+  = TypecheckFailure Plugins.ErrorMessages
   | -- | Typechecking ostensibly succeeded, but also returned errors. Not sure if this is possible,
     --   but the types allow for it. Here we treat it as a failure in order to at least diagnose the
     --   problem.
-    forall r. Plugins.Outputable r => ErroneousTypecheckSuccess ErrorMessages r
+    forall r. Plugins.Outputable r => ErroneousTypecheckSuccess Plugins.ErrorMessages r
   | NoBindings
   | CoercionHoles (NonEmpty (Plugins.Bind Plugins.CoreBndr))
   | FreeIds (NonEmpty (Plugins.Id, Plugins.Kind))

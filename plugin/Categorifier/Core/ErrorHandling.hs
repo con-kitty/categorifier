@@ -11,8 +11,12 @@ module Categorifier.Core.ErrorHandling
 where
 
 import Categorifier.Common.IO.Exception (displayException)
-import Categorifier.Core.Trace (Unpretty (..), WithIdInfo, renderSDoc)
+import Categorifier.Core.Trace (renderSDoc)
 import Categorifier.Core.Types (CategoricalFailure (..), DictionaryFailure (..))
+import qualified Categorifier.GHC.Core as Plugins
+import qualified Categorifier.GHC.Driver as Plugins
+import qualified Categorifier.GHC.Types as Plugins
+import qualified Categorifier.GHC.Utils as Plugins
 import qualified Data.ByteString.Char8 as BS
 import Data.Foldable (fold, toList)
 import Data.List.NonEmpty.Extra (NonEmpty, intersperse)
@@ -20,11 +24,8 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Text (Text)
 import qualified Data.Text as Text
-import ErrUtils (ErrorMessages, WarningMessages, pprErrMsgBagWithLoc)
 import GHC.Stack (CallStack, SrcLoc (..), fromCallSiteList, prettyCallStack)
-import qualified GhcPlugins as Plugins
 import Numeric.Natural (Natural)
-import Panic (GhcException (..))
 import PyF (fmt)
 
 -- | Deduplicates a structure, maintaining a count for each element.
@@ -36,11 +37,11 @@ countOccurances = Map.fromListWith (+) . fmap (,1 :: Natural) . toList
 
 -- | GHC gives us a `Bag.Bag` of random `Outputable.SDoc` (text) errors when something fails. This
 --   tries to format them nicely and rephrase them when possible.
-formatTcErrs :: Plugins.DynFlags -> Int -> ErrorMessages -> Text
+formatTcErrs :: Plugins.DynFlags -> Int -> Plugins.ErrorMessages -> Text
 formatTcErrs dflags _indent =
   Text.intercalate "\n"
     . fmap (Text.pack . renderSDoc dflags . (Plugins.text "-" Plugins.<+>) . rephraseErrMsg)
-    . pprErrMsgBagWithLoc
+    . Plugins.pprMsgEnvelopeBagWithLoc
   where
     -- TODO: This should use regex to match and replace error messages that we can report more
     --       effectively for plugin users.
@@ -68,10 +69,10 @@ runtimeCallStack = \case
               [ Plugins.App _ (Plugins.Lit (Plugins.LitString package)),
                 Plugins.App _ (Plugins.Lit (Plugins.LitString modu)),
                 Plugins.App _ (Plugins.Lit (Plugins.LitString file)),
-                Plugins.App _ (Plugins.Lit (Plugins.LitNumber _ startLine _)),
-                Plugins.App _ (Plugins.Lit (Plugins.LitNumber _ startCol _)),
-                Plugins.App _ (Plugins.Lit (Plugins.LitNumber _ endLine _)),
-                Plugins.App _ (Plugins.Lit (Plugins.LitNumber _ endCol _))
+                Plugins.App _ (Plugins.Lit (Plugins.LitNumber startLine)),
+                Plugins.App _ (Plugins.Lit (Plugins.LitNumber startCol)),
+                Plugins.App _ (Plugins.Lit (Plugins.LitNumber endLine)),
+                Plugins.App _ (Plugins.Lit (Plugins.LitNumber endCol))
                 ]
               )
           ) ->
@@ -88,10 +89,10 @@ runtimeCallStack = \case
             )
       _ -> Nothing
 
-displayPanic :: Plugins.DynFlags -> Plugins.CoreExpr -> GhcException -> Text
+displayPanic :: Plugins.DynFlags -> Plugins.CoreExpr -> Plugins.GhcException -> Text
 displayPanic dflags calls = \case
-  Panic s -> pretty (Text.pack s) Nothing
-  PprPanic s doc -> pretty (Text.pack s) (Just doc)
+  Plugins.Panic s -> pretty (Text.pack s) Nothing
+  Plugins.PprPanic s doc -> pretty (Text.pack s) (Just doc)
   x -> Text.pack $ displayException x
   where
     pretty = prettyPanic dflags calls
@@ -107,14 +108,14 @@ Please report the following information to the categorify plugin maintainers:
   where
     formattedStack =
       maybe
-        ("(failed to parse runtime stack, so dumping AST):\n" <> Plugins.showPpr dflags calls)
+        [fmt|(failed to parse runtime stack, so dumping AST):\n{Plugins.showPpr dflags calls}|]
         prettyCallStack
-        (runtimeCallStack calls)
+        $ runtimeCallStack calls
 
-showWarnings :: Plugins.DynFlags -> WarningMessages -> Text
+showWarnings :: Plugins.DynFlags -> Plugins.WarningMessages -> Text
 showWarnings dflags warns =
   [fmt|warnings during categorification:
-{renderSDoc dflags . Plugins.vcat $ pprErrMsgBagWithLoc warns}|]
+{renderSDoc dflags . Plugins.vcat $ Plugins.pprMsgEnvelopeBagWithLoc warns}|]
 
 showFailures ::
   Plugins.DynFlags -> NonEmpty Plugins.Name -> Plugins.CoreExpr -> NonEmpty CategoricalFailure -> Text
@@ -123,16 +124,11 @@ showFailures dflags hierarchyOptions f =
 {Plugins.showPpr dflags f}|]
       <>
   )
-    . Map.foldrWithKey
-      ( \msg cnt acc ->
-          "\n  - "
-            <> msg
-            <> "\n    (seen "
-            <> Text.pack (show cnt)
-            <> (if cnt == 1 then " time)" else " times)")
-            <> acc
+    . Map.foldMapWithKey
+      ( \msg cnt ->
+          let plural = if cnt == 1 then "" else "s" :: String
+           in [fmt|\n  - {msg}\n    (seen {cnt} time{plural})|]
       )
-      ""
     . countOccurances
     -- We unfortunately have to `show` before de-duplicating, because there are no reasonable
     -- instances on `CoreExpr` and similar types.
@@ -150,7 +146,7 @@ showFailure dflags hierarchyOptions = \case
 
 {showP goalTy}
 
-    required by {showE expr}.|]
+required by {showE expr}.|]
       <> foldMap
         ( ("\n    - " <>)
             . ( \case
@@ -167,7 +163,7 @@ showFailure dflags hierarchyOptions = \case
                   FreeIds ids ->
                     "free ids: "
                       <> fold
-                        (intersperse ", " (fmap (\(i, t) -> showP i <> " :: " <> showP t) ids))
+                        (intersperse ", " (fmap (\(i, t) -> [fmt|{showP i} :: {showP t}|]) ids))
               )
         )
         errs
@@ -258,7 +254,7 @@ showFailure dflags hierarchyOptions = \case
         )
         unf
   UnsupportedCast expr co ->
-    [fmt|Categorifier can't apply the coercion `{showP $ Unpretty co}` to the expression
+    [fmt|Categorifier can't apply the coercion `{showP $ Plugins.Unpretty co}` to the expression
     {showP expr} :: {showP $ Plugins.exprType expr}|]
   UnsupportedDependentType name ty ->
     [fmt|Categorifier has no support for dependent types but one was encountered:
@@ -301,7 +297,7 @@ showFailure dflags hierarchyOptions = \case
         {showP expr}|]
   UnsupportedPrimOpApplication var args boxedType ->
     let argsWithSigs =
-          Text.unlines $ fmap (\e -> showP e <> " :: " <> showP (Plugins.exprType e)) args
+          Text.unlines $ fmap (\e -> [fmt|{showP e} :: {showP $ Plugins.exprType e}|]) args
      in [fmt|Categorifier encountered a primop application it can't handle:
          op: {showP var}
        args: {argsWithSigs}
@@ -314,5 +310,5 @@ result type: {showP boxedType}|]
     showE = showP
     showP :: Plugins.Outputable a => a -> Text
     showP = Text.pack . Plugins.showPpr dflags
-    showW :: Plugins.Expr WithIdInfo -> Text
+    showW :: Plugins.Expr Plugins.WithIdInfo -> Text
     showW = showP

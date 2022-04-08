@@ -9,9 +9,9 @@ and the control sum computed using `sha256`.
 */
 
 let
-  # currently set to match Heaviside's
-  sha256 = "02anj9mbzy45bszlmv7k42mb5y7yj2lxc5vpbxgd3f5qljn5ih7y";
-  rev = "c00959877fb06b09468562518b408acda886c79e";
+  # release-21.11
+  sha256 = "1llhpnpfcvvfcr6s2y8qa9liqln7090brgaw6b4hbc8zac2zs55d";
+  rev = "216c78db4d10e85b324acca9ac0d1af7f2df2031";
 in
 import (fetchTarball {
   inherit sha256;

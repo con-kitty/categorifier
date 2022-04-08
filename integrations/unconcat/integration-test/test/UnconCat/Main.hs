@@ -15,6 +15,7 @@ import Categorifier.Test.Tests
   ( TestCases (..),
     TestCategory (..),
     TestStrategy (..),
+    builtinTestCategories,
     defaultTestTerms,
     mkTestTerms,
   )
@@ -30,11 +31,12 @@ import System.Exit (exitFailure, exitSuccess)
 
 mkTestTerms
   defaultTestTerms
-  --             name     type         prefix       strategy
-  [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
-    TestCategory ''(->) [t|(->)|] "plainArrow" (ComputeFromInput [|id|]),
-    TestCategory ''Hask [t|Hask|] "hask" (ComputeFromInput [|runHask|])
-  ]
+  --               name     type         prefix       strategy
+  ( [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
+      TestCategory ''Hask [t|Hask|] "hask" (ComputeFromInput [|runHask|])
+    ]
+      <> builtinTestCategories
+  )
   -- core
   . HCons1 (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))
   . HCons1 (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))

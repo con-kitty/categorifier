@@ -1,4 +1,5 @@
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 -- | These are the operations to use with the "Categorifier" plugin, which trigger conversion from
@@ -26,7 +27,7 @@ import Control.Applicative (liftA2)
 import Control.Arrow (Arrow (..))
 import Data.Maybe (fromMaybe)
 import GHC.Stack (CallStack, HasCallStack, callStack, prettyCallStack)
-import qualified Language.Haskell.TH as TH
+import PyF (fmt)
 
 -- | The name of the module for the plugin.
 pluginModule :: String
@@ -65,31 +66,21 @@ data UnconvertedCall = forall a b. UnconvertedCall (a -> b) CallStack
 -- | Defined because it's required by the `Exception` instance, this is not a standard `Show`.
 instance Show UnconvertedCall where
   show (UnconvertedCall _ calls) =
-    unlines
-      [ "error: " <> pluginModule <> " failed to eliminate a call to",
-        "      `" <> TH.nameQualified 'expression <> "`.",
-        "  | This should only be possible if the module mentioned above was compiled",
-        "  | without the " <> pluginModule <> " plugin enabled. Ensure that you're",
-        "  | configuring it properly for your build process. E.g., passing",
-        "  | `-fplugin=" <> pluginModule <> "` to GHC directly, or adding",
-        "  | `plugins = [\"//code_generation/category:categorify\"]` to your Bazel target.",
-        "  |",
-        "  | It's also possible that some other plugin that you've enabled has interfered",
-        "  | with this one. If you've enabled other plugins, try permuting the order of",
-        "  | the `-fplugin` flags. (GHC installs the plugins in the /reverse/ order that",
-        "  | `-fplugin` flags are provided on the command line.)",
-        "",
-        prettyCallStack calls
-      ]
+    let functionName = TH.nameQualified 'expression
+     in [fmt|error: {pluginModule} failed to eliminate a call to `{functionName}`.
+  | This should only be possible if the module mentioned above was compiled
+  | without the {pluginModule} plugin enabled. Ensure that you're configuring
+  | it properly for your build process. E.g., passing `-fplugin={pluginModule}`
+  | to GHC directly.
+  |
+  | It's also possible that some other plugin that you've enabled has interfered
+  | with this one. If you've enabled other plugins, try permuting the order of
+  | the `-fplugin` flags. (GHC installs the plugins in the /reverse/ order that
+  | `-fplugin` flags are provided on the command line.)
+
+{prettyCallStack calls}|]
 
 instance Exception UnconvertedCall
-
-splitTy :: TH.Type -> TH.Q (([TH.TyVarBndr], TH.Cxt), (TH.Type, TH.Type))
-splitTy = \case
-  TH.ForallT vs ctx t -> first ((vs, ctx) <>) <$> splitTy t
-  TH.ForallVisT _ t -> splitTy t
-  TH.AppT (TH.AppT TH.ArrowT inp) outp -> pure (mempty, (inp, outp))
-  typ -> Exception.throwIOAsException (("unsupported type " <>) . show) typ
 
 generateResultName ::
   TH.Name ->
@@ -98,7 +89,7 @@ generateResultName ::
   -- | A list of types for specializing the type of the provided `TH.Name`
   [Maybe TH.TypeQ] ->
   TH.Q String
-generateResultName name _k _tys = pure $ "wrap_" <> TH.nameBase name
+generateResultName name _k _tys = pure [fmt|wrap_{TH.nameBase name}|]
 
 -- | Shorthand for `expression` when you're applying it to a named function. Makes it more robust
 --   against types changing.
@@ -130,11 +121,11 @@ functionAs ::
   [Maybe TH.TypeQ] ->
   TH.DecsQ
 functionAs newName oldName k tys = do
-  ((vs, ctx), (input, output)) <- splitTy =<< TH.specializeT (TH.reifyType oldName) tys
+  ((vs, ctx), (input, output)) <- TH.splitTy =<< TH.specializeT (TH.reifyType oldName) tys
   functionAs' (TH.mkName newName) oldName vs ctx k input output
 
 functionAs' ::
-  TH.Name -> TH.Name -> [TH.TyVarBndr] -> TH.Cxt -> TH.TypeQ -> TH.Type -> TH.Type -> TH.DecsQ
+  TH.Name -> TH.Name -> [TH.TyVarBndr flag] -> TH.Cxt -> TH.TypeQ -> TH.Type -> TH.Type -> TH.DecsQ
 functionAs' newName oldName _vs ctx k input output =
   sequenceA
     [ TH.sigD newName $ TH.forallT [] (pure ctx) [t|$k $(pure input) $(pure output)|],
@@ -172,7 +163,7 @@ separatelyAs ::
   [Maybe TH.TypeQ] ->
   TH.DecsQ
 separatelyAs newName oldName k tys = do
-  ((vs, ctx), (input, output)) <- splitTy =<< TH.specializeT (TH.reifyType oldName) tys
+  ((vs, ctx), (input, output)) <- TH.splitTy =<< TH.specializeT (TH.reifyType oldName) tys
   -- __TODO__: Fail if there's no module, because the name isn't global.
   let (modu, base) = (fromMaybe "" . TH.nameModule &&& TH.nameBase) oldName
       newName' = TH.mkName newName
@@ -183,7 +174,11 @@ separatelyAs newName oldName k tys = do
         <$> TH.instanceD
           (pure ctx)
           [t|
-            NativeCat $k $(TH.litT . TH.strTyLit $ modu <> "." <> base) $(pure input) $(pure output)
+            NativeCat
+              $k
+              $(TH.litT $ TH.strTyLit [fmt|{modu}.{base}|])
+              $(pure input)
+              $(pure output)
             |]
           [TH.funD 'nativeK [TH.clause [] (TH.NormalB <$> TH.varE newName') []]]
     )

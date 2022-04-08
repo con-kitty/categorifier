@@ -12,7 +12,16 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        ghc: ["8.10.1", "8.10.2", "8.10.4", "8.10.7"]
+        ghc:
+          # NB: PyF doesn't work with GHC <8.4 (guibou/PyF#94)
+          - "8.4.1"
+          - "8.6.1"
+          - "8.8.1"
+          - "8.10.1"
+          - "8.10.7" # there's an API breakage that only affects 8.10.7
+          - "9.0.1"
+          - "9.2.1"
+          - "9.2.2" # there's an API breakage introduced here
     env:
       CONFIG: "--enable-tests --enable-benchmarks"
     steps:

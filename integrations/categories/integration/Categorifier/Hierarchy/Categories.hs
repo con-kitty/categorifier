@@ -10,6 +10,9 @@ module Categorifier.Hierarchy.Categories
 where
 
 import Categorifier.Core.Types (CategoryStack, Lookup)
+import qualified Categorifier.GHC.Builtin as Plugins
+import qualified Categorifier.GHC.Core as Plugins
+import qualified Categorifier.GHC.Types as Plugins
 import Categorifier.Hierarchy
   ( First (..),
     Hierarchy (..),
@@ -17,7 +20,6 @@ import Categorifier.Hierarchy
     identifier,
     mkMethodApps,
   )
-import qualified GhcPlugins as Plugins
 
 -- | A hierarchy using the type classes available in the
 --   [@categories@](https://hackage.haskell.org/package/categories) library. This includes

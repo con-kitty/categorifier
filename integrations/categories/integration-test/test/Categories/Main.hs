@@ -2,7 +2,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE TupleSections #-}
 -- To avoid turning @if then else@ into `ifThenElse`.
 {-# LANGUAGE NoRebindableSyntax #-}
 
@@ -20,6 +19,7 @@ import Categorifier.Test.Tests
   ( TestCases (..),
     TestCategory (..),
     TestStrategy (..),
+    builtinTestCategories,
     defaultTestTerms,
     mkTestTerms,
     zerosafeUnsignedPrimitiveCases,
@@ -39,11 +39,12 @@ import System.Exit (exitFailure, exitSuccess)
 
 mkTestTerms
   defaultTestTerms
-  --             name   type      prefix       strategy
-  [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
-    TestCategory ''Hask [t|Hask|] "hask" (ComputeFromInput [|runHask|]),
-    TestCategory ''(->) [t|(->)|] "plainArrow" (ComputeFromInput [|id|])
-  ]
+  --               name   type      prefix       strategy
+  ( [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
+      TestCategory ''Hask [t|Hask|] "hask" (ComputeFromInput [|runHask|])
+    ]
+      <> builtinTestCategories
+  )
   -- core
   . HCons1 (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))
   . HCons1 (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))
@@ -541,7 +542,12 @@ mkTestTerms
   . HCons1 (TestCases (const [])) -- no support for `liftA2` in Categories
   . HCons1
     ( TestCases
-        (const [([t|Word8|], pure ([|(,pure) . Identity <$> Gen.enumBounded|], [|show . fst|]))])
+        ( const
+            [ ( [t|Word8|],
+                pure ([|(\x -> (x, pure)) . Identity <$> Gen.enumBounded|], [|show . fst|])
+              )
+            ]
+        )
     )
   . HCons1
     ( TestCases

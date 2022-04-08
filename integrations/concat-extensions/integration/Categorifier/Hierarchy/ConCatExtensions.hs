@@ -9,6 +9,8 @@ module Categorifier.Hierarchy.ConCatExtensions
 where
 
 import Categorifier.Core.Types (CategoryStack, Lookup)
+import qualified Categorifier.GHC.Builtin as Plugins
+import qualified Categorifier.GHC.Core as Plugins
 import Categorifier.Hierarchy
   ( Hierarchy (..),
     emptyHierarchy,
@@ -16,7 +18,6 @@ import Categorifier.Hierarchy
     mkMethodApps,
     mkMethodApps',
   )
-import qualified GhcPlugins as Plugins
 
 -- | Some locally-defined classes, mostly to add missing pieces to ConCat.
 hierarchy :: Lookup (Hierarchy CategoryStack)

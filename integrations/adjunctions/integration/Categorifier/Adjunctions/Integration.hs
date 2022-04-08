@@ -17,18 +17,17 @@ import Categorifier.Core.MakerMap (MakerMapFun, baseMakerMapFun, makeMaker1)
 import Categorifier.Core.Makers (Makers (..))
 import Categorifier.Core.Types (CategoryStack, Lookup)
 import Categorifier.Duoidal ((=<\<))
+import qualified Categorifier.GHC.Core as Plugins
 import Categorifier.Hierarchy
   ( Hierarchy (..),
     emptyHierarchy,
     findTyCon,
-    funTy,
     identifier,
     mkMethodApps,
   )
 import qualified Data.Functor.Rep
 import qualified Data.Map as Map
 import qualified GHC.Base
-import qualified GhcPlugins as Plugins
 
 hierarchy :: Lookup (Hierarchy CategoryStack)
 hierarchy = do
@@ -40,7 +39,7 @@ hierarchy = do
       pure $ \onDict cat f a -> do
         let repfTy = Plugins.mkTyConApp rep [f]
         op' <- mkMethodApps onDict op [f] [a] []
-        mkMethodApps onDict arr [cat] [Plugins.mkAppTy f a, funTy repfTy a] [op']
+        mkMethodApps onDict arr [cat] [Plugins.mkAppTy f a, Plugins.funTy repfTy a] [op']
   ktabulateV <-
     pure <$> do
       arr <- identifier "Control.Arrow" "arr"
@@ -49,12 +48,13 @@ hierarchy = do
       pure $ \onDict cat f a -> do
         let repfTy = Plugins.mkTyConApp rep [f]
         op' <- mkMethodApps onDict op [f] [a] []
-        mkMethodApps onDict arr [cat] [funTy repfTy a, Plugins.mkAppTy f a] [op']
+        mkMethodApps onDict arr [cat] [Plugins.funTy repfTy a, Plugins.mkAppTy f a] [op']
   pure emptyHierarchy {indexV = kindexV, tabulateV = ktabulateV}
 
 makerMapFun :: MakerMapFun
 makerMapFun
   dflags
+  logger
   m@Makers {..}
   n
   target
@@ -115,6 +115,7 @@ makerMapFun
       baseMakerMap =
         baseMakerMapFun
           dflags
+          logger
           m
           n
           target
