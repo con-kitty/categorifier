@@ -29,6 +29,7 @@ module Categorifier.GHC.Core
     funTy,
     invisFunArg,
     localId,
+    mkPluginCo,
     properFunTy,
     simplifyExpr,
     simplifyExpr',
@@ -333,6 +334,12 @@ substExpr = CoreSubst.substExpr
 #else
 substExpr = CoreSubst.substExpr (Utils.text "categorifier")
 #endif
+
+-- | Helper function for constructing a `Coercion.Coercion` whose provenance is
+-- `TyCoRep.PluginProv`, which the plugin can use to cast one `Type.Type` to
+-- another. The caller is responsible for making sure the `Coercion.Coercion` is valid.
+mkPluginCo :: Coercion.Role -> Type.Type -> Type.Type -> Coercion.Coercion
+mkPluginCo role ty1 ty2 = Coercion.mkUnivCo (TyCoRep.PluginProv "Categorifier") role ty1 ty2
 
 -- | Generic wrapper to make a pretty printer that's less ... pretty (and more useful for people
 --   looking at the code).
