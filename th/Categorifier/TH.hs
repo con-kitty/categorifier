@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE QuasiQuotes #-}
 
 -- | Functions that should be part of @template-haskell@, but aren't.
@@ -8,6 +9,8 @@
 module Categorifier.TH
   ( module Language.Haskell.TH,
     TyVarBndr,
+    pattern PlainTV,
+    pattern KindedTV,
     alphaEquiv,
     alphaRename,
     conP,
@@ -37,15 +40,29 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.These (These (..))
-import Language.Haskell.TH hiding (TyVarBndr, conP, reifyType)
+import Language.Haskell.TH hiding (TyVarBndr (..), conP, reifyType)
 import qualified Language.Haskell.TH as TH
 import PyF (fmt)
 
 #if MIN_VERSION_template_haskell(2, 17, 0)
 type TyVarBndr flag = TH.TyVarBndr flag
+
+pattern PlainTV :: TH.Name -> TyVarBndr flag
+pattern PlainTV n <- TH.PlainTV n _
+
+pattern KindedTV :: TH.Name -> TH.Kind -> TyVarBndr flag
+pattern KindedTV n k <- TH.KindedTV n _ k
 #else
 type TyVarBndr _flag = TH.TyVarBndr
+
+pattern PlainTV :: TH.Name -> TyVarBndr flag
+pattern PlainTV n = TH.PlainTV n
+
+pattern KindedTV :: TH.Name -> TH.Kind -> TyVarBndr flag
+pattern KindedTV n k = TH.KindedTV n k
 #endif
+
+{-# COMPLETE PlainTV, KindedTV #-}
 
 conP :: TH.Name -> [TH.Pat] -> TH.Pat
 #if MIN_VERSION_template_haskell(2, 18, 0)
@@ -69,13 +86,8 @@ reifyType =
 #endif
 
 tyVarBndrName :: TyVarBndr flag -> TH.Name
-#if MIN_VERSION_template_haskell(2, 17, 0)
-tyVarBndrName (TH.KindedTV n _ _) = n
-tyVarBndrName (TH.PlainTV n _) = n
-#else
-tyVarBndrName (TH.KindedTV n _) = n
-tyVarBndrName (TH.PlainTV n) = n
-#endif
+tyVarBndrName (KindedTV n _) = n
+tyVarBndrName (PlainTV n) = n
 
 -- | It generates the fully-qualified name.
 nameQualified :: TH.Name -> String
