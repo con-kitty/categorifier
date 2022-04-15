@@ -88,7 +88,6 @@ test-suite concat-extensions-hierarchy-optimized
     -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.ConCat.functionHierarchy
     -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.ConCatExtensions.hierarchy
     -O2
-    -fignore-interface-pragmas
   build-depends:
     , adjunctions
     , base

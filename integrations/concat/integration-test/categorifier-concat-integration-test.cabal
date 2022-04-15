@@ -96,7 +96,6 @@ test-suite concat-class-hierarchy-optimized
     -- ConCat includes support for `index` and `tabulate`
     -fplugin-opt Categorifier:maker-map:Categorifier.Adjunctions.Integration.makerMapFun
     -O2
-    -fignore-interface-pragmas
   build-depends:
     , base
     , categorifier-adjunctions-integration
@@ -159,7 +158,6 @@ test-suite concat-function-hierarchy-optimized
     -- ConCat includes support for `index` and `tabulate`
     -fplugin-opt Categorifier:maker-map:Categorifier.Adjunctions.Integration.makerMapFun
     -O2
-    -fignore-interface-pragmas
   build-depends:
     , adjunctions
     , base

@@ -127,7 +127,6 @@ test-suite base-hierarchy-optimized
     -fplugin-opt Categorifier:defer-failures
     -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.baseHierarchy
     -O2
-    -fignore-interface-pragmas
   build-depends:
     , adjunctions
     , base
