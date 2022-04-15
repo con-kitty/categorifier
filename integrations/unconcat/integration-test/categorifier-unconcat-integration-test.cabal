@@ -84,4 +84,3 @@ test-suite unconcat-hierarchy-optimized
   main-is: UnconCat/Main.hs
   ghc-options:
     -O2
-    -fignore-interface-pragmas
