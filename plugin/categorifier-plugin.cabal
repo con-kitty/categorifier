@@ -27,6 +27,7 @@ library
       -- __TODO__: move ...PrimOp to other-modules
       Categorifier.Core.PrimOp
       Categorifier.Core.Types
+      Categorifier.DynFlags
       Categorifier.Hierarchy
   other-modules:
       Categorifier.Benchmark
@@ -41,7 +42,6 @@ library
       Paths_categorifier_plugin
   ghc-options:
     -O2
-    -fignore-interface-pragmas
     -Wall
   build-depends:
     , PyF

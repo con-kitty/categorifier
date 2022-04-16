@@ -92,7 +92,6 @@ test-suite adjunctions-hierarchy-optimized
     -fplugin-opt Categorifier:maker-map:Categorifier.Adjunctions.Integration.makerMapFun
     -fplugin-opt Categorifier:maker-map:Categorifier.Core.MakerMap.baseMakerMapFun
     -O2
-    -fignore-interface-pragmas
   build-depends:
     , adjunctions
     , base

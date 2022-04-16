@@ -29,7 +29,6 @@ library
       Paths_categorifier_ghc
   ghc-options:
     -O2
-    -fignore-interface-pragmas
     -Wall
   build-depends:
     , PyF

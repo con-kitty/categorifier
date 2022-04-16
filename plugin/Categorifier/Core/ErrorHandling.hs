@@ -232,11 +232,9 @@ required by {showE expr}.|]
    `inlinable` pragma to the definition or compiling with
    `-fexpose-all-unfoldings` to make _every_ operation inlinable. It's also
     important that the module containing the call to `categorify` is compiled
-    with `-fno-ignore-interface-pragmas` (also implied by `-O`). If the
-    unfolding that's missing is for `$j` (GHC-internal join points), you may
-    need to bump `-funfolding-creation-threshold` on the modules you're
-    depending on. If there is still no unfolding available, please file an issue
-    against the plugin.|]
+    with `-fno-ignore-interface-pragmas` (also implied by `-O` and enabled
+    automatically on GHC 8.10.1 or later). If there is still no unfolding
+    available, please file an issue against the plugin.|]
             Plugins.BootUnfolding ->
               [fmt|
     The identifier is defined in an hi-boot file, so can't be inlined.|]

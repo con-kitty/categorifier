@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE PartialTypeSignatures #-}
 
 module Categorifier.GHC.Driver
   ( module DynFlags,
@@ -6,6 +7,7 @@ module Categorifier.GHC.Driver
     module Outputable,
     module Plugins,
     defaultPurePlugin,
+    pureDynflagsAndCorePlugin,
   )
 where
 
@@ -32,4 +34,25 @@ defaultPurePlugin :: Plugin
 defaultPurePlugin = defaultPlugin {pluginRecompile = purePlugin}
 #else
 defaultPurePlugin = defaultPlugin
+#endif
+
+-- | Builds a pure plugin that has both `DynFlags` and `Core` components. Prior to GHC 8.10, the
+--  `DynFlags` component will be ignored and so the flags must be manually configured to match.
+pureDynflagsAndCorePlugin ::
+  ([CommandLineOption] -> DynFlags -> IO DynFlags) ->
+  -- | @([CommandLineOption] -> [CoreToDo] -> CoreM [CoreToDo])@, but skipped to avoid import issues
+  _ ->
+  Plugin
+#if MIN_VERSION_ghc(9, 2, 0)
+pureDynflagsAndCorePlugin dynflags core =
+  defaultPurePlugin
+    { driverPlugin =
+        \opts hsc -> (\newFlags -> hsc {hsc_dflags = newFlags}) <$> dynflags opts (hsc_dflags hsc),
+      installCoreToDos = core
+    }
+#elif MIN_VERSION_ghc(8, 10, 0)
+pureDynflagsAndCorePlugin dynflags core =
+  defaultPurePlugin {dynflagsPlugin = dynflags, installCoreToDos = core}
+#else
+pureDynflagsAndCorePlugin _ core = defaultPurePlugin {installCoreToDos = core}
 #endif
