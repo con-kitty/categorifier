@@ -113,7 +113,7 @@ categorify
   tryAutoInterpret
   makerMapFun
   additionalBoxers
-  fun = do
+  (Plugins.occurAnalyseExpr -> fun) = do
     res0 <-
       maybeTraceWith debug (const "---------- categorify ----------")
         . Bench.billToUninterruptible bench Bench.Categorify
@@ -591,12 +591,8 @@ binder type: {dbg bt}
                 -- So here we instead substitute the bound term in some cases, most notably when
                 -- the term consists only of projections from @name@.
 
-                -- TODO (#22): currently the v's `OccInfo` is always `ManyOccs`, probably
-                -- because we forget to `zapIdOccInfo` somewhere. If the `OccInfo` is accurate,
-                -- we can obtain `isManyOccs` from it rather than manually counting.
-
-                  let isManyOccs = case filter (== v) $ universeBi expr of
-                        _ : _ : _ -> True
+                  let isManyOccs = case Plugins.occInfo (Plugins.idInfo v) of
+                        Plugins.ManyOccs {} -> True
                         _ -> False
                    in if Plugins.isJoinId v
                         || not isManyOccs
