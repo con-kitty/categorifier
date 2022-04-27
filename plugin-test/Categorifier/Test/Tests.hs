@@ -1,6 +1,8 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DataKinds #-}
 -- To avoid having to specify massive HList types.
 {-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 -- To avoid having to specify massive HList types.
@@ -16,6 +18,7 @@
 module Categorifier.Test.Tests
   ( TestTerms,
     builtinTestCategories,
+    insertTest,
     defaultTestTerms,
     coreTestTerms,
     pluginTestTerms,
@@ -31,12 +34,13 @@ where
 import Categorifier.Client (Rep)
 import Categorifier.Core.Functions (abst, repr)
 import Categorifier.Test.Data (Pair (..))
-import Categorifier.Test.HList (HList1 (..))
+import Categorifier.Test.HList (HMap1 (..))
 import qualified Categorifier.Test.HList as HList
 import Categorifier.Test.TH
   ( ExprTest,
     TestCases (..),
     TestCategory (..),
+    TestConfig,
     TestStrategy (..),
     mkBinaryTestConfig,
     mkExprTest,
@@ -48,10 +52,12 @@ import Control.Arrow (arr)
 import Data.Coerce (coerce)
 import qualified Data.Foldable
 import Data.Functor.Identity (Identity (..))
+import Data.Proxy (Proxy (..))
 import Data.Semigroup (Sum (..))
 import Data.Tuple (swap)
 import qualified GHC.Classes
 import qualified GHC.Float
+import GHC.TypeLits (KnownSymbol, symbolVal)
 import GHC.Word (Word16, Word32, Word64, Word8)
 import qualified GHC.Word
 import qualified Hedgehog.Gen as Gen
@@ -97,6 +103,17 @@ builtinTestCategories = [TestCategory ''(->) [t|(->)|] "plainArrow" $ ComputeFro
 builtinTestCategories = []
 #endif
 
+-- | A helper to avoid duplicating the key when inserting a new test.
+insertTest ::
+  KnownSymbol k =>
+  Proxy k ->
+  (String -> TestCategory -> TestConfig) ->
+  (a -> (Q Type, Q Type)) ->
+  Q Exp ->
+  HMap1 ExprTest l ->
+  HMap1 ExprTest ('(k, a) ': l)
+insertTest key config ty = HInsert1 key . mkExprTest (config $ symbolVal key) ty
+
 -- | A list of type-parameterized expressions to test.
 --
 --   There should be a `TestTerms` value corresponding to each
@@ -105,10 +122,10 @@ builtinTestCategories = []
 --
 --  __NB__: Use of this type should take advantage of @PartialTypeSignatures@ to avoid having to
 --          specify massive HList types (e.g., @`TestTerms` _@).
-type TestTerms = HList1 ExprTest
+type TestTerms = HMap1 ExprTest
 
 defaultTestTerms :: TestTerms _
-defaultTestTerms = HList.append coreTestTerms $ HList.append pluginTestTerms baseTestTerms
+defaultTestTerms = HList.appendMap coreTestTerms $ HList.appendMap pluginTestTerms baseTestTerms
 
 {-# ANN coreTestTerms "HLint: ignore Collapse lambdas" #-}
 {-# ANN coreTestTerms "HLint: ignore Use const" #-}
@@ -117,63 +134,56 @@ defaultTestTerms = HList.append coreTestTerms $ HList.append pluginTestTerms bas
 {-# ANN coreTestTerms "HLint: ignore Use snd" #-}
 coreTestTerms :: TestTerms _
 coreTestTerms =
-  HCons1 (mkExprTest (mkUnaryTestConfig "LamId") (\a -> (a, a)) [|(\x -> x)|])
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "ComposeLam")
-          (\a -> (a, a))
-          [|((\f g x -> f (g x)) (\x -> x) (\x -> x))|]
-      )
-    . HCons1
-      ( mkExprTest
-          (mkBinaryTestConfig "ConstLam")
-          (\(a, b) -> (a, [t|$b -> $a|]))
-          [|(\x -> \_ -> x)|]
-      )
-    . HCons1
-      (mkExprTest (mkUnaryTestConfig "ReturnLam") (\a -> (a, a)) [|\y -> (\x -> \_ -> x) y y|])
-    . HCons1
-      (mkExprTest (mkUnaryTestConfig "BuildTuple") (\a -> (a, [t|($a, $a)|])) [|\x -> (x, x)|])
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "EliminateTupleFst")
-          (\a -> ([t|($a, $a)|], a))
-          [|\(x, _) -> x|]
-      )
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "EliminateTupleSnd")
-          (\a -> ([t|($a, $a)|], a))
-          [|\(_, x) -> x|]
-      )
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "EliminateNestedTuples")
-          (\a -> ([t|($a, ($a, $a))|], a))
-          [|\(_, (x, _)) -> x|]
-      )
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "LocalFixedpoint")
-          (\a -> (a, a))
-          [|let go x = if x > 0 then go (x - 1) else x in go|]
-      )
-    . HCons1 (mkExprTest (mkUnaryTestConfig "ApplyArg") (\a -> ([t|($a -> $a)|], a)) [|\f -> f 7|])
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "If")
-          (\a -> ([t|(Bool, ($a, $a))|], a))
-          [|\(cond, (tru, fls)) -> if cond then tru else fls|]
-      )
-    $ HNil1
+  insertTest (Proxy @"LamId") mkUnaryTestConfig (\a -> (a, a)) [|(\x -> x)|]
+    . insertTest
+      (Proxy @"ComposeLam")
+      mkUnaryTestConfig
+      (\a -> (a, a))
+      [|((\f g x -> f (g x)) (\x -> x) (\x -> x))|]
+    . insertTest
+      (Proxy @"ConstLam")
+      mkBinaryTestConfig
+      (\(a, b) -> (a, [t|$b -> $a|]))
+      [|(\x -> \_ -> x)|]
+    . insertTest (Proxy @"ReturnLam") mkUnaryTestConfig (\a -> (a, a)) [|\y -> (\x -> \_ -> x) y y|]
+    . insertTest (Proxy @"BuildTuple") mkUnaryTestConfig (\a -> (a, [t|($a, $a)|])) [|\x -> (x, x)|]
+    . insertTest
+      (Proxy @"EliminateTupleFst")
+      mkUnaryTestConfig
+      (\a -> ([t|($a, $a)|], a))
+      [|\(x, _) -> x|]
+    . insertTest
+      (Proxy @"EliminateTupleSnd")
+      mkUnaryTestConfig
+      (\a -> ([t|($a, $a)|], a))
+      [|\(_, x) -> x|]
+    . insertTest
+      (Proxy @"EliminateNestedTuples")
+      mkUnaryTestConfig
+      (\a -> ([t|($a, ($a, $a))|], a))
+      [|\(_, (x, _)) -> x|]
+    . insertTest
+      (Proxy @"LocalFixedPoint")
+      mkUnaryTestConfig
+      (\a -> (a, a))
+      [|let go x = if x > 0 then go (x - 1) else x in go|]
+    . insertTest (Proxy @"ApplyArg") mkUnaryTestConfig (\a -> ([t|($a -> $a)|], a)) [|\f -> f 7|]
+    . insertTest
+      (Proxy @"If")
+      mkUnaryTestConfig
+      (\a -> ([t|(Bool, ($a, $a))|], a))
+      [|\(cond, (tru, fls)) -> if cond then tru else fls|]
+    $ HEmpty1
 
 pluginTestTerms :: TestTerms _
 pluginTestTerms =
-  HCons1
-    (mkExprTest (mkUnaryTestConfig "Abst") (\a -> ([t|Rep (Pair $a)|], [t|Pair $a|])) [|abst|])
-    . HCons1
-      (mkExprTest (mkUnaryTestConfig "Repr") (\a -> ([t|Pair $a|], [t|Rep (Pair $a)|])) [|repr|])
-    $ HNil1
+  insertTest (Proxy @"Abst") mkUnaryTestConfig (\a -> ([t|Rep (Pair $a)|], [t|Pair $a|])) [|abst|]
+    . insertTest
+      (Proxy @"Repr")
+      mkUnaryTestConfig
+      (\a -> ([t|Pair $a|], [t|Rep (Pair $a)|]))
+      [|repr|]
+    $ HEmpty1
 
 {-# ANN baseTestTerms "HLint: ignore Avoid lambda" #-}
 {-# ANN baseTestTerms "HLint: ignore Redundant uncurry" #-}
@@ -193,288 +203,271 @@ pluginTestTerms =
 --            users).
 baseTestTerms :: TestTerms _
 baseTestTerms =
-  HCons1 (mkExprTest (mkUnaryTestConfig "Id") (\a -> (a, a)) [|id|])
-    . HCons1
-      (mkExprTest (mkBinaryTestConfig "Const") (\(a, b) -> (a, [t|$b -> $a|])) [|const|])
-    . HCons1 (mkExprTest (mkUnaryTestConfig "Snd") (\(a, b) -> ([t|($a, $b)|], b)) [|snd|])
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "FstSnd")
-          (\(a, b, c) -> ([t|($a, ($b, $c))|], b))
-          [|fst . snd|]
-      )
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "FstLet")
-          (\(a, b, c) -> ([t|($a, ($b, $c))|], b))
-          [|\x -> let y = snd x in fst y|]
-      )
-    . HCons1
-      (mkExprTest (mkUnaryTestConfig "Swap") (\(a, b) -> ([t|($a, $b)|], [t|($b, $a)|])) [|swap|])
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "Fork")
-          (\(a, b) -> (b, [t|($a, $b)|]))
-          [|const 42 &&& id|]
-      )
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "Join")
-          (\(a, b) -> ([t|Either $a $b|], b))
-          [|const 2 ||| (`mod` 8)|]
-      )
-    . HCons1 (mkExprTest (mkUnaryTestConfig "Arr") (\a -> (a, a)) [|arr cos|])
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "Either")
-          (\(a, b) -> ([t|Either $a $b|], b))
-          [|either (const 42) id|]
-      )
-    . HCons1 (mkExprTest (mkUnaryTestConfig "Coerce") (\a -> (a, [t|Sum $a|])) [|coerce|])
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "ComposedCoerce")
-          (\a -> (a, [t|Sum $a|]))
-          [|fst . (coerce &&& id)|]
-      )
+  insertTest (Proxy @"Id") mkUnaryTestConfig (\a -> (a, a)) [|id|]
+    . insertTest (Proxy @"Const") mkBinaryTestConfig (\(a, b) -> (a, [t|$b -> $a|])) [|const|]
+    . insertTest (Proxy @"Snd") mkUnaryTestConfig (\(a, b) -> ([t|($a, $b)|], b)) [|snd|]
+    . insertTest
+      (Proxy @"FstSnd")
+      mkUnaryTestConfig
+      (\(a, b, c) -> ([t|($a, ($b, $c))|], b))
+      [|fst . snd|]
+    . insertTest
+      (Proxy @"FstLet")
+      mkUnaryTestConfig
+      (\(a, b, c) -> ([t|($a, ($b, $c))|], b))
+      [|\x -> let y = snd x in fst y|]
+    . insertTest
+      (Proxy @"Swap")
+      mkUnaryTestConfig
+      (\(a, b) -> ([t|($a, $b)|], [t|($b, $a)|]))
+      [|swap|]
+    . insertTest
+      (Proxy @"Fork")
+      mkUnaryTestConfig
+      (\(a, b) -> (b, [t|($a, $b)|]))
+      [|const 42 &&& id|]
+    . insertTest
+      (Proxy @"Join")
+      mkUnaryTestConfig
+      (\(a, b) -> ([t|Either $a $b|], b))
+      [|const 2 ||| (`mod` 8)|]
+    . insertTest (Proxy @"Arr") mkUnaryTestConfig (\a -> (a, a)) [|arr cos|]
+    . insertTest
+      (Proxy @"Either")
+      mkUnaryTestConfig
+      (\(a, b) -> ([t|Either $a $b|], b))
+      [|either (const 42) id|]
+    . insertTest (Proxy @"Coerce") mkUnaryTestConfig (\a -> (a, [t|Sum $a|])) [|coerce|]
+    . insertTest
+      (Proxy @"ComposedCoerce")
+      mkUnaryTestConfig
+      (\a -> (a, [t|Sum $a|]))
+      [|fst . (coerce &&& id)|]
     -- `bool` needs to be fully applied in order to be interpreted
-    . HCons1
-      ( mkExprTest
-          (mkTernaryTestConfig "Bool")
-          (\a -> (a, [t|$a -> Bool -> $a|]))
-          [|\a b c -> bool a b c|]
-      )
-    . HCons1 (mkExprTest (mkBinaryTestConfig "Pow") (\a -> (a, [t|$a -> $a|])) [|(**)|])
-    . HCons1 (mkExprTest (mkUnaryTestConfig "Acos") (\a -> (a, a)) [|acos|])
-    . HCons1 (mkExprTest (mkUnaryTestConfig "Acosh") (\a -> (a, a)) [|acosh|])
-    . HCons1 (mkExprTest (mkUnaryTestConfig "Asin") (\a -> (a, a)) [|asin|])
-    . HCons1 (mkExprTest (mkUnaryTestConfig "Asinh") (\a -> (a, a)) [|asinh|])
-    . HCons1 (mkExprTest (mkUnaryTestConfig "Atan") (\a -> (a, a)) [|atan|])
-    . HCons1 (mkExprTest (mkUnaryTestConfig "Atanh") (\a -> (a, a)) [|atanh|])
-    . HCons1 (mkExprTest (mkUnaryTestConfig "Cos") (\a -> (a, a)) [|cos|])
-    . HCons1 (mkExprTest (mkUnaryTestConfig "Cosh") (\a -> (a, a)) [|cosh|])
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "Double2Float")
-          (\() -> ([t|Double|], [t|Float|]))
-          [|GHC.Float.double2Float|]
-      )
-    . HCons1 (mkExprTest (mkUnaryTestConfig "Exp") (\a -> (a, a)) [|exp|])
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "Float2Double")
-          (\() -> ([t|Float|], [t|Double|]))
-          [|GHC.Float.float2Double|]
-      )
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "IsDenormalized")
-          (\a -> (a, [t|Bool|]))
-          [|GHC.Float.isDenormalized|]
-      )
-    . HCons1
-      (mkExprTest (mkUnaryTestConfig "IsInfinite") (\a -> (a, [t|Bool|])) [|GHC.Float.isInfinite|])
-    . HCons1 (mkExprTest (mkUnaryTestConfig "IsNaN") (\a -> (a, [t|Bool|])) [|GHC.Float.isNaN|])
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "IsNegativeZero")
-          (\a -> (a, [t|Bool|]))
-          [|GHC.Float.isNegativeZero|]
-      )
-    . HCons1 (mkExprTest (mkUnaryTestConfig "Log") (\a -> (a, a)) [|log|])
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "NegateDouble")
-          (\() -> ([t|Double|], [t|Double|]))
-          [|GHC.Float.negateDouble|]
-      )
-    . HCons1
-      ( mkExprTest
-          (mkBinaryTestConfig "PlusDouble")
-          (\() -> ([t|Double|], [t|Double -> Double|]))
-          [|GHC.Float.plusDouble|]
-      )
-    . HCons1 (mkExprTest (mkUnaryTestConfig "Sin") (\a -> (a, a)) [|sin|])
-    . HCons1 (mkExprTest (mkUnaryTestConfig "Sinh") (\a -> (a, a)) [|sinh|])
-    . HCons1 (mkExprTest (mkUnaryTestConfig "Sqrt") (\a -> (a, a)) [|sqrt|])
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "SqrtDouble")
-          (\() -> ([t|Double|], [t|Double|]))
-          [|GHC.Float.sqrtDouble|]
-      )
-    . HCons1 (mkExprTest (mkUnaryTestConfig "Tan") (\a -> (a, a)) [|tan|])
-    . HCons1 (mkExprTest (mkUnaryTestConfig "Tanh") (\a -> (a, a)) [|tanh|])
-    . HCons1
-      ( mkExprTest
-          (mkBinaryTestConfig "TimesDouble")
-          (\() -> ([t|Double|], [t|Double -> Double|]))
-          [|GHC.Float.timesDouble|]
-      )
-    . HCons1
-      (mkExprTest (mkBinaryTestConfig "And") (\() -> ([t|Bool|], [t|Bool -> Bool|])) [|(&&)|])
-    . HCons1 (mkExprTest (mkBinaryTestConfig "Or") (\() -> ([t|Bool|], [t|Bool -> Bool|])) [|(||)|])
-    . HCons1 (mkExprTest (mkBinaryTestConfig "Equal") (\a -> (a, [t|$a -> Bool|])) [|(==)|])
-    . HCons1 (mkExprTest (mkBinaryTestConfig "NotEqual") (\a -> (a, [t|$a -> Bool|])) [|(/=)|])
-    . HCons1 (mkExprTest (mkBinaryTestConfig "Ge") (\a -> (a, [t|$a -> Bool|])) [|(>=)|])
-    . HCons1 (mkExprTest (mkBinaryTestConfig "Gt") (\a -> (a, [t|$a -> Bool|])) [|(>)|])
-    . HCons1 (mkExprTest (mkBinaryTestConfig "Le") (\a -> (a, [t|$a -> Bool|])) [|(<=)|])
-    . HCons1 (mkExprTest (mkBinaryTestConfig "Lt") (\a -> (a, [t|$a -> Bool|])) [|(<)|])
-    . HCons1
-      (mkExprTest (mkBinaryTestConfig "Compare") (\a -> (a, [t|$a -> Ordering|])) [|compare|])
-    . HCons1
-      ( mkExprTest
-          (mkBinaryTestConfig "EqDouble")
-          (\() -> ([t|Double|], [t|Double -> Bool|]))
-          [|GHC.Classes.eqDouble|]
-      )
-    . HCons1 (mkExprTest (mkBinaryTestConfig "Max") (\a -> (a, [t|$a -> $a|])) [|max|])
-    . HCons1 (mkExprTest (mkBinaryTestConfig "Min") (\a -> (a, [t|$a -> $a|])) [|min|])
-    . HCons1 (mkExprTest (mkUnaryTestConfig "Not") (\() -> ([t|Bool|], [t|Bool|])) [|not|])
-    . HCons1 (mkExprTest (mkBinaryTestConfig "Plus") (\a -> (a, [t|$a -> $a|])) [|(+)|])
-    . HCons1 (mkExprTest (mkBinaryTestConfig "Minus") (\a -> (a, [t|$a -> $a|])) [|(-)|])
-    . HCons1 (mkExprTest (mkBinaryTestConfig "Times") (\a -> (a, [t|$a -> $a|])) [|(*)|])
-    . HCons1 (mkExprTest (mkBinaryTestConfig "Quot") (\a -> (a, [t|$a -> $a|])) [|quot|])
-    . HCons1 (mkExprTest (mkUnaryTestConfig "RealToFrac") (\(a, b) -> (a, b)) [|realToFrac|])
-    . HCons1 (mkExprTest (mkUnaryTestConfig "Recip") (\a -> (a, a)) [|recip|])
-    . HCons1 (mkExprTest (mkBinaryTestConfig "Rem") (\a -> (a, [t|$a -> $a|])) [|rem|])
-    . HCons1 (mkExprTest (mkBinaryTestConfig "Div") (\a -> (a, [t|$a -> $a|])) [|div|])
-    . HCons1 (mkExprTest (mkBinaryTestConfig "Mod") (\a -> (a, [t|$a -> $a|])) [|mod|])
-    . HCons1 (mkExprTest (mkBinaryTestConfig "Divide") (\a -> (a, [t|$a -> $a|])) [|(/)|])
-    . HCons1
-      ( mkExprTest
-          (mkBinaryTestConfig "EqWord8")
-          (\() -> ([t|Word8|], [t|Word8 -> Bool|]))
-          [|GHC.Word.eqWord8|]
-      )
-    . HCons1
-      ( mkExprTest
-          (mkBinaryTestConfig "NeWord8")
-          (\() -> ([t|Word8|], [t|Word8 -> Bool|]))
-          [|GHC.Word.neWord8|]
-      )
-    . HCons1
-      (mkExprTest (mkBinaryTestConfig "Atan2") (\a -> (a, [t|$a -> $a|])) [|GHC.Float.atan2|])
-    . HCons1 (mkExprTest (mkUnaryTestConfig "Abs") (\a -> (a, a)) [|abs|])
-    . HCons1 (mkExprTest (mkUnaryTestConfig "Negate") (\a -> (a, a)) [|negate|])
-    . HCons1 (mkExprTest (mkUnaryTestConfig "Signum") (\a -> (a, a)) [|signum|])
-    . HCons1 (mkExprTest (mkUnaryTestConfig "PowI") (\a -> (a, a)) [|(^ (3 :: Word8))|])
-    . HCons1 (mkExprTest (mkUnaryTestConfig "PowInt") (\a -> (a, a)) [|(^ (3 :: Int))|])
-    . HCons1
-      (mkExprTest (mkUnaryTestConfig "FromInteger") (\a -> ([t|Integer|], a)) [|fromInteger|])
-    . HCons1 (mkExprTest (mkUnaryTestConfig "FromIntegral") (\(a, b) -> (a, b)) [|fromIntegral|])
-    . HCons1 (mkExprTest (mkBinaryTestConfig "Append") (\a -> (a, [t|$a -> $a|])) [|(<>)|])
-    . HCons1 (mkExprTest (mkBinaryTestConfig "Mappend") (\a -> (a, [t|$a -> $a|])) [|mappend|])
-    . HCons1
-      (mkExprTest (mkBinaryTestConfig "ListAppend") (\a -> ([t|[$a]|], [t|[$a] -> [$a]|])) [|(++)|])
-    . HCons1 (mkExprTest (mkUnaryTestConfig "Pure") (\a -> (a, [t|Identity $a|])) [|pure|])
-    . HCons1 (mkExprTest (mkUnaryTestConfig "Return") (\a -> (a, [t|Identity $a|])) [|return|])
-    . HCons1 (mkExprTest (mkUnaryTestConfig "Error") (\a -> ([t|String|], a)) [|error|])
-    . HCons1
-      (mkExprTest (mkUnaryTestConfig "BuildLeft") (\(a, b) -> (a, [t|Either $a $b|])) [|Left|])
-    . HCons1
-      (mkExprTest (mkUnaryTestConfig "BuildRight") (\(a, b) -> (b, [t|Either $a $b|])) [|Right|])
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "EliminateEither")
-          (\a -> ([t|Either $a $a|], a))
-          [|
-            \case
-              Left x -> x
-              Right y -> y
-            |]
-      )
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "EliminateEitherSwapped")
-          (\a -> ([t|Either $a $a|], a))
-          [|
-            \case
-              Right y -> y
-              Left x -> x
-            |]
-      )
-    . HCons1 (mkExprTest (mkBinaryTestConfig "Apply") (\(a, b) -> (a, [t|$b -> $a|])) [|const|])
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "BareFMap")
-          (\a -> ([t|($a -> $a, Pair $a)|], [t|Pair $a|]))
-          [|uncurry fmap|]
-      )
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "PartialFmap")
-          (\a -> ([t|Pair $a|], [t|Pair ($a, $a)|]))
-          [|fmap . (id &&&) $ id|]
-      )
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "Fmap")
-          (\(f, a) -> ([t|$f $a|], [t|$f ($a, $a)|]))
-          [|fmap (id &&& id)|]
-      )
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "Fmap'")
-          (\a -> ([t|Pair $a|], [t|Pair ($a, $a)|]))
-          [|((id &&& id) <$>)|]
-      )
-    . HCons1
-      (mkExprTest (mkBinaryTestConfig "ConstNot") (\a -> (a, [t|Bool -> Bool|])) [|(\_ -> not)|])
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "MapList")
-          (\a -> ([t|[$a]|], [t|[($a, $a)]|]))
-          [|map (id &&& id)|]
-      )
-    . HCons1 (mkExprTest (mkUnaryTestConfig "Point") (\a -> (a, [t|Identity $a|])) [|pure|])
-    . HCons1
-      (mkExprTest (mkUnaryTestConfig "Ap") (\(f, a) -> ([t|$f $a|], [t|$f $a|])) [|(pure id <*>)|])
-    . HCons1
-      ( mkExprTest
-          (mkBinaryTestConfig "LiftA2")
-          (\(f, a, b) -> ([t|$f $a|], [t|$f $b -> $f $a|]))
-          [|liftA2 const|]
-      )
-    . HCons1
-      ( mkExprTest
-          (mkBinaryTestConfig "Bind")
-          (\a -> ([t|Identity $a|], [t|($a -> Identity $a) -> Identity $a|]))
-          [|(>>=)|]
-      )
-    . HCons1 (mkExprTest (mkBinaryTestConfig "Curry") (\(a, b) -> (a, [t|$b -> $a|])) [|const|])
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "Uncurry")
-          (\(a, b) -> ([t|($a, $b)|], a))
-          [|uncurry (\x _ -> x)|]
-      )
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "SequenceA")
-          (\(t, f, a) -> ([t|$t ($f $a)|], [t|$f ($t $a)|]))
-          [|sequenceA|]
-      )
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "Traverse")
-          (\(t, f, a) -> ([t|$t $a|], [t|$f ($t $a)|]))
-          [|traverse pure|]
-      )
-    . HCons1
-      (mkExprTest (mkUnaryTestConfig "UnsafeCoerce") (\a -> (a, [t|Identity $a|])) [|unsafeCoerce|])
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "Sum")
-          (\(t, a) -> ([t|$t $a|], [t|$a|]))
-          [|Data.Foldable.sum|]
-      )
-    . HCons1
-      ( mkExprTest
-          (mkUnaryTestConfig "ToList")
-          (\(t, a) -> ([t|$t $a|], [t|[$a]|]))
-          [|Data.Foldable.toList|]
-      )
-    . HCons1 (mkExprTest (mkUnaryTestConfig "Even") (\a -> (a, [t|Bool|])) [|even|])
-    . HCons1 (mkExprTest (mkUnaryTestConfig "Odd") (\a -> (a, [t|Bool|])) [|odd|])
-    $ HNil1
+    . insertTest
+      (Proxy @"Bool")
+      mkTernaryTestConfig
+      (\a -> (a, [t|$a -> Bool -> $a|]))
+      [|\a b c -> bool a b c|]
+    . insertTest (Proxy @"Pow") mkBinaryTestConfig (\a -> (a, [t|$a -> $a|])) [|(**)|]
+    . insertTest (Proxy @"Acos") mkUnaryTestConfig (\a -> (a, a)) [|acos|]
+    . insertTest (Proxy @"Acosh") mkUnaryTestConfig (\a -> (a, a)) [|acosh|]
+    . insertTest (Proxy @"Asin") mkUnaryTestConfig (\a -> (a, a)) [|asin|]
+    . insertTest (Proxy @"Asinh") mkUnaryTestConfig (\a -> (a, a)) [|asinh|]
+    . insertTest (Proxy @"Atan") mkUnaryTestConfig (\a -> (a, a)) [|atan|]
+    . insertTest (Proxy @"Atanh") mkUnaryTestConfig (\a -> (a, a)) [|atanh|]
+    . insertTest (Proxy @"Cos") mkUnaryTestConfig (\a -> (a, a)) [|cos|]
+    . insertTest (Proxy @"Cosh") mkUnaryTestConfig (\a -> (a, a)) [|cosh|]
+    . insertTest
+      (Proxy @"Double2Float")
+      mkUnaryTestConfig
+      (\() -> ([t|Double|], [t|Float|]))
+      [|GHC.Float.double2Float|]
+    . insertTest (Proxy @"Exp") mkUnaryTestConfig (\a -> (a, a)) [|exp|]
+    . insertTest
+      (Proxy @"Float2Double")
+      mkUnaryTestConfig
+      (\() -> ([t|Float|], [t|Double|]))
+      [|GHC.Float.float2Double|]
+    . insertTest
+      (Proxy @"IsDenormalized")
+      mkUnaryTestConfig
+      (\a -> (a, [t|Bool|]))
+      [|GHC.Float.isDenormalized|]
+    . insertTest
+      (Proxy @"IsInfinite")
+      mkUnaryTestConfig
+      (\a -> (a, [t|Bool|]))
+      [|GHC.Float.isInfinite|]
+    . insertTest (Proxy @"IsNaN") mkUnaryTestConfig (\a -> (a, [t|Bool|])) [|GHC.Float.isNaN|]
+    . insertTest
+      (Proxy @"IsNegativeZero")
+      mkUnaryTestConfig
+      (\a -> (a, [t|Bool|]))
+      [|GHC.Float.isNegativeZero|]
+    . insertTest (Proxy @"Log") mkUnaryTestConfig (\a -> (a, a)) [|log|]
+    . insertTest
+      (Proxy @"NegateDouble")
+      mkUnaryTestConfig
+      (\() -> ([t|Double|], [t|Double|]))
+      [|GHC.Float.negateDouble|]
+    . insertTest
+      (Proxy @"PlusDouble")
+      mkBinaryTestConfig
+      (\() -> ([t|Double|], [t|Double -> Double|]))
+      [|GHC.Float.plusDouble|]
+    . insertTest (Proxy @"Sin") mkUnaryTestConfig (\a -> (a, a)) [|sin|]
+    . insertTest (Proxy @"Sinh") mkUnaryTestConfig (\a -> (a, a)) [|sinh|]
+    . insertTest (Proxy @"Sqrt") mkUnaryTestConfig (\a -> (a, a)) [|sqrt|]
+    . insertTest
+      (Proxy @"SqrtDouble")
+      mkUnaryTestConfig
+      (\() -> ([t|Double|], [t|Double|]))
+      [|GHC.Float.sqrtDouble|]
+    . insertTest (Proxy @"Tan") mkUnaryTestConfig (\a -> (a, a)) [|tan|]
+    . insertTest (Proxy @"Tanh") mkUnaryTestConfig (\a -> (a, a)) [|tanh|]
+    . insertTest
+      (Proxy @"TimesDouble")
+      mkBinaryTestConfig
+      (\() -> ([t|Double|], [t|Double -> Double|]))
+      [|GHC.Float.timesDouble|]
+    . insertTest (Proxy @"And") mkBinaryTestConfig (\() -> ([t|Bool|], [t|Bool -> Bool|])) [|(&&)|]
+    . insertTest (Proxy @"Or") mkBinaryTestConfig (\() -> ([t|Bool|], [t|Bool -> Bool|])) [|(||)|]
+    . insertTest (Proxy @"Equal") mkBinaryTestConfig (\a -> (a, [t|$a -> Bool|])) [|(==)|]
+    . insertTest (Proxy @"NotEqual") mkBinaryTestConfig (\a -> (a, [t|$a -> Bool|])) [|(/=)|]
+    . insertTest (Proxy @"Ge") mkBinaryTestConfig (\a -> (a, [t|$a -> Bool|])) [|(>=)|]
+    . insertTest (Proxy @"Gt") mkBinaryTestConfig (\a -> (a, [t|$a -> Bool|])) [|(>)|]
+    . insertTest (Proxy @"Le") mkBinaryTestConfig (\a -> (a, [t|$a -> Bool|])) [|(<=)|]
+    . insertTest (Proxy @"Lt") mkBinaryTestConfig (\a -> (a, [t|$a -> Bool|])) [|(<)|]
+    . insertTest (Proxy @"Compare") mkBinaryTestConfig (\a -> (a, [t|$a -> Ordering|])) [|compare|]
+    . insertTest
+      (Proxy @"EqDouble")
+      mkBinaryTestConfig
+      (\() -> ([t|Double|], [t|Double -> Bool|]))
+      [|GHC.Classes.eqDouble|]
+    . insertTest (Proxy @"Max") mkBinaryTestConfig (\a -> (a, [t|$a -> $a|])) [|max|]
+    . insertTest (Proxy @"Min") mkBinaryTestConfig (\a -> (a, [t|$a -> $a|])) [|min|]
+    . insertTest (Proxy @"Not") mkUnaryTestConfig (\() -> ([t|Bool|], [t|Bool|])) [|not|]
+    . insertTest (Proxy @"Plus") mkBinaryTestConfig (\a -> (a, [t|$a -> $a|])) [|(+)|]
+    . insertTest (Proxy @"Minus") mkBinaryTestConfig (\a -> (a, [t|$a -> $a|])) [|(-)|]
+    . insertTest (Proxy @"Times") mkBinaryTestConfig (\a -> (a, [t|$a -> $a|])) [|(*)|]
+    . insertTest (Proxy @"Quot") mkBinaryTestConfig (\a -> (a, [t|$a -> $a|])) [|quot|]
+    . insertTest (Proxy @"RealToFrac") mkUnaryTestConfig (\(a, b) -> (a, b)) [|realToFrac|]
+    . insertTest (Proxy @"Recip") mkUnaryTestConfig (\a -> (a, a)) [|recip|]
+    . insertTest (Proxy @"Rem") mkBinaryTestConfig (\a -> (a, [t|$a -> $a|])) [|rem|]
+    . insertTest (Proxy @"Div") mkBinaryTestConfig (\a -> (a, [t|$a -> $a|])) [|div|]
+    . insertTest (Proxy @"Mod") mkBinaryTestConfig (\a -> (a, [t|$a -> $a|])) [|mod|]
+    . insertTest (Proxy @"Divide") mkBinaryTestConfig (\a -> (a, [t|$a -> $a|])) [|(/)|]
+    . insertTest
+      (Proxy @"EqWord8")
+      mkBinaryTestConfig
+      (\() -> ([t|Word8|], [t|Word8 -> Bool|]))
+      [|GHC.Word.eqWord8|]
+    . insertTest
+      (Proxy @"NeWord8")
+      mkBinaryTestConfig
+      (\() -> ([t|Word8|], [t|Word8 -> Bool|]))
+      [|GHC.Word.neWord8|]
+    . insertTest (Proxy @"Atan2") mkBinaryTestConfig (\a -> (a, [t|$a -> $a|])) [|GHC.Float.atan2|]
+    . insertTest (Proxy @"Abs") mkUnaryTestConfig (\a -> (a, a)) [|abs|]
+    . insertTest (Proxy @"Negate") mkUnaryTestConfig (\a -> (a, a)) [|negate|]
+    . insertTest (Proxy @"Signum") mkUnaryTestConfig (\a -> (a, a)) [|signum|]
+    . insertTest (Proxy @"PowI") mkUnaryTestConfig (\a -> (a, a)) [|(^ (3 :: Word8))|]
+    . insertTest (Proxy @"PowInt") mkUnaryTestConfig (\a -> (a, a)) [|(^ (3 :: Int))|]
+    . insertTest (Proxy @"FromInteger") mkUnaryTestConfig (\a -> ([t|Integer|], a)) [|fromInteger|]
+    . insertTest (Proxy @"FromIntegral") mkUnaryTestConfig (\(a, b) -> (a, b)) [|fromIntegral|]
+    . insertTest (Proxy @"Append") mkBinaryTestConfig (\a -> (a, [t|$a -> $a|])) [|(<>)|]
+    . insertTest (Proxy @"Mappend") mkBinaryTestConfig (\a -> (a, [t|$a -> $a|])) [|mappend|]
+    . insertTest
+      (Proxy @"ListAppend")
+      mkBinaryTestConfig
+      (\a -> ([t|[$a]|], [t|[$a] -> [$a]|]))
+      [|(++)|]
+    . insertTest (Proxy @"Pure") mkUnaryTestConfig (\a -> (a, [t|Identity $a|])) [|pure|]
+    . insertTest (Proxy @"Return") mkUnaryTestConfig (\a -> (a, [t|Identity $a|])) [|return|]
+    . insertTest (Proxy @"Error") mkUnaryTestConfig (\a -> ([t|String|], a)) [|error|]
+    . insertTest (Proxy @"BuildLeft") mkUnaryTestConfig (\(a, b) -> (a, [t|Either $a $b|])) [|Left|]
+    . insertTest
+      (Proxy @"BuildRight")
+      mkUnaryTestConfig
+      (\(a, b) -> (b, [t|Either $a $b|]))
+      [|Right|]
+    . insertTest
+      (Proxy @"EliminateEither")
+      mkUnaryTestConfig
+      (\a -> ([t|Either $a $a|], a))
+      [|
+        \case
+          Left x -> x
+          Right y -> y
+        |]
+    . insertTest
+      (Proxy @"EliminateEitherSwapped")
+      mkUnaryTestConfig
+      (\a -> ([t|Either $a $a|], a))
+      [|
+        \case
+          Right y -> y
+          Left x -> x
+        |]
+    . insertTest (Proxy @"Apply") mkBinaryTestConfig (\(a, b) -> (a, [t|$b -> $a|])) [|const|]
+    . insertTest
+      (Proxy @"BareFMap")
+      mkUnaryTestConfig
+      (\a -> ([t|($a -> $a, Pair $a)|], [t|Pair $a|]))
+      [|uncurry fmap|]
+    . insertTest
+      (Proxy @"PartialFmap")
+      mkUnaryTestConfig
+      (\a -> ([t|Pair $a|], [t|Pair ($a, $a)|]))
+      [|fmap . (id &&&) $ id|]
+    . insertTest
+      (Proxy @"Fmap")
+      mkUnaryTestConfig
+      (\(f, a) -> ([t|$f $a|], [t|$f ($a, $a)|]))
+      [|fmap (id &&& id)|]
+    . insertTest
+      (Proxy @"Fmap'")
+      mkUnaryTestConfig
+      (\a -> ([t|Pair $a|], [t|Pair ($a, $a)|]))
+      [|((id &&& id) <$>)|]
+    . insertTest
+      (Proxy @"ConstNot")
+      mkBinaryTestConfig
+      (\a -> (a, [t|Bool -> Bool|]))
+      [|(\_ -> not)|]
+    . insertTest
+      (Proxy @"MapList")
+      mkUnaryTestConfig
+      (\a -> ([t|[$a]|], [t|[($a, $a)]|]))
+      [|map (id &&& id)|]
+    . insertTest (Proxy @"Point") mkUnaryTestConfig (\a -> (a, [t|Identity $a|])) [|pure|]
+    . insertTest
+      (Proxy @"Ap")
+      mkUnaryTestConfig
+      (\(f, a) -> ([t|$f $a|], [t|$f $a|]))
+      [|(pure id <*>)|]
+    . insertTest
+      (Proxy @"LiftA2")
+      mkBinaryTestConfig
+      (\(f, a, b) -> ([t|$f $a|], [t|$f $b -> $f $a|]))
+      [|liftA2 const|]
+    . insertTest
+      (Proxy @"Bind")
+      mkBinaryTestConfig
+      (\a -> ([t|Identity $a|], [t|($a -> Identity $a) -> Identity $a|]))
+      [|(>>=)|]
+    . insertTest (Proxy @"Curry") mkBinaryTestConfig (\(a, b) -> (a, [t|$b -> $a|])) [|const|]
+    . insertTest
+      (Proxy @"Uncurry")
+      mkUnaryTestConfig
+      (\(a, b) -> ([t|($a, $b)|], a))
+      [|uncurry (\x _ -> x)|]
+    . insertTest
+      (Proxy @"SequenceA")
+      mkUnaryTestConfig
+      (\(t, f, a) -> ([t|$t ($f $a)|], [t|$f ($t $a)|]))
+      [|sequenceA|]
+    . insertTest
+      (Proxy @"Traverse")
+      mkUnaryTestConfig
+      (\(t, f, a) -> ([t|$t $a|], [t|$f ($t $a)|]))
+      [|traverse pure|]
+    . insertTest
+      (Proxy @"UnsafeCoerce")
+      mkUnaryTestConfig
+      (\a -> (a, [t|Identity $a|]))
+      [|unsafeCoerce|]
+    . insertTest
+      (Proxy @"Sum")
+      mkUnaryTestConfig
+      (\(t, a) -> ([t|$t $a|], [t|$a|]))
+      [|Data.Foldable.sum|]
+    . insertTest
+      (Proxy @"ToList")
+      mkUnaryTestConfig
+      (\(t, a) -> ([t|$t $a|], [t|[$a]|]))
+      [|Data.Foldable.toList|]
+    . insertTest (Proxy @"Even") mkUnaryTestConfig (\a -> (a, [t|Bool|])) [|even|]
+    . insertTest (Proxy @"Odd") mkUnaryTestConfig (\a -> (a, [t|Bool|])) [|odd|]
+    $ HEmpty1
