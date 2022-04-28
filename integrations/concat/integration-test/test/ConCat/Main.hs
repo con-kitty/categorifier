@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -39,7 +40,7 @@ module Main
   )
 where
 
-import Categorifier.Hedgehog (genFloating)
+import Categorifier.Hedgehog (genFloating, genLargeIntegral)
 import qualified Categorifier.Test.Adjunctions as Adjunctions
 import Categorifier.Test.ConCat.Instances (Hask (..), Term)
 import Categorifier.Test.Data (One (..), Pair (..))
@@ -71,7 +72,7 @@ import System.Exit (exitFailure, exitSuccess)
 {-# ANN module ("HLint: ignore Avoid restricted integration" :: String) #-}
 
 mkTestTerms
-  (HList.appendMap defaultTestTerms Adjunctions.testTerms)
+  (HList.appendMap Adjunctions.testTerms defaultTestTerms)
   --               name     type         prefix       strategy
   ( [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
       TestCategory ''Hask [t|Hask|] "hask" (ComputeFromInput [|runHask|]),
@@ -81,6 +82,54 @@ mkTestTerms
     ]
       <> builtinTestCategories
   )
+  -- adjunctions
+  . HInsert1 (Proxy @"PureRep") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
+  . HInsert1
+    (Proxy @"FmapRep")
+    ( TestCases
+        ( \arrow ->
+            if arrow
+              `elem` [ ''Syn, -- no Strong
+                       ''TotOrd -- #19
+                     ]
+              then []
+              else [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1 (Proxy @"ApRep") (TestCases (const [])) -- no support for `apRep` in ConCat
+  . HInsert1 (Proxy @"BindRep") (TestCases (const [])) -- no support for `bindRep` in ConCat
+  . HInsert1
+    (Proxy @"Index")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- no ClosedCat
+              else
+                [ ( ([t|Identity|], [t|Word8|]),
+                    pure ([|(,) <$> Gen.enumBounded <*> pure ()|], [|show|])
+                  ),
+                  ( ([t|One|], [t|Word8|]),
+                    pure ([|(,) <$> (One <$> Gen.enumBounded) <*> pure ()|], [|show|])
+                  )
+                ]
+        )
+    )
+  . HInsert1
+    (Proxy @"Tabulate")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- no ClosedCat
+              else
+                [ ( ([t|Identity|], [t|Word8|]),
+                    pure ([|const <$> Gen.enumBounded|], [|("\\() -> " <>) . show . ($ ())|])
+                  ),
+                  ( ([t|One|], [t|Word8|]),
+                    pure ([|const <$> Gen.enumBounded|], [|("\\() -> " <>) . show . ($ ())|])
+                  )
+                ]
+        )
+    )
   -- core
   . HInsert1 (Proxy @"LamId") (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))
   . HInsert1 (Proxy @"ComposeLam") (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))
@@ -313,8 +362,8 @@ mkTestTerms
                   ( [t|Word64|],
                     pure
                       ( [|
-                          (,,) <$> Gen.integral Range.linearBounded
-                            <*> Gen.integral Range.linearBounded
+                          (,,) <$> genLargeIntegral
+                            <*> genLargeIntegral
                             <*> Gen.bool
                           |],
                         [|show|]
@@ -341,7 +390,6 @@ mkTestTerms
                 ]
         )
     )
-  . HInsert1 (Proxy @"Pow") (TestCases (const [])) -- no support for `**` in ConCat
   . HInsert1 (Proxy @"Acos") (TestCases (const [])) -- no support for `acos` in ConCat
   . HInsert1 (Proxy @"Acosh") (TestCases (const [])) -- no support for `acosh` in ConCat
   . HInsert1 (Proxy @"Asin") (TestCases (const [])) -- no support for `asin` in ConCat
@@ -350,6 +398,16 @@ mkTestTerms
   . HInsert1 (Proxy @"Atanh") (TestCases (const [])) -- no support for `atanh` in ConCat
   . HInsert1 (Proxy @"Cos") (TestCases (const [])) -- no support for `cos` in ConCat
   . HInsert1 (Proxy @"Cosh") (TestCases (const [])) -- no support for `cosh` in ConCat
+  . HInsert1 (Proxy @"AcosDouble") (TestCases (const [])) -- no support for `acosDouble` in ConCat
+  . HInsert1 (Proxy @"AsinDouble") (TestCases (const [])) -- no support for `asinDouble` in ConCat
+  . HInsert1 (Proxy @"AtanDouble") (TestCases (const [])) -- no support for `atanDouble` in ConCat
+  . HInsert1 (Proxy @"CosDouble") (TestCases (const [])) -- no support for `cosDouble` in ConCat
+  . HInsert1 (Proxy @"CoshDouble") (TestCases (const [])) -- no support for `coshDouble` in ConCat
+  . HInsert1 (Proxy @"AcosFloat") (TestCases (const [])) -- no support for `acosFloat` in ConCat
+  . HInsert1 (Proxy @"AsinFloat") (TestCases (const [])) -- no support for `asinFloat` in ConCat
+  . HInsert1 (Proxy @"AtanFloat") (TestCases (const [])) -- no support for `atanFloat` in ConCat
+  . HInsert1 (Proxy @"CosFloat") (TestCases (const [])) -- no support for `cosFloat` in ConCat
+  . HInsert1 (Proxy @"CoshFloat") (TestCases (const [])) -- no support for `coshFloat` in ConCat
   . HInsert1 (Proxy @"Double2Float") (TestCases (const [])) -- no support for `double2Float` in ConCat
   . HInsert1 (Proxy @"Exp") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Float2Double") (TestCases (const [])) -- no support for `float2Double` in ConCat
@@ -358,7 +416,28 @@ mkTestTerms
   . HInsert1 (Proxy @"IsNaN") (TestCases (const [])) -- no support for `isNaN` in ConCat
   . HInsert1 (Proxy @"IsNegativeZero") (TestCases (const [])) -- no support for `isNegativeZero` in ConCat
   . HInsert1 (Proxy @"Log") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"LogDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"LogFloat") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1
+    (Proxy @"MinusDouble")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"MinusFloat")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]
+        )
+    )
   . HInsert1 (Proxy @"NegateDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"NegateFloat") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
   . HInsert1
     (Proxy @"PlusDouble")
     ( TestCases
@@ -368,14 +447,44 @@ mkTestTerms
               else [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]
         )
     )
+  . HInsert1
+    (Proxy @"PlusFloat")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]
+        )
+    )
+  . HInsert1 (Proxy @"Power") (TestCases (const [])) -- no support for `**` in ConCat
+  . HInsert1 (Proxy @"PowerDouble") (TestCases (const [])) -- no support for `**` in ConCat
+  . HInsert1 (Proxy @"PowerFloat") (TestCases (const [])) -- no support for `**` in ConCat
   . HInsert1 (Proxy @"Sin") (TestCases (const [])) -- no support for `sin` in ConCat
   . HInsert1 (Proxy @"Sinh") (TestCases (const [])) -- no support for `sinh` in ConCat
+  . HInsert1 (Proxy @"SinDouble") (TestCases (const [])) -- no support for `sinDouble` in ConCat
+  . HInsert1 (Proxy @"SinhDouble") (TestCases (const [])) -- no support for `sinhDouble` in ConCat
+  . HInsert1 (Proxy @"SinFloat") (TestCases (const [])) -- no support for `sinFloat` in ConCat
+  . HInsert1 (Proxy @"SinhFloat") (TestCases (const [])) -- no support for `sinhFloat` in ConCat
   . HInsert1 (Proxy @"Sqrt") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"SqrtDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"SqrtFloat") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Tan") (TestCases (const [])) -- no support for `tan` in ConCat
   . HInsert1 (Proxy @"Tanh") (TestCases (const [])) -- no support for `tanh` in ConCat
+  . HInsert1 (Proxy @"TanDouble") (TestCases (const [])) -- no support for `tanDouble` in ConCat
+  . HInsert1 (Proxy @"TanhDouble") (TestCases (const [])) -- no support for `tanhDouble` in ConCat
+  . HInsert1 (Proxy @"TanFloat") (TestCases (const [])) -- no support for `tanFloat` in ConCat
+  . HInsert1 (Proxy @"TanhFloat") (TestCases (const [])) -- no support for `tanhFloat` in ConCat
   . HInsert1
     (Proxy @"TimesDouble")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] --
+              else [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"TimesFloat")
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
@@ -455,9 +564,8 @@ mkTestTerms
               else [([t|Int64|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
         )
     )
-  . HInsert1 (Proxy @"Compare") (TestCases (const [])) -- no support for `compare` in ConCat
   . HInsert1
-    (Proxy @"EqDouble")
+    (Proxy @"EqualDouble")
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
@@ -465,6 +573,628 @@ mkTestTerms
               else [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]
         )
     )
+  . HInsert1
+    (Proxy @"GeDouble")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"GtDouble")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"LeDouble")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"LtDouble")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"EqualFloat")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"GeFloat")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"GtFloat")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"LeFloat")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"LtFloat")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"EqualInt")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"NotEqualInt")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"GeInt")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"GtInt")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"LeInt")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"LtInt")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"EqualInt16")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"NotEqualInt16")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"GeInt16")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"GtInt16")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"LeInt16")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"LtInt16")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"EqualInt32")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"NotEqualInt32")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"GeInt32")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"GtInt32")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"LeInt32")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"LtInt32")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"EqualInt64")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"NotEqualInt64")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"GeInt64")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"GtInt64")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"LeInt64")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"LtInt64")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"EqualInt8")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"NotEqualInt8")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"GeInt8")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"GtInt8")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"LeInt8")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"LtInt8")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"EqualWord")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"NotEqualWord")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"GeWord")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"GtWord")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"LeWord")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"LtWord")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"EqualWord16")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"NotEqualWord16")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"GeWord16")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"GtWord16")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"LeWord16")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"LtWord16")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"EqualWord32")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"NotEqualWord32")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"GeWord32")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"GtWord32")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"LeWord32")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"LtWord32")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"EqualWord64")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"NotEqualWord64")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"GeWord64")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"GtWord64")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"LeWord64")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"LtWord64")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"EqualWord8")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"NotEqualWord8")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"GeWord8")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"GtWord8")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"LeWord8")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"LtWord8")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+        )
+    )
+  . HInsert1 (Proxy @"Compare") (TestCases (const [])) -- no support for `compare` in ConCat
   . HInsert1
     (Proxy @"Max")
     ( TestCases
@@ -557,21 +1287,21 @@ mkTestTerms
         )
     )
   . HInsert1
-    (Proxy @"EqWord8")
+    (Proxy @"DivideDouble")
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]
         )
     )
   . HInsert1
-    (Proxy @"NeWord8")
+    (Proxy @"DivideFloat")
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]
         )
     )
   . HInsert1 (Proxy @"Atan2") (TestCases (const [])) -- no support for `atan2` in ConCat
@@ -821,58 +1551,21 @@ mkTestTerms
   . HInsert1 (Proxy @"Traverse") (TestCases (const []))
   . HInsert1 (Proxy @"UnsafeCoerce") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Sum") (TestCases (const [])) -- can only work with specialization
+  . HInsert1 (Proxy @"SumList") (TestCases (const []))
   . HInsert1 (Proxy @"ToList") (TestCases (const [])) -- can only work with specialization
   . HInsert1 (Proxy @"Even") (TestCases (const []))
   . HInsert1 (Proxy @"Odd") (TestCases (const []))
-  -- adjunctions
-  . HInsert1 (Proxy @"PureRep") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
-  . HInsert1
-    (Proxy @"FmapRep")
-    ( TestCases
-        ( \arrow ->
-            if arrow
-              `elem` [ ''Syn, -- no Strong
-                       ''TotOrd -- #19
-                     ]
-              then []
-              else [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]
-        )
-    )
-  . HInsert1 (Proxy @"ApRep") (TestCases (const [])) -- no support for `apRep` in ConCat
-  . HInsert1 (Proxy @"BindRep") (TestCases (const [])) -- no support for `bindRep` in ConCat
-  . HInsert1
-    (Proxy @"Index")
-    ( TestCases
-        ( \arrow ->
-            if arrow == ''TotOrd
-              then [] -- no ClosedCat
-              else
-                [ ( ([t|Identity|], [t|Word8|]),
-                    pure ([|(,) <$> Gen.enumBounded <*> pure ()|], [|show|])
-                  ),
-                  ( ([t|One|], [t|Word8|]),
-                    pure ([|(,) <$> (One <$> Gen.enumBounded) <*> pure ()|], [|show|])
-                  )
-                ]
-        )
-    )
-  . HInsert1
-    (Proxy @"Tabulate")
-    ( TestCases
-        ( \arrow ->
-            if arrow == ''TotOrd
-              then [] -- no ClosedCat
-              else
-                [ ( ([t|Identity|], [t|Word8|]),
-                    pure ([|const <$> Gen.enumBounded|], [|("\\() -> " <>) . show . ($ ())|])
-                  ),
-                  ( ([t|One|], [t|Word8|]),
-                    pure ([|const <$> Gen.enumBounded|], [|("\\() -> " <>) . show . ($ ())|])
-                  )
-                ]
-        )
-    )
+#if MIN_VERSION_base(4, 13, 0)
+  . HInsert1 (Proxy @"AcoshDouble") (TestCases (const [])) -- no support for `acoshDouble` in ConCat
+  . HInsert1 (Proxy @"AcoshFloat") (TestCases (const [])) -- no support for `acoshFloat` in ConCat
+  . HInsert1 (Proxy @"AsinhDouble") (TestCases (const [])) -- no support for `asinhDouble` in ConCat
+  . HInsert1 (Proxy @"AsinhFloat") (TestCases (const [])) -- no support for `asinhFloat` in ConCat
+  . HInsert1 (Proxy @"AtanhDouble") (TestCases (const [])) -- no support for `atanhDouble` in ConCat
+  . HInsert1 (Proxy @"AtanhFloat") (TestCases (const [])) -- no support for `atanhFloat` in ConCat
   $ HEmpty1
+#else
+  $ HEmpty1
+#endif
 
 main :: IO ()
 main = bool exitFailure exitSuccess . and =<< allTestTerms

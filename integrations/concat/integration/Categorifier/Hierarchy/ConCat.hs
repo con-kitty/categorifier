@@ -268,6 +268,10 @@ hierarchy' moduleName = do
     pure <$> do
       fn <- identifier' "strength"
       pure (\onDict cat f a b -> mkMethodApps onDict fn [cat, f] [a, b] [])
+  sumV <-
+    pure <$> do
+      fn <- identifier' "sumAC"
+      pure (\onDict cat f a -> mkMethodApps onDict fn [cat, f, a] [] [])
   swapV <-
     pure <$> do
       fn <- identifier' "swapP"

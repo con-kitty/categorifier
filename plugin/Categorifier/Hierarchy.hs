@@ -354,6 +354,8 @@ data Hierarchy f = Hierarchy
     sqrtV :: Maybe ((CoreExpr -> f CoreExpr) -> Type -> Type -> f CoreExpr),
     -- | @forall cat f a b. cat (Prod a (f b)) (f (Prod a b))@
     strengthV :: Maybe ((CoreExpr -> f CoreExpr) -> Type -> Type -> Type -> Type -> f CoreExpr),
+    -- | @forall cat f a. cat (f a) a@
+    sumV :: Maybe ((CoreExpr -> f CoreExpr) -> Type -> Type -> Type -> f CoreExpr),
     -- | @forall cat a b. cat (Prod a b) (Prod b a)@
     swapV :: Maybe ((CoreExpr -> f CoreExpr) -> Type -> Type -> Type -> f CoreExpr),
     -- | @forall cat a. cat a a@
@@ -482,6 +484,7 @@ instance Semigroup (First (Hierarchy f)) where
           sinhV = sinhV a <|> sinhV b,
           sqrtV = sqrtV a <|> sqrtV b,
           strengthV = strengthV a <|> strengthV b,
+          sumV = sumV a <|> sumV b,
           swapV = swapV a <|> swapV b,
           tanV = tanV a <|> tanV b,
           tanhV = tanhV a <|> tanhV b,
@@ -593,6 +596,7 @@ emptyHierarchy =
       sinhV = Nothing,
       sqrtV = Nothing,
       strengthV = Nothing,
+      sumV = Nothing,
       swapV = Nothing,
       tanV = Nothing,
       tanhV = Nothing,
@@ -1069,6 +1073,13 @@ baseHierarchy = do
           ]
           . pure
           =<< mkFunctionApps onDict op [f, a, b] []
+  sumV <-
+    pure <$> do
+      arr <- identifier "Control.Arrow" "arr"
+      op <- identifier "Data.Foldable" "sum"
+      pure $ \onDict cat f a -> do
+        mkMethodApps onDict arr [cat] [f, a] . pure
+          =<< mkMethodApps onDict op [f] [a] []
   swapV <-
     pure <$> do
       arr <- identifier "Control.Arrow" "arr"

@@ -82,6 +82,8 @@ packages:
   ./integrations/unconcat/category/categorifier-unconcat-category.cabal
   ./integrations/unconcat/integration/categorifier-unconcat-integration.cabal
   ./integrations/unconcat/integration-test/categorifier-unconcat-integration-test.cabal
+  ./integrations/vec/integration/categorifier-vec-integration.cabal
+  ./integrations/vec/integration-test/categorifier-vec-integration-test.cabal
   ./plugin/categorifier-plugin.cabal
   ./plugin-test/categorifier-plugin-test.cabal
   ./th/categorifier-th.cabal

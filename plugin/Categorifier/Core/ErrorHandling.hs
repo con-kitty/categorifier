@@ -181,7 +181,7 @@ required by {showE expr}.|]
   InvalidUnfixTyArgs name tyBinders tyArgs ->
     [fmt|The Categorifier plugin attempted to unfix recursive function `{showP name}`
     with {length tyArgs} type args: `{showP tyArgs}`. However, `{showP name}`
-    only has {length tyBinders} type binders: `{showP tyBinders}`.
+    has {length tyBinders} type binders: `{showP tyBinders}`.
 
     Please file an issue against the plugin.|]
   MissingCategoricalRepresentation name ->

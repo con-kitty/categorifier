@@ -162,6 +162,7 @@ hierarchy' = do
   let sinhV = Nothing
   let sqrtV = Nothing
   let strengthV = Nothing
+  let sumV = Nothing
   swapV <-
     pure <$> do
       op <- identifier "Control.Category.Braided" "braid"
