@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -13,7 +14,7 @@ module Main
   )
 where
 
-import Categorifier.Hedgehog (genFloating)
+import Categorifier.Hedgehog (genFloating, genLargeIntegral)
 import Categorifier.Test.Categories.Instances (Hask (..), Term)
 import Categorifier.Test.Data (Pair (..))
 import Categorifier.Test.HList (HMap1 (..))
@@ -237,11 +238,7 @@ mkTestTerms
               ),
               ( [t|Word64|],
                 pure
-                  ( [|
-                      (,,) <$> Gen.integral Range.linearBounded
-                        <*> Gen.integral Range.linearBounded
-                        <*> Gen.bool
-                      |],
+                  ( [|(,,) <$> genLargeIntegral <*> genLargeIntegral <*> Gen.bool|],
                     [|show|]
                   )
               ),
@@ -284,9 +281,6 @@ mkTestTerms
             ]
         )
     )
-  . HInsert1
-    (Proxy @"Pow")
-    (TestCases (const [([t|Double|], pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Acos") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Acosh") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Asin") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
@@ -295,6 +289,16 @@ mkTestTerms
   . HInsert1 (Proxy @"Atanh") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Cos") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Cosh") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"AcosDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"AsinDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"AtanDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"CosDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"CoshDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"AcosFloat") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"AsinFloat") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"AtanFloat") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"CosFloat") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"CoshFloat") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Double2Float") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Exp") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Float2Double") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
@@ -303,15 +307,40 @@ mkTestTerms
   . HInsert1 (Proxy @"IsNaN") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"IsNegativeZero") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Log") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"LogDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"LogFloat") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"MinusDouble") (TestCases (const [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"MinusFloat") (TestCases (const [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"NegateDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"NegateFloat") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"PlusDouble") (TestCases (const [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"PlusFloat") (TestCases (const [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]))
+  . HInsert1
+    (Proxy @"Power")
+    (TestCases (const [([t|Double|], pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]))
+  . HInsert1
+    (Proxy @"PowerDouble")
+    (TestCases (const [((), pure ([|Gen.filter (/= (0, 0)) $ (,) <$> genFloating <*> genFloating|], [|show|]))]))
+  . HInsert1
+    (Proxy @"PowerFloat")
+    (TestCases (const [((), pure ([|Gen.filter (/= (0, 0)) $ (,) <$> genFloating <*> genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Sin") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Sinh") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"SinDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"SinhDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"SinFloat") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"SinhFloat") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Sqrt") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"SqrtDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"SqrtFloat") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Tan") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Tanh") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"TanDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"TanhDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"TanFloat") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"TanhFloat") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"TimesDouble") (TestCases (const [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"TimesFloat") (TestCases (const [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]))
   . HInsert1
     (Proxy @"And")
     (TestCases (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]))
@@ -349,11 +378,358 @@ mkTestTerms
         (const [([t|Int64|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
     )
   . HInsert1
+    (Proxy @"EqualDouble")
+    ( TestCases
+        (const [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"GeDouble")
+    ( TestCases
+        (const [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"GtDouble")
+    ( TestCases
+        (const [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"LeDouble")
+    ( TestCases
+        (const [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"LtDouble")
+    ( TestCases
+        (const [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"EqualFloat")
+    ( TestCases
+        (const [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"GeFloat")
+    ( TestCases
+        (const [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"GtFloat")
+    ( TestCases
+        (const [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"LeFloat")
+    ( TestCases
+        (const [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"LtFloat")
+    ( TestCases
+        (const [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"EqualInt")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"NotEqualInt")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"GeInt")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"GtInt")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"LeInt")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"LtInt")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"EqualInt16")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"NotEqualInt16")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"GeInt16")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"GtInt16")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"LeInt16")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"LtInt16")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"EqualInt32")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"NotEqualInt32")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"GeInt32")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"GtInt32")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"LeInt32")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"LtInt32")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"EqualInt64")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"NotEqualInt64")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"GeInt64")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"GtInt64")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"LeInt64")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"LtInt64")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"EqualInt8")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"NotEqualInt8")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"GeInt8")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"GtInt8")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"LeInt8")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"LtInt8")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"EqualWord")
+    ( TestCases
+        (const [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"NotEqualWord")
+    ( TestCases
+        (const [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"GeWord")
+    ( TestCases
+        (const [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"GtWord")
+    ( TestCases
+        (const [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"LeWord")
+    ( TestCases
+        (const [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"LtWord")
+    ( TestCases
+        (const [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"EqualWord16")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"NotEqualWord16")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"GeWord16")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"GtWord16")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"LeWord16")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"LtWord16")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"EqualWord32")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"NotEqualWord32")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"GeWord32")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"GtWord32")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"LeWord32")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"LtWord32")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"EqualWord64")
+    ( TestCases
+        (const [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"NotEqualWord64")
+    ( TestCases
+        (const [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"GeWord64")
+    ( TestCases
+        (const [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"GtWord64")
+    ( TestCases
+        (const [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"LeWord64")
+    ( TestCases
+        (const [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"LtWord64")
+    ( TestCases
+        (const [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"EqualWord8")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"NotEqualWord8")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"GeWord8")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"GtWord8")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"LeWord8")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
+    (Proxy @"LtWord8")
+    ( TestCases
+        (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+    )
+  . HInsert1
     (Proxy @"Compare")
     (TestCases (const [([t|Double|], pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]))
-  . HInsert1
-    (Proxy @"EqDouble")
-    (TestCases (const [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]))
   . HInsert1
     (Proxy @"Max")
     (TestCases (const [([t|Double|], pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]))
@@ -402,11 +778,11 @@ mkTestTerms
     (Proxy @"Divide")
     (TestCases (const [([t|Double|], pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]))
   . HInsert1
-    (Proxy @"EqWord8")
-    (TestCases (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]))
+    (Proxy @"DivideDouble")
+    (TestCases (const [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]))
   . HInsert1
-    (Proxy @"NeWord8")
-    (TestCases (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]))
+    (Proxy @"DivideFloat")
+    (TestCases (const [((), pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Atan2") (TestCases (const [])) -- no support for `atan2` in Categories
   . HInsert1 (Proxy @"Abs") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Negate") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
@@ -638,10 +1014,21 @@ mkTestTerms
     (Proxy @"UnsafeCoerce")
     (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Sum") (TestCases (const [])) -- can only work with specialization
+  . HInsert1 (Proxy @"SumList") (TestCases (const []))
   . HInsert1 (Proxy @"ToList") (TestCases (const [])) -- can only work with specialization
   . HInsert1 (Proxy @"Even") (TestCases (const []))
   . HInsert1 (Proxy @"Odd") (TestCases (const []))
+#if MIN_VERSION_base(4, 13, 0)
+  . HInsert1 (Proxy @"AcoshDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"AcoshFloat") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"AsinhDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"AsinhFloat") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"AtanhDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"AtanhFloat") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
   $ HEmpty1
+#else
+  $ HEmpty1
+#endif
 
 main :: IO ()
 main = bool exitFailure exitSuccess . and =<< allTestTerms

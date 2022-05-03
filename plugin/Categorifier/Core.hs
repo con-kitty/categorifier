@@ -20,7 +20,7 @@ import Categorifier.Common.IO.Exception (SomeException, handle, throwIOAsExcepti
 import qualified Categorifier.Core.BuildDictionary as BuildDictionary
 import Categorifier.Core.Categorify (categorify)
 import qualified Categorifier.Core.ErrorHandling as Errors
-import Categorifier.Core.MakerMap (MakerMapFun, baseMakerMapFun, combineMakerMapFuns)
+import Categorifier.Core.MakerMap (MakerMapFun, SymbolLookup, baseMakerMapFun, baseSymbolLookup, combineMakerMapFuns)
 import Categorifier.Core.Makers (Makers, haskMakers)
 import qualified Categorifier.Core.PrimOp as PrimOp
 import Categorifier.Core.Types
@@ -56,7 +56,7 @@ import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.Except (ExceptT (..), runExceptT, throwE)
 import Control.Monad.Trans.RWS.Strict (RWST (..))
 import Data.Bifunctor (Bifunctor (..))
-import Data.Foldable (toList)
+import Data.Foldable (fold, toList)
 import Data.List (findIndex)
 import qualified Data.List.NonEmpty as NE
 import Data.List.NonEmpty.Extra (NonEmpty, nonEmpty, nubOrd)
@@ -338,6 +338,9 @@ autoInterpreterTy = Plugins.exprType . Plugins.Var <$> idFromTHName 'neverAutoIn
 hierarchyTy :: Lookup Plugins.Type
 hierarchyTy = Plugins.exprType . Plugins.Var <$> idFromTHName 'baseHierarchy
 
+lookupTy :: Lookup Plugins.Type
+lookupTy = Plugins.exprType . Plugins.Var <$> idFromTHName 'baseSymbolLookup
+
 makerMapTy :: Lookup Plugins.Type
 makerMapTy = Plugins.exprType . Plugins.Var <$> idFromTHName 'baseMakerMapFun
 
@@ -359,6 +362,7 @@ categorifyRules convert opts guts =
     additionalBoxersTy' <- getParallel additionalBoxersTy
     autoInterpreterTy' <- getParallel autoInterpreterTy
     hierarchyTy' <- getParallel hierarchyTy
+    lookupTy' <- getParallel lookupTy
     makerMapTy' <- getParallel makerMapTy
     hask <- getParallel concatOps
     let loadOptions def =
@@ -368,6 +372,7 @@ categorifyRules convert opts guts =
         additionalBoxersOptions = loadOptions 'PrimOp.noAdditionalBoxers AdditionalBoxersOptions
         autoInterpreterOptions = loadOptions 'neverAutoInterpret AutoInterpreterOptions
         hierarchyOptions = loadOptions 'baseHierarchy HierarchyOptions
+        lookupOptions = loadOptions 'baseSymbolLookup LookupOptions
         makerMapOptions = loadOptions 'baseMakerMapFun MakerMapOptions
     hscEnv <- lift Plugins.getHscEnv
     let handleOptions ty =
@@ -397,6 +402,9 @@ categorifyRules convert opts guts =
         handleHierarchy ::
           NonEmpty Plugins.Name -> ExceptT (NonEmpty MissingSymbol) Plugins.CoreM (Hierarchy CategoryStack)
         handleHierarchy = fmap (getFirst . foldMap First) . handleOptions hierarchyTy'
+        handleLookup ::
+          NonEmpty Plugins.Name -> ExceptT (NonEmpty MissingSymbol) Plugins.CoreM SymbolLookup
+        handleLookup = fmap fold . handleOptions lookupTy'
         handleMakerMap ::
           NonEmpty Plugins.Name -> ExceptT (NonEmpty MissingSymbol) Plugins.CoreM MakerMapFun
         handleMakerMap =
@@ -410,10 +418,12 @@ categorifyRules convert opts guts =
     let additionalBoxers' = handleAdditionalBoxers =<\< additionalBoxersOptions
         autoInterpreter = handleAutoInterpreter =<\< autoInterpreterOptions
         hierarchy = handleHierarchy =<\< hierarchyOptions
+        symLookup = handleLookup =<\< lookupOptions
         makerMap = handleMakerMap =<\< makerMapOptions
     additionalBoxers <- additionalBoxers'
     tryAutoInterpret <- autoInterpreter
     h <- hierarchy
+    sl <- symLookup
     bh <- combineHierarchies [getParallel baseHierarchy, hierarchy]
     makerMapFun <- makerMap
     baseIdentifiers <- getParallel getBaseIdentifiers
@@ -448,7 +458,7 @@ categorifyRules convert opts guts =
                             baseArrowMakers
                             (haskMakers inScope guts hscEnv hask h cat)
                             tryAutoInterpret
-                            makerMapFun
+                            (makerMapFun sl)
                             additionalBoxers
                       )
                       exprs

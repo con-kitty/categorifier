@@ -19,7 +19,7 @@ where
 
 import qualified Categorifier.Core.Benchmark as Bench
 import Categorifier.Core.MakerMap
-  ( MakerMapFun,
+  ( MakerMapFun',
     composeCat,
     curryCat,
     forkCat,
@@ -93,7 +93,7 @@ categorify ::
   Makers ->
   Makers ->
   AutoInterpreter ->
-  MakerMapFun ->
+  MakerMapFun' ->
   (Makers -> [(Plugins.CLabelString, (PrimOp.Boxer, [Plugins.Type], Plugins.Type))]) ->
   -- | The @a -> b@ parameter from `Categorifier.Categorify.expression`.
   Plugins.CoreExpr ->
@@ -1146,7 +1146,7 @@ binder type: {dbg bt}
                       maybeTraceWith debug (thump "inlining" . Plugins.WithIdInfo) f
                   (tyArgs, remainingArgs) = spanTypes args
                in maybe
-                    (onMissingUnfolding' e unf)
+                    (onMissingUnfolding' (maybeTraceWith debug (thump "missing unfolding") e) unf)
                     (fmap (`Plugins.mkCoreApps` remainingArgs) . maybeUnfix f tyArgs)
                     $ Map.lookup f lets <!> Plugins.maybeUnfoldingTemplate unf
             e -> onNonVar' e

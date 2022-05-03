@@ -1,3 +1,5 @@
+{-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -6,8 +8,13 @@
 {-# LANGUAGE ViewPatterns #-}
 
 module Categorifier.Core.MakerMap
-  ( MakerMap,
+  ( SymbolLookup (..),
+    baseSymbolLookup,
+
+    -- * Mapping Haskell functions to categorical operations
+    MakerMap,
     MakerMapFun,
+    MakerMapFun',
     combineMakerMapFuns,
     baseMakerMapFun,
 
@@ -32,7 +39,7 @@ where
 
 import qualified Categorifier.Core.Functions
 import Categorifier.Core.Makers (Makers (..), extract2TypeArgs, getMorphismType)
-import Categorifier.Core.Types (CategoricalFailure (..), CategoryStack)
+import Categorifier.Core.Types (CategoricalFailure (..), CategoryStack, Lookup)
 import Categorifier.Duoidal (joinD, traverseD, (<*\>), (<=\<), (=<\<))
 import qualified Categorifier.GHC.Builtin as Plugins
 import qualified Categorifier.GHC.Core as Plugins
@@ -40,6 +47,7 @@ import qualified Categorifier.GHC.Driver as Plugins
 import qualified Categorifier.GHC.Types as Plugins
 import qualified Categorifier.GHC.Unit as Plugins
 import qualified Categorifier.GHC.Utils as Plugins
+import Categorifier.Hierarchy (findTyCon)
 import qualified Control.Arrow
 import qualified Control.Category
 import Control.Monad.Trans.Except (throwE)
@@ -60,14 +68,57 @@ import qualified GHC.Base
 import qualified GHC.Classes
 import qualified GHC.Err
 import qualified GHC.Float
+import qualified GHC.Int
+import qualified GHC.List
 import qualified GHC.Num
 import qualified GHC.Real
+import qualified GHC.Types
 import qualified GHC.Word
 import qualified Language.Haskell.TH as TH
 import qualified Unsafe.Coerce
 
 -- For Unsafe.Coerce
 {-# ANN module ("HLint: ignore Avoid restricted module" :: String) #-}
+
+-- | Holds GHC Core types and identifiers that are used in a `MakerMapFun`. It's separate, since
+--  `MakerMapFun` doesn't have the appropriate context.
+data SymbolLookup = SymbolLookup
+  { tyConLookup :: Map.Map TH.Name Plugins.TyCon,
+    idLookup :: Map.Map TH.Name Plugins.Id
+  }
+
+instance Semigroup SymbolLookup where
+  SymbolLookup ltc lid <> SymbolLookup rtc rid = SymbolLookup (ltc <> rtc) (lid <> rid)
+
+instance Monoid SymbolLookup where
+  mempty = SymbolLookup mempty mempty
+
+-- | While we do use a lot of symbols from @base@, they're generally provided via the GHC API
+--   already, so we don't need to enumerate too many of them here.
+baseSymbolLookup :: Lookup SymbolLookup
+baseSymbolLookup = do
+  int16TyCon <- findTyCon "GHC.Int" "Int16"
+  int32TyCon <- findTyCon "GHC.Int" "Int32"
+  int64TyCon <- findTyCon "GHC.Int" "Int64"
+  int8TyCon <- findTyCon "GHC.Int" "Int8"
+  floatTyCon <- findTyCon "GHC.Types" "Float"
+  word16TyCon <- findTyCon "GHC.Word" "Word16"
+  word32TyCon <- findTyCon "GHC.Word" "Word32"
+  word64TyCon <- findTyCon "GHC.Word" "Word64"
+  pure $
+    SymbolLookup
+      ( Map.fromList
+          [ (''GHC.Int.Int16, int16TyCon),
+            (''GHC.Int.Int32, int32TyCon),
+            (''GHC.Int.Int64, int64TyCon),
+            (''GHC.Int.Int8, int8TyCon),
+            (''GHC.Types.Float, floatTyCon),
+            (''GHC.Word.Word16, word16TyCon),
+            (''GHC.Word.Word32, word32TyCon),
+            (''GHC.Word.Word64, word64TyCon)
+          ]
+      )
+      mempty
 
 -- | A map of functions for interpreting names.
 --
@@ -81,7 +132,9 @@ type MakerMap = Map TH.Name ([Plugins.CoreExpr] -> Maybe (CategoryStack Plugins.
 
 -- | Extending support in the source language ... if you have operations that should map more
 --   directly than simply being inlined.
-type MakerMapFun =
+type MakerMapFun = SymbolLookup -> MakerMapFun'
+
+type MakerMapFun' =
   Plugins.DynFlags ->
   Plugins.Logger ->
   Makers ->
@@ -107,13 +160,66 @@ type MakerMapFun =
 
 -- | Right-based combination.
 combineMakerMapFuns :: [MakerMapFun] -> MakerMapFun
-combineMakerMapFuns fs dflags logger m n target expr cat var args modu catFun catLambda =
+combineMakerMapFuns fs symLookup dflags logger m n target expr cat var args modu catFun catLambda =
   Map.unionsWith (\_ x -> x) maps
   where
-    maps = fmap (\f -> f dflags logger m n target expr cat var args modu catFun catLambda) fs
+    maps = fmap (\f -> f symLookup dflags logger m n target expr cat var args modu catFun catLambda) fs
 
 baseMakerMapFun :: MakerMapFun
-baseMakerMapFun
+baseMakerMapFun = combineMakerMapFuns [olderMakerMapFun, newerMakerMapFun]
+
+newerMakerMapFun :: MakerMapFun
+#if MIN_VERSION_base(4, 13, 0)
+newerMakerMapFun
+  symLookup
+  _dflags
+  _logger
+  m@Makers {..}
+  _n
+  _target
+  _expr
+  _cat
+  _var
+  _args
+  _modu
+  _categorifyFun
+  categorifyLambda =
+    Map.fromListWith
+      const
+      [ ( 'GHC.Float.acoshDouble,
+          \rest -> pure $ maker1 rest =<\< mkACosh Plugins.doubleTy
+        ),
+        ( 'GHC.Float.acoshFloat,
+          \rest -> do
+            floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+            pure $ maker1 rest =<\< mkACosh (Plugins.mkTyConTy floatTyCon)
+        ),
+        ( 'GHC.Float.asinhDouble,
+          \rest -> pure $ maker1 rest =<\< mkASinh Plugins.doubleTy
+        ),
+        ( 'GHC.Float.asinhFloat,
+          \rest -> do
+            floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+            pure $ maker1 rest =<\< mkASinh (Plugins.mkTyConTy floatTyCon)
+        ),
+        ( 'GHC.Float.atanhDouble,
+          \rest -> pure $ maker1 rest =<\< mkATanh Plugins.doubleTy
+        ),
+        ( 'GHC.Float.atanhFloat,
+          \rest -> do
+            floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+            pure $ maker1 rest =<\< mkATanh (Plugins.mkTyConTy floatTyCon)
+        )
+      ]
+    where
+      maker1 = makeMaker1 m categorifyLambda
+#else
+newerMakerMapFun _ _ _ _ _ _ _ _ _ _ _ _ _ = mempty
+#endif
+
+olderMakerMapFun :: MakerMapFun
+olderMakerMapFun
+  symLookup
   _dflags
   _logger
   m@Makers {..}
@@ -224,6 +330,12 @@ baseMakerMapFun
                   pure $ maker1 rest =<\< mkMinimum t a
                 _ -> Nothing
             ),
+            ( 'Data.Foldable.sum,
+              \case
+                Plugins.Type t : _foldable : Plugins.Type a : _num : rest ->
+                  pure $ maker2 rest =<\< mkSum t a
+                _ -> Nothing
+            ),
             ( 'Data.Function.fix,
               \case
                 Plugins.Type a : u : rest ->
@@ -259,7 +371,11 @@ baseMakerMapFun
                 Plugins.Type t : _traversable : Plugins.Type f : Plugins.Type a : Plugins.Type b
                   : _applicative
                   : u
-                  : rest -> pure $ mkTraverse' t f a b u rest
+                  : rest ->
+                    pure . joinD $
+                      applyEnriched' [u] rest
+                        <$> mkTraverse t f (nameTuple a) b
+                        <*\> mkStrength t (Plugins.varType n) a
                 _ -> Nothing
             ),
             ( 'Data.Tuple.curry,
@@ -403,14 +519,7 @@ baseMakerMapFun
             ( 'GHC.Base.map,
               \case
                 Plugins.Type a : Plugins.Type b : u : rest ->
-                  -- from: (\n -> map {{u}}) :: n -> [a] -> [b]
-                  -- to:   curry (map (uncurry (categorifyLambda n {{u}})) . strength)
-                  --         :: n `k` ([a] -> [b])
-                  let f = Plugins.mkTyConTy Plugins.listTyCon
-                   in pure . joinD $
-                        applyEnriched' [u] rest
-                          <$> mkMap f (nameTuple a) b
-                          <*\> mkStrength f (Plugins.varType n) a
+                  pure $ mkMap' (Plugins.mkTyConTy Plugins.listTyCon) a b u rest
                 _ -> Nothing
             ),
             ('GHC.Base.mappend, fromMaybe (const Nothing) $ Map.lookup '(GHC.Base.<>) makerMap),
@@ -459,6 +568,21 @@ baseMakerMapFun
                 _ -> Nothing
             ),
             ('GHC.Classes.eqDouble, \rest -> pure $ maker2 rest =<\< mkEqual Plugins.doubleTy),
+            ( 'GHC.Classes.eqFloat,
+              \rest -> do
+                floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkEqual (Plugins.mkTyConTy floatTyCon)
+            ),
+            ('GHC.Classes.eqInt, \rest -> pure $ maker2 rest =<\< mkEqual Plugins.intTy),
+            ('GHC.Classes.eqWord, \rest -> pure $ maker2 rest =<\< mkEqual Plugins.wordTy),
+            ('GHC.Classes.geInt, \rest -> pure $ maker2 rest =<\< mkGE Plugins.intTy),
+            ('GHC.Classes.geWord, \rest -> pure $ maker2 rest =<\< mkGE Plugins.wordTy),
+            ('GHC.Classes.gtInt, \rest -> pure $ maker2 rest =<\< mkGT Plugins.intTy),
+            ('GHC.Classes.gtWord, \rest -> pure $ maker2 rest =<\< mkGT Plugins.wordTy),
+            ('GHC.Classes.leInt, \rest -> pure $ maker2 rest =<\< mkLE Plugins.intTy),
+            ('GHC.Classes.leWord, \rest -> pure $ maker2 rest =<\< mkLE Plugins.wordTy),
+            ('GHC.Classes.ltInt, \rest -> pure $ maker2 rest =<\< mkLT Plugins.intTy),
+            ('GHC.Classes.ltWord, \rest -> pure $ maker2 rest =<\< mkLT Plugins.wordTy),
             ( 'GHC.Classes.max,
               \case
                 Plugins.Type ty : _ord : rest -> pure $ maker2 rest =<\< mkMax ty
@@ -469,6 +593,8 @@ baseMakerMapFun
                 Plugins.Type ty : _ord : rest -> pure $ maker2 rest =<\< mkMin ty
                 _ -> Nothing
             ),
+            ('GHC.Classes.neInt, \rest -> pure $ maker2 rest =<\< mkNotEqual Plugins.intTy),
+            ('GHC.Classes.neWord, \rest -> pure $ maker2 rest =<\< mkNotEqual Plugins.wordTy),
             ('GHC.Classes.not, \rest -> pure $ maker1 rest =<\< mkNot),
             -- We currently ignore the `CallStack`, since `error` doesn't use `throw`, but instead
             -- calls `raise#` directly for some reason (which is too low-level for us to handle).
@@ -492,6 +618,14 @@ baseMakerMapFun
                 Plugins.Type a : _floating : rest -> pure $ maker1 rest =<\< mkACos a
                 _ -> Nothing
             ),
+            ( 'GHC.Float.acosDouble,
+              \rest -> pure $ maker1 rest =<\< mkACos Plugins.doubleTy
+            ),
+            ( 'GHC.Float.acosFloat,
+              \rest -> do
+                floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+                pure $ maker1 rest =<\< mkACos (Plugins.mkTyConTy floatTyCon)
+            ),
             ( 'GHC.Float.acosh,
               \case
                 Plugins.Type a : _floating : rest -> pure $ maker1 rest =<\< mkACosh a
@@ -502,6 +636,14 @@ baseMakerMapFun
                 Plugins.Type a : _floating : rest -> pure $ maker1 rest =<\< mkASin a
                 _ -> Nothing
             ),
+            ( 'GHC.Float.asinDouble,
+              \rest -> pure $ maker1 rest =<\< mkASin Plugins.doubleTy
+            ),
+            ( 'GHC.Float.asinFloat,
+              \rest -> do
+                floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+                pure $ maker1 rest =<\< mkASin (Plugins.mkTyConTy floatTyCon)
+            ),
             ( 'GHC.Float.asinh,
               \case
                 Plugins.Type a : _floating : rest -> pure $ maker1 rest =<\< mkASinh a
@@ -511,6 +653,14 @@ baseMakerMapFun
               \case
                 Plugins.Type a : _floating : rest -> pure $ maker1 rest =<\< mkATan a
                 _ -> Nothing
+            ),
+            ( 'GHC.Float.atanDouble,
+              \rest -> pure $ maker1 rest =<\< mkATan Plugins.doubleTy
+            ),
+            ( 'GHC.Float.atanFloat,
+              \rest -> do
+                floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+                pure $ maker1 rest =<\< mkATan (Plugins.mkTyConTy floatTyCon)
             ),
             ( 'GHC.Float.atan2,
               \case
@@ -527,12 +677,33 @@ baseMakerMapFun
                 Plugins.Type a : _floating : rest -> pure $ maker1 rest =<\< mkCos a
                 _ -> Nothing
             ),
+            ( 'GHC.Float.cosDouble,
+              \rest -> pure $ maker1 rest =<\< mkCos Plugins.doubleTy
+            ),
+            ( 'GHC.Float.cosFloat,
+              \rest -> do
+                floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+                pure $ maker1 rest =<\< mkCos (Plugins.mkTyConTy floatTyCon)
+            ),
             ( 'GHC.Float.cosh,
               \case
                 Plugins.Type a : _floating : rest -> pure $ maker1 rest =<\< mkCosh a
                 _ -> Nothing
             ),
+            ( 'GHC.Float.coshDouble,
+              \rest -> pure $ maker1 rest =<\< mkCosh Plugins.doubleTy
+            ),
+            ( 'GHC.Float.coshFloat,
+              \rest -> do
+                floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+                pure $ maker1 rest =<\< mkCosh (Plugins.mkTyConTy floatTyCon)
+            ),
             ('GHC.Float.divideDouble, \rest -> pure $ maker2 rest =<\< mkDivide Plugins.doubleTy),
+            ( 'GHC.Float.divideFloat,
+              \rest -> do
+                floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkDivide (Plugins.mkTyConTy floatTyCon)
+            ),
             ('GHC.Float.double2Float, \rest -> pure $ maker1 rest =<\< mkDoubleToFloat),
             ( 'GHC.Float.exp,
               \case
@@ -540,11 +711,58 @@ baseMakerMapFun
                 _ -> Nothing
             ),
             ('GHC.Float.fabsDouble, \rest -> pure $ maker1 rest =<\< mkAbs Plugins.doubleTy),
+            ( 'GHC.Float.fabsFloat,
+              \rest -> do
+                floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+                pure $ maker1 rest =<\< mkAbs (Plugins.mkTyConTy floatTyCon)
+            ),
             ('GHC.Float.float2Double, \rest -> pure $ maker1 rest =<\< mkFloatToDouble),
+            ('GHC.Float.geDouble, \rest -> pure $ maker2 rest =<\< mkGE Plugins.doubleTy),
+            ( 'GHC.Float.geFloat,
+              \rest -> do
+                floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkGE (Plugins.mkTyConTy floatTyCon)
+            ),
+            ('GHC.Float.gtDouble, \rest -> pure $ maker2 rest =<\< mkGT Plugins.doubleTy),
+            ( 'GHC.Float.gtFloat,
+              \rest -> do
+                floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkGT (Plugins.mkTyConTy floatTyCon)
+            ),
             ( 'GHC.Float.isDenormalized,
               \case
                 Plugins.Type a : _realFloat : rest -> pure $ maker1 rest =<\< mkFPIsDenormal a
                 _ -> Nothing
+            ),
+            ( 'GHC.Float.isDoubleDenormalized,
+              \rest -> pure $ maker1 rest =<\< mkFPIsDenormal Plugins.doubleTy
+            ),
+            ( 'GHC.Float.isDoubleInfinite,
+              \rest -> pure $ maker1 rest =<\< mkFPIsInfinite Plugins.doubleTy
+            ),
+            ('GHC.Float.isDoubleNaN, \rest -> pure $ maker1 rest =<\< mkFPIsNaN Plugins.doubleTy),
+            ( 'GHC.Float.isDoubleNegativeZero,
+              \rest -> pure $ maker1 rest =<\< mkFPIsNegativeZero Plugins.doubleTy
+            ),
+            ( 'GHC.Float.isFloatDenormalized,
+              \rest -> do
+                floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+                pure $ maker1 rest =<\< mkFPIsDenormal (Plugins.mkTyConTy floatTyCon)
+            ),
+            ( 'GHC.Float.isFloatInfinite,
+              \rest -> do
+                floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+                pure $ maker1 rest =<\< mkFPIsInfinite (Plugins.mkTyConTy floatTyCon)
+            ),
+            ( 'GHC.Float.isFloatNaN,
+              \rest -> do
+                floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+                pure $ maker1 rest =<\< mkFPIsNaN (Plugins.mkTyConTy floatTyCon)
+            ),
+            ( 'GHC.Float.isFloatNegativeZero,
+              \rest -> do
+                floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+                pure $ maker1 rest =<\< mkFPIsNegativeZero (Plugins.mkTyConTy floatTyCon)
             ),
             ( 'GHC.Float.isInfinite,
               \case
@@ -561,23 +779,78 @@ baseMakerMapFun
                 Plugins.Type a : _realFloat : rest -> pure $ maker1 rest =<\< mkFPIsNegativeZero a
                 _ -> Nothing
             ),
+            ('GHC.Float.leDouble, \rest -> pure $ maker2 rest =<\< mkLE Plugins.doubleTy),
+            ( 'GHC.Float.leFloat,
+              \rest -> do
+                floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkLE (Plugins.mkTyConTy floatTyCon)
+            ),
             ( 'GHC.Float.log,
               \case
                 Plugins.Type a : _floating : rest -> pure $ maker1 rest =<\< mkLog a
                 _ -> Nothing
             ),
-            ('GHC.Float.negateDouble, \rest -> pure $ maker1 rest =<\< mkNegate Plugins.doubleTy),
+            ('GHC.Float.logDouble, \rest -> pure $ maker1 rest =<\< mkLog Plugins.doubleTy),
+            ( 'GHC.Float.logFloat,
+              \rest -> do
+                floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+                pure $ maker1 rest =<\< mkLog (Plugins.mkTyConTy floatTyCon)
+            ),
+            ('GHC.Float.ltDouble, \rest -> pure $ maker2 rest =<\< mkLT Plugins.doubleTy),
+            ( 'GHC.Float.ltFloat,
+              \rest -> do
+                floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkLT (Plugins.mkTyConTy floatTyCon)
+            ),
             ('GHC.Float.minusDouble, \rest -> pure $ maker2 rest =<\< mkMinus Plugins.doubleTy),
+            ( 'GHC.Float.minusFloat,
+              \rest -> do
+                floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkMinus (Plugins.mkTyConTy floatTyCon)
+            ),
+            ('GHC.Float.negateDouble, \rest -> pure $ maker1 rest =<\< mkNegate Plugins.doubleTy),
+            ( 'GHC.Float.negateFloat,
+              \rest -> do
+                floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+                pure $ maker1 rest =<\< mkNegate (Plugins.mkTyConTy floatTyCon)
+            ),
             ('GHC.Float.plusDouble, \rest -> pure $ maker2 rest =<\< mkPlus Plugins.doubleTy),
+            ( 'GHC.Float.plusFloat,
+              \rest -> do
+                floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkPlus (Plugins.mkTyConTy floatTyCon)
+            ),
+            ('GHC.Float.powerDouble, \rest -> pure $ maker2 rest =<\< mkPow Plugins.doubleTy),
+            ( 'GHC.Float.powerFloat,
+              \rest -> do
+                floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkPow (Plugins.mkTyConTy floatTyCon)
+            ),
             ( 'GHC.Float.sin,
               \case
                 Plugins.Type a : _floating : rest -> pure $ maker1 rest =<\< mkSin a
                 _ -> Nothing
             ),
+            ( 'GHC.Float.sinDouble,
+              \rest -> pure $ maker1 rest =<\< mkSin Plugins.doubleTy
+            ),
+            ( 'GHC.Float.sinFloat,
+              \rest -> do
+                floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+                pure $ maker1 rest =<\< mkSin (Plugins.mkTyConTy floatTyCon)
+            ),
             ( 'GHC.Float.sinh,
               \case
                 Plugins.Type a : _floating : rest -> pure $ maker1 rest =<\< mkSinh a
                 _ -> Nothing
+            ),
+            ( 'GHC.Float.sinhDouble,
+              \rest -> pure $ maker1 rest =<\< mkSinh Plugins.doubleTy
+            ),
+            ( 'GHC.Float.sinhFloat,
+              \rest -> do
+                floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+                pure $ maker1 rest =<\< mkSinh (Plugins.mkTyConTy floatTyCon)
             ),
             ( 'GHC.Float.sqrt,
               \case
@@ -585,17 +858,169 @@ baseMakerMapFun
                 _ -> Nothing
             ),
             ('GHC.Float.sqrtDouble, \rest -> pure $ maker1 rest =<\< mkSqrt Plugins.doubleTy),
+            ( 'GHC.Float.sqrtFloat,
+              \rest -> do
+                floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+                pure $ maker1 rest =<\< mkSqrt (Plugins.mkTyConTy floatTyCon)
+            ),
             ( 'GHC.Float.tan,
               \case
                 Plugins.Type a : _floating : rest -> pure $ maker1 rest =<\< mkTan a
                 _ -> Nothing
+            ),
+            ( 'GHC.Float.tanDouble,
+              \rest -> pure $ maker1 rest =<\< mkTan Plugins.doubleTy
+            ),
+            ( 'GHC.Float.tanFloat,
+              \rest -> do
+                floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+                pure $ maker1 rest =<\< mkTan (Plugins.mkTyConTy floatTyCon)
             ),
             ( 'GHC.Float.tanh,
               \case
                 Plugins.Type a : _floating : rest -> pure $ maker1 rest =<\< mkTanh a
                 _ -> Nothing
             ),
+            ( 'GHC.Float.tanhDouble,
+              \rest -> pure $ maker1 rest =<\< mkTanh Plugins.doubleTy
+            ),
+            ( 'GHC.Float.tanhFloat,
+              \rest -> do
+                floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+                pure $ maker1 rest =<\< mkTanh (Plugins.mkTyConTy floatTyCon)
+            ),
             ('GHC.Float.timesDouble, \rest -> pure $ maker2 rest =<\< mkTimes Plugins.doubleTy),
+            ( 'GHC.Float.timesFloat,
+              \rest -> do
+                floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkTimes (Plugins.mkTyConTy floatTyCon)
+            ),
+            ( 'GHC.Int.eqInt16,
+              \rest -> do
+                int16TyCon <- Map.lookup ''GHC.Int.Int16 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkEqual (Plugins.mkTyConTy int16TyCon)
+            ),
+            ( 'GHC.Int.eqInt32,
+              \rest -> do
+                int32TyCon <- Map.lookup ''GHC.Int.Int32 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkEqual (Plugins.mkTyConTy int32TyCon)
+            ),
+            ( 'GHC.Int.eqInt64,
+              \rest -> do
+                int64TyCon <- Map.lookup ''GHC.Int.Int64 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkEqual (Plugins.mkTyConTy int64TyCon)
+            ),
+            ( 'GHC.Int.eqInt8,
+              \rest -> do
+                int8TyCon <- Map.lookup ''GHC.Int.Int8 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkEqual (Plugins.mkTyConTy int8TyCon)
+            ),
+            ( 'GHC.Int.geInt16,
+              \rest -> do
+                int16TyCon <- Map.lookup ''GHC.Int.Int16 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkGE (Plugins.mkTyConTy int16TyCon)
+            ),
+            ( 'GHC.Int.geInt32,
+              \rest -> do
+                int32TyCon <- Map.lookup ''GHC.Int.Int32 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkGE (Plugins.mkTyConTy int32TyCon)
+            ),
+            ( 'GHC.Int.geInt64,
+              \rest -> do
+                int64TyCon <- Map.lookup ''GHC.Int.Int64 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkGE (Plugins.mkTyConTy int64TyCon)
+            ),
+            ( 'GHC.Int.geInt8,
+              \rest -> do
+                int8TyCon <- Map.lookup ''GHC.Int.Int8 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkGE (Plugins.mkTyConTy int8TyCon)
+            ),
+            ( 'GHC.Int.gtInt16,
+              \rest -> do
+                int16TyCon <- Map.lookup ''GHC.Int.Int16 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkGT (Plugins.mkTyConTy int16TyCon)
+            ),
+            ( 'GHC.Int.gtInt32,
+              \rest -> do
+                int32TyCon <- Map.lookup ''GHC.Int.Int32 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkGT (Plugins.mkTyConTy int32TyCon)
+            ),
+            ( 'GHC.Int.gtInt64,
+              \rest -> do
+                int64TyCon <- Map.lookup ''GHC.Int.Int64 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkGT (Plugins.mkTyConTy int64TyCon)
+            ),
+            ( 'GHC.Int.gtInt8,
+              \rest -> do
+                int8TyCon <- Map.lookup ''GHC.Int.Int8 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkGT (Plugins.mkTyConTy int8TyCon)
+            ),
+            ( 'GHC.Int.leInt16,
+              \rest -> do
+                int16TyCon <- Map.lookup ''GHC.Int.Int16 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkLE (Plugins.mkTyConTy int16TyCon)
+            ),
+            ( 'GHC.Int.leInt32,
+              \rest -> do
+                int32TyCon <- Map.lookup ''GHC.Int.Int32 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkLE (Plugins.mkTyConTy int32TyCon)
+            ),
+            ( 'GHC.Int.leInt64,
+              \rest -> do
+                int64TyCon <- Map.lookup ''GHC.Int.Int64 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkLE (Plugins.mkTyConTy int64TyCon)
+            ),
+            ( 'GHC.Int.leInt8,
+              \rest -> do
+                int8TyCon <- Map.lookup ''GHC.Int.Int8 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkLE (Plugins.mkTyConTy int8TyCon)
+            ),
+            ( 'GHC.Int.ltInt16,
+              \rest -> do
+                int16TyCon <- Map.lookup ''GHC.Int.Int16 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkLT (Plugins.mkTyConTy int16TyCon)
+            ),
+            ( 'GHC.Int.ltInt32,
+              \rest -> do
+                int32TyCon <- Map.lookup ''GHC.Int.Int32 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkLT (Plugins.mkTyConTy int32TyCon)
+            ),
+            ( 'GHC.Int.ltInt64,
+              \rest -> do
+                int64TyCon <- Map.lookup ''GHC.Int.Int64 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkLT (Plugins.mkTyConTy int64TyCon)
+            ),
+            ( 'GHC.Int.ltInt8,
+              \rest -> do
+                int8TyCon <- Map.lookup ''GHC.Int.Int8 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkLT (Plugins.mkTyConTy int8TyCon)
+            ),
+            ( 'GHC.Int.neInt16,
+              \rest -> do
+                int16TyCon <- Map.lookup ''GHC.Int.Int16 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkNotEqual (Plugins.mkTyConTy int16TyCon)
+            ),
+            ( 'GHC.Int.neInt32,
+              \rest -> do
+                int32TyCon <- Map.lookup ''GHC.Int.Int32 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkNotEqual (Plugins.mkTyConTy int32TyCon)
+            ),
+            ( 'GHC.Int.neInt64,
+              \rest -> do
+                int64TyCon <- Map.lookup ''GHC.Int.Int64 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkNotEqual (Plugins.mkTyConTy int64TyCon)
+            ),
+            ( 'GHC.Int.neInt8,
+              \rest -> do
+                int8TyCon <- Map.lookup ''GHC.Int.Int8 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkNotEqual (Plugins.mkTyConTy int8TyCon)
+            ),
+            ( 'GHC.List.sum,
+              \case
+                Plugins.Type a : _num : rest ->
+                  pure $ maker2 rest =<\< mkSum (Plugins.mkTyConTy Plugins.listTyCon) a
+                _ -> Nothing
+            ),
             ( '(GHC.Num.+),
               \case
                 Plugins.Type ty : _num : rest -> pure $ maker2 rest =<\< mkPlus ty
@@ -691,7 +1116,101 @@ baseMakerMapFun
                 Plugins.Type ty : _integral : rest -> pure $ maker2 rest =<\< mkRem ty
                 _ -> Nothing
             ),
+            ( 'GHC.Word.eqWord16,
+              \rest -> do
+                word16TyCon <- Map.lookup ''GHC.Word.Word16 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkEqual (Plugins.mkTyConTy word16TyCon)
+            ),
+            ( 'GHC.Word.eqWord32,
+              \rest -> do
+                word32TyCon <- Map.lookup ''GHC.Word.Word32 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkEqual (Plugins.mkTyConTy word32TyCon)
+            ),
+            ( 'GHC.Word.eqWord64,
+              \rest -> do
+                word64TyCon <- Map.lookup ''GHC.Word.Word64 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkEqual (Plugins.mkTyConTy word64TyCon)
+            ),
             ('GHC.Word.eqWord8, \rest -> pure $ maker2 rest =<\< mkEqual Plugins.word8Ty),
+            ( 'GHC.Word.geWord16,
+              \rest -> do
+                word16TyCon <- Map.lookup ''GHC.Word.Word16 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkGE (Plugins.mkTyConTy word16TyCon)
+            ),
+            ( 'GHC.Word.geWord32,
+              \rest -> do
+                word32TyCon <- Map.lookup ''GHC.Word.Word32 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkGE (Plugins.mkTyConTy word32TyCon)
+            ),
+            ( 'GHC.Word.geWord64,
+              \rest -> do
+                word64TyCon <- Map.lookup ''GHC.Word.Word64 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkGE (Plugins.mkTyConTy word64TyCon)
+            ),
+            ('GHC.Word.geWord8, \rest -> pure $ maker2 rest =<\< mkGE Plugins.word8Ty),
+            ( 'GHC.Word.gtWord16,
+              \rest -> do
+                word16TyCon <- Map.lookup ''GHC.Word.Word16 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkGT (Plugins.mkTyConTy word16TyCon)
+            ),
+            ( 'GHC.Word.gtWord32,
+              \rest -> do
+                word32TyCon <- Map.lookup ''GHC.Word.Word32 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkGT (Plugins.mkTyConTy word32TyCon)
+            ),
+            ( 'GHC.Word.gtWord64,
+              \rest -> do
+                word64TyCon <- Map.lookup ''GHC.Word.Word64 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkGT (Plugins.mkTyConTy word64TyCon)
+            ),
+            ('GHC.Word.gtWord8, \rest -> pure $ maker2 rest =<\< mkGT Plugins.word8Ty),
+            ( 'GHC.Word.leWord16,
+              \rest -> do
+                word16TyCon <- Map.lookup ''GHC.Word.Word16 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkLE (Plugins.mkTyConTy word16TyCon)
+            ),
+            ( 'GHC.Word.leWord32,
+              \rest -> do
+                word32TyCon <- Map.lookup ''GHC.Word.Word32 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkLE (Plugins.mkTyConTy word32TyCon)
+            ),
+            ( 'GHC.Word.leWord64,
+              \rest -> do
+                word64TyCon <- Map.lookup ''GHC.Word.Word64 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkLE (Plugins.mkTyConTy word64TyCon)
+            ),
+            ('GHC.Word.leWord8, \rest -> pure $ maker2 rest =<\< mkLE Plugins.word8Ty),
+            ( 'GHC.Word.ltWord16,
+              \rest -> do
+                word16TyCon <- Map.lookup ''GHC.Word.Word16 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkLT (Plugins.mkTyConTy word16TyCon)
+            ),
+            ( 'GHC.Word.ltWord32,
+              \rest -> do
+                word32TyCon <- Map.lookup ''GHC.Word.Word32 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkLT (Plugins.mkTyConTy word32TyCon)
+            ),
+            ( 'GHC.Word.ltWord64,
+              \rest -> do
+                word64TyCon <- Map.lookup ''GHC.Word.Word64 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkLT (Plugins.mkTyConTy word64TyCon)
+            ),
+            ('GHC.Word.ltWord8, \rest -> pure $ maker2 rest =<\< mkLT Plugins.word8Ty),
+            ( 'GHC.Word.neWord16,
+              \rest -> do
+                word16TyCon <- Map.lookup ''GHC.Word.Word16 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkNotEqual (Plugins.mkTyConTy word16TyCon)
+            ),
+            ( 'GHC.Word.neWord32,
+              \rest -> do
+                word32TyCon <- Map.lookup ''GHC.Word.Word32 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkNotEqual (Plugins.mkTyConTy word32TyCon)
+            ),
+            ( 'GHC.Word.neWord64,
+              \rest -> do
+                word64TyCon <- Map.lookup ''GHC.Word.Word64 (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkNotEqual (Plugins.mkTyConTy word64TyCon)
+            ),
             ('GHC.Word.neWord8, \rest -> pure $ maker2 rest =<\< mkNotEqual Plugins.word8Ty),
             ( 'Categorifier.Core.Functions.abst,
               \case
@@ -740,14 +1259,6 @@ baseMakerMapFun
           applyEnriched' [u] rest
             <$> mkMap f (nameTuple a) b
             <*\> mkStrength f (Plugins.varType n) a
-      -- from: (\n -> traverse {{u}}) :: n -> t a -> f (t b)
-      -- to:   curry (traverse (uncurry (categorifyLambda n {{u}})) . strength) ::
-      --         n `k` (t a -> f (t b))
-      mkTraverse' t f a b u rest =
-        joinD $
-          applyEnriched' [u] rest
-            <$> mkTraverse t f (nameTuple a) b
-            <*\> mkStrength t (Plugins.varType n) a
       applyEnriched = applyEnrichedCat m categorifyLambda
       applyEnriched' = applyEnrichedCat' m categorifyLambda
       nameTuple = makeTupleTyWithVar n

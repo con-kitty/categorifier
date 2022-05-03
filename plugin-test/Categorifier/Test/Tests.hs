@@ -10,7 +10,7 @@
 
 -- |
 -- This module contains TH that generates terms to be invoked with the
--- 'Categorifier.Categorify.expression' plugin-runner.  This is done so that new arrows can be tested
+-- 'Categorifier.Categorify.expression' plugin-runner. This is done so that new arrows can be tested
 -- easily.
 --
 -- The HLint warnings for 'id' and 'const' are disabled because we want to test how the plugin
@@ -52,11 +52,13 @@ import Control.Arrow (arr)
 import Data.Coerce (coerce)
 import qualified Data.Foldable
 import Data.Functor.Identity (Identity (..))
+import qualified Data.List
 import Data.Proxy (Proxy (..))
 import Data.Semigroup (Sum (..))
 import Data.Tuple (swap)
-import qualified GHC.Classes
 import qualified GHC.Float
+import GHC.Int (Int16, Int32, Int64, Int8)
+import qualified GHC.Int
 import GHC.TypeLits (KnownSymbol, symbolVal)
 import GHC.Word (Word16, Word32, Word64, Word8)
 import qualified GHC.Word
@@ -85,7 +87,7 @@ zerosafeUnsignedPrimitiveCases =
     ),
     ( [t|Word64|],
       pure
-        ( [|(,) <$> Gen.integral Range.linearBounded <*> Gen.integral (Range.linear 1 maxBound)|],
+        ( [|(,) <$> genLargeIntegral <*> Gen.integral (Range.linear 1 maxBound)|],
           [|show|]
         )
     ),
@@ -185,6 +187,38 @@ pluginTestTerms =
       [|repr|]
     $ HEmpty1
 
+newerTestTerms :: TestTerms _
+#if MIN_VERSION_base(4, 13, 0)
+newerTestTerms =
+  insertTest (Proxy @"AcoshDouble")
+    mkUnaryTestConfig
+    (\() -> ([t|Double|], [t|Double|]))
+    [|GHC.Float.acoshDouble|]
+    . insertTest (Proxy @"AcoshFloat")
+          mkUnaryTestConfig
+          (\() -> ([t|Float|], [t|Float|]))
+          [|GHC.Float.acoshFloat|]
+    . insertTest (Proxy @"AsinhDouble")
+          mkUnaryTestConfig
+          (\() -> ([t|Double|], [t|Double|]))
+          [|GHC.Float.asinhDouble|]
+    . insertTest (Proxy @"AsinhFloat")
+          mkUnaryTestConfig
+          (\() -> ([t|Float|], [t|Float|]))
+          [|GHC.Float.asinhFloat|]
+    . insertTest (Proxy @"AtanhDouble")
+          mkUnaryTestConfig
+          (\() -> ([t|Double|], [t|Double|]))
+          [|GHC.Float.atanhDouble|]
+    . insertTest (Proxy @"AtanhFloat")
+          mkUnaryTestConfig
+          (\() -> ([t|Float|], [t|Float|]))
+          [|GHC.Float.atanhFloat|]
+    $ HEmpty1
+#else
+newerTestTerms = HEmpty1
+#endif
+
 {-# ANN baseTestTerms "HLint: ignore Avoid lambda" #-}
 {-# ANN baseTestTerms "HLint: ignore Redundant uncurry" #-}
 {-# ANN baseTestTerms "HLint: ignore Use <>" #-}
@@ -249,7 +283,6 @@ baseTestTerms =
       mkTernaryTestConfig
       (\a -> (a, [t|$a -> Bool -> $a|]))
       [|\a b c -> bool a b c|]
-    . insertTest (Proxy @"Pow") mkBinaryTestConfig (\a -> (a, [t|$a -> $a|])) [|(**)|]
     . insertTest (Proxy @"Acos") mkUnaryTestConfig (\a -> (a, a)) [|acos|]
     . insertTest (Proxy @"Acosh") mkUnaryTestConfig (\a -> (a, a)) [|acosh|]
     . insertTest (Proxy @"Asin") mkUnaryTestConfig (\a -> (a, a)) [|asin|]
@@ -258,6 +291,56 @@ baseTestTerms =
     . insertTest (Proxy @"Atanh") mkUnaryTestConfig (\a -> (a, a)) [|atanh|]
     . insertTest (Proxy @"Cos") mkUnaryTestConfig (\a -> (a, a)) [|cos|]
     . insertTest (Proxy @"Cosh") mkUnaryTestConfig (\a -> (a, a)) [|cosh|]
+    . insertTest
+      (Proxy @"AcosDouble")
+      mkUnaryTestConfig
+      (\() -> ([t|Double|], [t|Double|]))
+      [|GHC.Float.acosDouble|]
+    . insertTest
+      (Proxy @"AsinDouble")
+      mkUnaryTestConfig
+      (\() -> ([t|Double|], [t|Double|]))
+      [|GHC.Float.asinDouble|]
+    . insertTest
+      (Proxy @"AtanDouble")
+      mkUnaryTestConfig
+      (\() -> ([t|Double|], [t|Double|]))
+      [|GHC.Float.atanDouble|]
+    . insertTest
+      (Proxy @"CosDouble")
+      mkUnaryTestConfig
+      (\() -> ([t|Double|], [t|Double|]))
+      [|GHC.Float.cosDouble|]
+    . insertTest
+      (Proxy @"CoshDouble")
+      mkUnaryTestConfig
+      (\() -> ([t|Double|], [t|Double|]))
+      [|GHC.Float.coshDouble|]
+    . insertTest
+      (Proxy @"AcosFloat")
+      mkUnaryTestConfig
+      (\() -> ([t|Float|], [t|Float|]))
+      [|GHC.Float.acosFloat|]
+    . insertTest
+      (Proxy @"AsinFloat")
+      mkUnaryTestConfig
+      (\() -> ([t|Float|], [t|Float|]))
+      [|GHC.Float.asinFloat|]
+    . insertTest
+      (Proxy @"AtanFloat")
+      mkUnaryTestConfig
+      (\() -> ([t|Float|], [t|Float|]))
+      [|GHC.Float.atanFloat|]
+    . insertTest
+      (Proxy @"CosFloat")
+      mkUnaryTestConfig
+      (\() -> ([t|Float|], [t|Float|]))
+      [|GHC.Float.cosFloat|]
+    . insertTest
+      (Proxy @"CoshFloat")
+      mkUnaryTestConfig
+      (\() -> ([t|Float|], [t|Float|]))
+      [|GHC.Float.coshFloat|]
     . insertTest
       (Proxy @"Double2Float")
       mkUnaryTestConfig
@@ -287,30 +370,121 @@ baseTestTerms =
       [|GHC.Float.isNegativeZero|]
     . insertTest (Proxy @"Log") mkUnaryTestConfig (\a -> (a, a)) [|log|]
     . insertTest
+      (Proxy @"LogDouble")
+      mkUnaryTestConfig
+      (\() -> ([t|Double|], [t|Double|]))
+      [|GHC.Float.logDouble|]
+    . insertTest
+      (Proxy @"LogFloat")
+      mkUnaryTestConfig
+      (\() -> ([t|Float|], [t|Float|]))
+      [|GHC.Float.logFloat|]
+    . insertTest
+      (Proxy @"MinusDouble")
+      mkBinaryTestConfig
+      (\() -> ([t|Double|], [t|Double -> Double|]))
+      [|GHC.Float.minusDouble|]
+    . insertTest
+      (Proxy @"MinusFloat")
+      mkBinaryTestConfig
+      (\() -> ([t|Float|], [t|Float -> Float|]))
+      [|GHC.Float.minusFloat|]
+    . insertTest
       (Proxy @"NegateDouble")
       mkUnaryTestConfig
       (\() -> ([t|Double|], [t|Double|]))
       [|GHC.Float.negateDouble|]
     . insertTest
+      (Proxy @"NegateFloat")
+      mkUnaryTestConfig
+      (\() -> ([t|Float|], [t|Float|]))
+      [|GHC.Float.negateFloat|]
+    . insertTest
       (Proxy @"PlusDouble")
       mkBinaryTestConfig
       (\() -> ([t|Double|], [t|Double -> Double|]))
       [|GHC.Float.plusDouble|]
+    . insertTest
+      (Proxy @"PlusFloat")
+      mkBinaryTestConfig
+      (\() -> ([t|Float|], [t|Float -> Float|]))
+      [|GHC.Float.plusFloat|]
+    . insertTest (Proxy @"Power") mkBinaryTestConfig (\a -> (a, [t|$a -> $a|])) [|(**)|]
+    . insertTest
+      (Proxy @"PowerDouble")
+      mkBinaryTestConfig
+      (\() -> ([t|Double|], [t|Double -> Double|]))
+      [|GHC.Float.powerDouble|]
+    . insertTest
+      (Proxy @"PowerFloat")
+      mkBinaryTestConfig
+      (\() -> ([t|Float|], [t|Float -> Float|]))
+      [|GHC.Float.powerFloat|]
     . insertTest (Proxy @"Sin") mkUnaryTestConfig (\a -> (a, a)) [|sin|]
     . insertTest (Proxy @"Sinh") mkUnaryTestConfig (\a -> (a, a)) [|sinh|]
+    . insertTest
+      (Proxy @"SinDouble")
+      mkUnaryTestConfig
+      (\() -> ([t|Double|], [t|Double|]))
+      [|GHC.Float.sinDouble|]
+    . insertTest
+      (Proxy @"SinhDouble")
+      mkUnaryTestConfig
+      (\() -> ([t|Double|], [t|Double|]))
+      [|GHC.Float.sinhDouble|]
+    . insertTest
+      (Proxy @"SinFloat")
+      mkUnaryTestConfig
+      (\() -> ([t|Float|], [t|Float|]))
+      [|GHC.Float.sinFloat|]
+    . insertTest
+      (Proxy @"SinhFloat")
+      mkUnaryTestConfig
+      (\() -> ([t|Float|], [t|Float|]))
+      [|GHC.Float.sinhFloat|]
     . insertTest (Proxy @"Sqrt") mkUnaryTestConfig (\a -> (a, a)) [|sqrt|]
     . insertTest
       (Proxy @"SqrtDouble")
       mkUnaryTestConfig
       (\() -> ([t|Double|], [t|Double|]))
       [|GHC.Float.sqrtDouble|]
+    . insertTest
+      (Proxy @"SqrtFloat")
+      mkUnaryTestConfig
+      (\() -> ([t|Float|], [t|Float|]))
+      [|GHC.Float.sqrtFloat|]
     . insertTest (Proxy @"Tan") mkUnaryTestConfig (\a -> (a, a)) [|tan|]
     . insertTest (Proxy @"Tanh") mkUnaryTestConfig (\a -> (a, a)) [|tanh|]
+    . insertTest
+      (Proxy @"TanDouble")
+      mkUnaryTestConfig
+      (\() -> ([t|Double|], [t|Double|]))
+      [|GHC.Float.tanDouble|]
+    . insertTest
+      (Proxy @"TanhDouble")
+      mkUnaryTestConfig
+      (\() -> ([t|Double|], [t|Double|]))
+      [|GHC.Float.tanhDouble|]
+    . insertTest
+      (Proxy @"TanFloat")
+      mkUnaryTestConfig
+      (\() -> ([t|Float|], [t|Float|]))
+      [|GHC.Float.tanFloat|]
+    . insertTest
+      (Proxy @"TanhFloat")
+      mkUnaryTestConfig
+      (\() -> ([t|Float|], [t|Float|]))
+      [|GHC.Float.tanhFloat|]
     . insertTest
       (Proxy @"TimesDouble")
       mkBinaryTestConfig
       (\() -> ([t|Double|], [t|Double -> Double|]))
       [|GHC.Float.timesDouble|]
+    . insertTest
+      (Proxy @"TimesFloat")
+      mkBinaryTestConfig
+      (\() -> ([t|Float|], [t|Float -> Float|]))
+      [|GHC.Float.timesFloat|]
     . insertTest (Proxy @"And") mkBinaryTestConfig (\() -> ([t|Bool|], [t|Bool -> Bool|])) [|(&&)|]
     . insertTest (Proxy @"Or") mkBinaryTestConfig (\() -> ([t|Bool|], [t|Bool -> Bool|])) [|(||)|]
     . insertTest (Proxy @"Equal") mkBinaryTestConfig (\a -> (a, [t|$a -> Bool|])) [|(==)|]
@@ -319,12 +493,77 @@ baseTestTerms =
     . insertTest (Proxy @"Gt") mkBinaryTestConfig (\a -> (a, [t|$a -> Bool|])) [|(>)|]
     . insertTest (Proxy @"Le") mkBinaryTestConfig (\a -> (a, [t|$a -> Bool|])) [|(<=)|]
     . insertTest (Proxy @"Lt") mkBinaryTestConfig (\a -> (a, [t|$a -> Bool|])) [|(<)|]
+    . insertTest (Proxy @"EqualDouble") mkBinaryTestConfig (\() -> ([t|Double|], [t|Double -> Bool|])) [|GHC.Float.eqDouble|]
+    . insertTest (Proxy @"GeDouble") mkBinaryTestConfig (\() -> ([t|Double|], [t|Double -> Bool|])) [|GHC.Float.geDouble|]
+    . insertTest (Proxy @"GtDouble") mkBinaryTestConfig (\() -> ([t|Double|], [t|Double -> Bool|])) [|GHC.Float.gtDouble|]
+    . insertTest (Proxy @"LeDouble") mkBinaryTestConfig (\() -> ([t|Double|], [t|Double -> Bool|])) [|GHC.Float.leDouble|]
+    . insertTest (Proxy @"LtDouble") mkBinaryTestConfig (\() -> ([t|Double|], [t|Double -> Bool|])) [|GHC.Float.ltDouble|]
+    . insertTest (Proxy @"EqualFloat") mkBinaryTestConfig (\() -> ([t|Float|], [t|Float -> Bool|])) [|GHC.Float.eqFloat|]
+    . insertTest (Proxy @"GeFloat") mkBinaryTestConfig (\() -> ([t|Float|], [t|Float -> Bool|])) [|GHC.Float.geFloat|]
+    . insertTest (Proxy @"GtFloat") mkBinaryTestConfig (\() -> ([t|Float|], [t|Float -> Bool|])) [|GHC.Float.gtFloat|]
+    . insertTest (Proxy @"LeFloat") mkBinaryTestConfig (\() -> ([t|Float|], [t|Float -> Bool|])) [|GHC.Float.leFloat|]
+    . insertTest (Proxy @"LtFloat") mkBinaryTestConfig (\() -> ([t|Float|], [t|Float -> Bool|])) [|GHC.Float.ltFloat|]
+    . insertTest (Proxy @"EqualInt") mkBinaryTestConfig (\() -> ([t|Int|], [t|Int -> Bool|])) [|GHC.Int.eqInt|]
+    . insertTest (Proxy @"NotEqualInt") mkBinaryTestConfig (\() -> ([t|Int|], [t|Int -> Bool|])) [|GHC.Int.neInt|]
+    . insertTest (Proxy @"GeInt") mkBinaryTestConfig (\() -> ([t|Int|], [t|Int -> Bool|])) [|GHC.Int.geInt|]
+    . insertTest (Proxy @"GtInt") mkBinaryTestConfig (\() -> ([t|Int|], [t|Int -> Bool|])) [|GHC.Int.gtInt|]
+    . insertTest (Proxy @"LeInt") mkBinaryTestConfig (\() -> ([t|Int|], [t|Int -> Bool|])) [|GHC.Int.leInt|]
+    . insertTest (Proxy @"LtInt") mkBinaryTestConfig (\() -> ([t|Int|], [t|Int -> Bool|])) [|GHC.Int.ltInt|]
+    . insertTest (Proxy @"EqualInt16") mkBinaryTestConfig (\() -> ([t|Int16|], [t|Int16 -> Bool|])) [|GHC.Int.eqInt16|]
+    . insertTest (Proxy @"NotEqualInt16") mkBinaryTestConfig (\() -> ([t|Int16|], [t|Int16 -> Bool|])) [|GHC.Int.neInt16|]
+    . insertTest (Proxy @"GeInt16") mkBinaryTestConfig (\() -> ([t|Int16|], [t|Int16 -> Bool|])) [|GHC.Int.geInt16|]
+    . insertTest (Proxy @"GtInt16") mkBinaryTestConfig (\() -> ([t|Int16|], [t|Int16 -> Bool|])) [|GHC.Int.gtInt16|]
+    . insertTest (Proxy @"LeInt16") mkBinaryTestConfig (\() -> ([t|Int16|], [t|Int16 -> Bool|])) [|GHC.Int.leInt16|]
+    . insertTest (Proxy @"LtInt16") mkBinaryTestConfig (\() -> ([t|Int16|], [t|Int16 -> Bool|])) [|GHC.Int.ltInt16|]
+    . insertTest (Proxy @"EqualInt32") mkBinaryTestConfig (\() -> ([t|Int32|], [t|Int32 -> Bool|])) [|GHC.Int.eqInt32|]
+    . insertTest (Proxy @"NotEqualInt32") mkBinaryTestConfig (\() -> ([t|Int32|], [t|Int32 -> Bool|])) [|GHC.Int.neInt32|]
+    . insertTest (Proxy @"GeInt32") mkBinaryTestConfig (\() -> ([t|Int32|], [t|Int32 -> Bool|])) [|GHC.Int.geInt32|]
+    . insertTest (Proxy @"GtInt32") mkBinaryTestConfig (\() -> ([t|Int32|], [t|Int32 -> Bool|])) [|GHC.Int.gtInt32|]
+    . insertTest (Proxy @"LeInt32") mkBinaryTestConfig (\() -> ([t|Int32|], [t|Int32 -> Bool|])) [|GHC.Int.leInt32|]
+    . insertTest (Proxy @"LtInt32") mkBinaryTestConfig (\() -> ([t|Int32|], [t|Int32 -> Bool|])) [|GHC.Int.ltInt32|]
+    . insertTest (Proxy @"EqualInt64") mkBinaryTestConfig (\() -> ([t|Int64|], [t|Int64 -> Bool|])) [|GHC.Int.eqInt64|]
+    . insertTest (Proxy @"NotEqualInt64") mkBinaryTestConfig (\() -> ([t|Int64|], [t|Int64 -> Bool|])) [|GHC.Int.neInt64|]
+    . insertTest (Proxy @"GeInt64") mkBinaryTestConfig (\() -> ([t|Int64|], [t|Int64 -> Bool|])) [|GHC.Int.geInt64|]
+    . insertTest (Proxy @"GtInt64") mkBinaryTestConfig (\() -> ([t|Int64|], [t|Int64 -> Bool|])) [|GHC.Int.gtInt64|]
+    . insertTest (Proxy @"LeInt64") mkBinaryTestConfig (\() -> ([t|Int64|], [t|Int64 -> Bool|])) [|GHC.Int.leInt64|]
+    . insertTest (Proxy @"LtInt64") mkBinaryTestConfig (\() -> ([t|Int64|], [t|Int64 -> Bool|])) [|GHC.Int.ltInt64|]
+    . insertTest (Proxy @"EqualInt8") mkBinaryTestConfig (\() -> ([t|Int8|], [t|Int8 -> Bool|])) [|GHC.Int.eqInt8|]
+    . insertTest (Proxy @"NotEqualInt8") mkBinaryTestConfig (\() -> ([t|Int8|], [t|Int8 -> Bool|])) [|GHC.Int.neInt8|]
+    . insertTest (Proxy @"GeInt8") mkBinaryTestConfig (\() -> ([t|Int8|], [t|Int8 -> Bool|])) [|GHC.Int.geInt8|]
+    . insertTest (Proxy @"GtInt8") mkBinaryTestConfig (\() -> ([t|Int8|], [t|Int8 -> Bool|])) [|GHC.Int.gtInt8|]
+    . insertTest (Proxy @"LeInt8") mkBinaryTestConfig (\() -> ([t|Int8|], [t|Int8 -> Bool|])) [|GHC.Int.leInt8|]
+    . insertTest (Proxy @"LtInt8") mkBinaryTestConfig (\() -> ([t|Int8|], [t|Int8 -> Bool|])) [|GHC.Int.ltInt8|]
+    . insertTest (Proxy @"EqualWord") mkBinaryTestConfig (\() -> ([t|Word|], [t|Word -> Bool|])) [|GHC.Word.eqWord|]
+    . insertTest (Proxy @"NotEqualWord") mkBinaryTestConfig (\() -> ([t|Word|], [t|Word -> Bool|])) [|GHC.Word.neWord|]
+    . insertTest (Proxy @"GeWord") mkBinaryTestConfig (\() -> ([t|Word|], [t|Word -> Bool|])) [|GHC.Word.geWord|]
+    . insertTest (Proxy @"GtWord") mkBinaryTestConfig (\() -> ([t|Word|], [t|Word -> Bool|])) [|GHC.Word.gtWord|]
+    . insertTest (Proxy @"LeWord") mkBinaryTestConfig (\() -> ([t|Word|], [t|Word -> Bool|])) [|GHC.Word.leWord|]
+    . insertTest (Proxy @"LtWord") mkBinaryTestConfig (\() -> ([t|Word|], [t|Word -> Bool|])) [|GHC.Word.ltWord|]
+    . insertTest (Proxy @"EqualWord16") mkBinaryTestConfig (\() -> ([t|Word16|], [t|Word16 -> Bool|])) [|GHC.Word.eqWord16|]
+    . insertTest (Proxy @"NotEqualWord16") mkBinaryTestConfig (\() -> ([t|Word16|], [t|Word16 -> Bool|])) [|GHC.Word.neWord16|]
+    . insertTest (Proxy @"GeWord16") mkBinaryTestConfig (\() -> ([t|Word16|], [t|Word16 -> Bool|])) [|GHC.Word.geWord16|]
+    . insertTest (Proxy @"GtWord16") mkBinaryTestConfig (\() -> ([t|Word16|], [t|Word16 -> Bool|])) [|GHC.Word.gtWord16|]
+    . insertTest (Proxy @"LeWord16") mkBinaryTestConfig (\() -> ([t|Word16|], [t|Word16 -> Bool|])) [|GHC.Word.leWord16|]
+    . insertTest (Proxy @"LtWord16") mkBinaryTestConfig (\() -> ([t|Word16|], [t|Word16 -> Bool|])) [|GHC.Word.ltWord16|]
+    . insertTest (Proxy @"EqualWord32") mkBinaryTestConfig (\() -> ([t|Word32|], [t|Word32 -> Bool|])) [|GHC.Word.eqWord32|]
+    . insertTest (Proxy @"NotEqualWord32") mkBinaryTestConfig (\() -> ([t|Word32|], [t|Word32 -> Bool|])) [|GHC.Word.neWord32|]
+    . insertTest (Proxy @"GeWord32") mkBinaryTestConfig (\() -> ([t|Word32|], [t|Word32 -> Bool|])) [|GHC.Word.geWord32|]
+    . insertTest (Proxy @"GtWord32") mkBinaryTestConfig (\() -> ([t|Word32|], [t|Word32 -> Bool|])) [|GHC.Word.gtWord32|]
+    . insertTest (Proxy @"LeWord32") mkBinaryTestConfig (\() -> ([t|Word32|], [t|Word32 -> Bool|])) [|GHC.Word.leWord32|]
+    . insertTest (Proxy @"LtWord32") mkBinaryTestConfig (\() -> ([t|Word32|], [t|Word32 -> Bool|])) [|GHC.Word.ltWord32|]
+    . insertTest (Proxy @"EqualWord64") mkBinaryTestConfig (\() -> ([t|Word64|], [t|Word64 -> Bool|])) [|GHC.Word.eqWord64|]
+    . insertTest (Proxy @"NotEqualWord64") mkBinaryTestConfig (\() -> ([t|Word64|], [t|Word64 -> Bool|])) [|GHC.Word.neWord64|]
+    . insertTest (Proxy @"GeWord64") mkBinaryTestConfig (\() -> ([t|Word64|], [t|Word64 -> Bool|])) [|GHC.Word.geWord64|]
+    . insertTest (Proxy @"GtWord64") mkBinaryTestConfig (\() -> ([t|Word64|], [t|Word64 -> Bool|])) [|GHC.Word.gtWord64|]
+    . insertTest (Proxy @"LeWord64") mkBinaryTestConfig (\() -> ([t|Word64|], [t|Word64 -> Bool|])) [|GHC.Word.leWord64|]
+    . insertTest (Proxy @"LtWord64") mkBinaryTestConfig (\() -> ([t|Word64|], [t|Word64 -> Bool|])) [|GHC.Word.ltWord64|]
+    . insertTest (Proxy @"EqualWord8") mkBinaryTestConfig (\() -> ([t|Word8|], [t|Word8 -> Bool|])) [|GHC.Word.eqWord8|]
+    . insertTest (Proxy @"NotEqualWord8") mkBinaryTestConfig (\() -> ([t|Word8|], [t|Word8 -> Bool|])) [|GHC.Word.neWord8|]
+    . insertTest (Proxy @"GeWord8") mkBinaryTestConfig (\() -> ([t|Word8|], [t|Word8 -> Bool|])) [|GHC.Word.geWord8|]
+    . insertTest (Proxy @"GtWord8") mkBinaryTestConfig (\() -> ([t|Word8|], [t|Word8 -> Bool|])) [|GHC.Word.gtWord8|]
+    . insertTest (Proxy @"LeWord8") mkBinaryTestConfig (\() -> ([t|Word8|], [t|Word8 -> Bool|])) [|GHC.Word.leWord8|]
+    . insertTest (Proxy @"LtWord8") mkBinaryTestConfig (\() -> ([t|Word8|], [t|Word8 -> Bool|])) [|GHC.Word.ltWord8|]
     . insertTest (Proxy @"Compare") mkBinaryTestConfig (\a -> (a, [t|$a -> Ordering|])) [|compare|]
-    . insertTest
-      (Proxy @"EqDouble")
-      mkBinaryTestConfig
-      (\() -> ([t|Double|], [t|Double -> Bool|]))
-      [|GHC.Classes.eqDouble|]
     . insertTest (Proxy @"Max") mkBinaryTestConfig (\a -> (a, [t|$a -> $a|])) [|max|]
     . insertTest (Proxy @"Min") mkBinaryTestConfig (\a -> (a, [t|$a -> $a|])) [|min|]
     . insertTest (Proxy @"Not") mkUnaryTestConfig (\() -> ([t|Bool|], [t|Bool|])) [|not|]
@@ -339,15 +578,15 @@ baseTestTerms =
     . insertTest (Proxy @"Mod") mkBinaryTestConfig (\a -> (a, [t|$a -> $a|])) [|mod|]
     . insertTest (Proxy @"Divide") mkBinaryTestConfig (\a -> (a, [t|$a -> $a|])) [|(/)|]
     . insertTest
-      (Proxy @"EqWord8")
+      (Proxy @"DivideDouble")
       mkBinaryTestConfig
-      (\() -> ([t|Word8|], [t|Word8 -> Bool|]))
-      [|GHC.Word.eqWord8|]
+      (\() -> ([t|Double|], [t|Double -> Double|]))
+      [|GHC.Float.divideDouble|]
     . insertTest
-      (Proxy @"NeWord8")
+      (Proxy @"DivideFloat")
       mkBinaryTestConfig
-      (\() -> ([t|Word8|], [t|Word8 -> Bool|]))
-      [|GHC.Word.neWord8|]
+      (\() -> ([t|Float|], [t|Float -> Float|]))
+      [|GHC.Float.divideFloat|]
     . insertTest (Proxy @"Atan2") mkBinaryTestConfig (\a -> (a, [t|$a -> $a|])) [|GHC.Float.atan2|]
     . insertTest (Proxy @"Abs") mkUnaryTestConfig (\a -> (a, a)) [|abs|]
     . insertTest (Proxy @"Negate") mkUnaryTestConfig (\a -> (a, a)) [|negate|]
@@ -463,6 +702,7 @@ baseTestTerms =
       mkUnaryTestConfig
       (\(t, a) -> ([t|$t $a|], [t|$a|]))
       [|Data.Foldable.sum|]
+    . insertTest (Proxy @"SumList") mkUnaryTestConfig (\a -> ([t|[$a]|], [t|$a|])) [|Data.List.sum|]
     . insertTest
       (Proxy @"ToList")
       mkUnaryTestConfig
@@ -470,4 +710,4 @@ baseTestTerms =
       [|Data.Foldable.toList|]
     . insertTest (Proxy @"Even") mkUnaryTestConfig (\a -> (a, [t|Bool|])) [|even|]
     . insertTest (Proxy @"Odd") mkUnaryTestConfig (\a -> (a, [t|Bool|])) [|odd|]
-    $ HEmpty1
+    $ newerTestTerms

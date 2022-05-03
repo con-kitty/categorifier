@@ -18,6 +18,7 @@ common options
     -fexpose-all-unfoldings
     -- ensure unfoldings are available
     -fno-omit-interface-pragmas
+    -freduction-depth=0
     -Wall
 
 library

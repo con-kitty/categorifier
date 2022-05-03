@@ -53,6 +53,7 @@ hierarchy = do
 
 makerMapFun :: MakerMapFun
 makerMapFun
+  symbolLookup
   dflags
   logger
   m@Makers {..}
@@ -114,6 +115,7 @@ makerMapFun
     where
       baseMakerMap =
         baseMakerMapFun
+          symbolLookup
           dflags
           logger
           m

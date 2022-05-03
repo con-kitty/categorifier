@@ -134,6 +134,9 @@ instance ConCat.FloatingCat Term a where
   sinC = ZeroId
   sqrtC = ZeroId
 
+instance ConCat.AddCat Term m a where
+  sumAC = ZeroId
+
 instance ConCat.PointedCat Term m a where
   pointC = ZeroId
 
@@ -245,6 +248,9 @@ instance Fractional a => ConCat.FractionalCat Hask a where
 instance ConCat.RepresentableCat (->) f => ConCat.RepresentableCat Hask f where
   tabulateC = Hask ConCat.tabulateC
   indexC = Hask ConCat.indexC
+
+instance (Foldable m, Num a) => ConCat.AddCat Hask m a where
+  sumAC = Hask sum
 
 -- | This doesn't use @`ConCat.PointedCat` (->)@ because it brings in an unwanted dependency on the
 --   pointed library.

@@ -28,6 +28,7 @@ data OptionGroup
   | DebugOption
   | DeferFailuresOption
   | HierarchyOptions
+  | LookupOptions
   | MakerMapOptions
   deriving (Eq, Ord)
 
@@ -39,6 +40,7 @@ groupFromText = \case
   "debug" -> pure DebugOption
   "defer-failures" -> pure DeferFailuresOption
   "hierarchy" -> pure HierarchyOptions
+  "lookup" -> pure LookupOptions
   "maker-map" -> pure MakerMapOptions
   _ -> Nothing
 
