@@ -30,7 +30,6 @@ import Categorifier.Test.Tests
   )
 import Control.Applicative (liftA2)
 import Control.Arrow (Arrow (..), ArrowChoice (..))
-import Control.Monad ((<=<))
 import Data.Bool (bool)
 import Data.Either.Validation (Validation)
 import Data.Proxy (Proxy (..))

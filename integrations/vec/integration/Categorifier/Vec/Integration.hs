@@ -46,7 +46,14 @@ makerMapFun
   categorifyLambda =
     Map.fromListWith
       const
-      [ ( 'Data.Vec.Lazy.bind,
+      [ ( '(Data.Vec.Lazy.!),
+          \case
+            Plugins.Type n' : Plugins.Type a : rest -> do
+              vec <- Map.lookup ''Data.Vec.Lazy.Vec (tyConLookup lookup)
+              pure $ maker1 rest =<\< mkIndex (Plugins.mkTyConApp vec [n']) a
+            _ -> Nothing
+        ),
+        ( 'Data.Vec.Lazy.bind,
           \case
             Plugins.Type n' : Plugins.Type a : Plugins.Type b : rest -> do
               vec <- Map.lookup ''Data.Vec.Lazy.Vec (tyConLookup lookup)
@@ -72,6 +79,13 @@ makerMapFun
             Plugins.Type a : Plugins.Type n' : _num : rest -> do
               vec <- Map.lookup ''Data.Vec.Lazy.Vec (tyConLookup lookup)
               pure $ maker1 rest =<\< mkSum (Plugins.mkTyConApp vec [n']) a
+            _ -> Nothing
+        ),
+        ( 'Data.Vec.Lazy.tabulate,
+          \case
+            Plugins.Type n' : Plugins.Type a : _snati : rest -> do
+              vec <- Map.lookup ''Data.Vec.Lazy.Vec (tyConLookup lookup)
+              pure $ maker1 rest =<\< mkTabulate (Plugins.mkTyConApp vec [n']) a
             _ -> Nothing
         ),
         ( 'Data.Vec.Lazy.traverse,
