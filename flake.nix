@@ -38,7 +38,7 @@
       packages.x86_64-linux = {
         inherit (newHaskellPackages)
           categorifier-category categorifier-client categorifier-common
-          categorifier-duoid categorifier-ghc categorifier-plugin
+          categorifier-duoids categorifier-ghc categorifier-plugin
           categorifier-th;
       };
 
