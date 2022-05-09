@@ -79,6 +79,7 @@ packages:
   ./integrations/concat-extensions/category/categorifier-concat-extensions-category.cabal
   ./integrations/concat-extensions/integration/categorifier-concat-extensions-integration.cabal
   ./integrations/concat-extensions/integration-test/categorifier-concat-extensions-integration-test.cabal
+  ./integrations/fin/integration/categorifier-fin-integration.cabal
   ./integrations/unconcat/category/categorifier-unconcat-category.cabal
   ./integrations/unconcat/integration/categorifier-unconcat-integration.cabal
   ./integrations/unconcat/integration-test/categorifier-unconcat-integration-test.cabal
