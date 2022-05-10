@@ -28,10 +28,10 @@
           self.callCabal2nix "categorifier-hedgehog" ./hedgehog { };
         "categorifier-adjunctions-integration" =
           self.callCabal2nix "categorifier-adjunctions-integration"
-          ./integrations/adjunctions/integration-test { };
+          ./integrations/adjunctions/integration { };
         "categorifier-adjunctions-integration-test" =
           self.callCabal2nix "categorifier-adjunctions-integration-test"
-          ./integrations/adjunctions/integration { };
+          ./integrations/adjunctions/integration-test { };
         "categorifier-categories-integration" =
           self.callCabal2nix "categorifier-categories-integration"
           ./integrations/categories/integration { };
@@ -65,12 +65,12 @@
         "categorifier-unconcat-integration-test" =
           self.callCabal2nix "categorifier-unconcat-integration-test"
           ./integrations/unconcat/integration-test { };
-        "categorifier-vec-integration" =
-          self.callCabal2nix "categorifier-vec-integration"
-          ./integrations/vec/integration { };
-        "categorifier-vec-integration-test" =
-          self.callCabal2nix "categorifier-vec-integration-test"
-          ./integrations/vec/integration-test { };
+        #"categorifier-vec-integration" =
+        #  self.callCabal2nix "categorifier-vec-integration"
+        #  ./integrations/vec/integration { };
+        #"categorifier-vec-integration-test" =
+        #  self.callCabal2nix "categorifier-vec-integration-test"
+        #  ./integrations/vec/integration-test { };
         "categorifier-plugin" =
           self.callCabal2nix "categorifier-plugin" ./plugin { };
         "categorifier-plugin-test" =
@@ -80,6 +80,30 @@
       };
 
     in {
+      packages.x86_64-linux = let
+        newHaskellPackages = pkgs.haskellPackages.override (old: {
+          overrides = pkgs.lib.composeExtensions (old.overrides or (_: _: { }))
+            haskellOverlay;
+        });
+
+      in {
+        inherit (newHaskellPackages)
+          categorifier-category categorifier-client categorifier-common
+          categorifier-duoids categorifier-ghc categorifier-hedgehog
+          categorifier-adjunctions-integration
+          categorifier-adjunctions-integration-test
+          categorifier-categories-integration
+          categorifier-categories-integration-test categorifier-concat-examples
+          categorifier-concat-integration categorifier-concat-integration-test
+          categorifier-concat-extensions-category
+          categorifier-concat-extensions-integration
+          categorifier-concat-extensions-integration-test
+          categorifier-unconcat-category categorifier-unconcat-integration
+          categorifier-unconcat-integration-test
+          #categorifier-vec-integration categorifier-vec-integration-test
+          categorifier-plugin categorifier-plugin-test categorifier-th;
+      };
+
       # see these issues and discussions:
       # - https://github.com/NixOS/nixpkgs/issues/16394
       # - https://github.com/NixOS/nixpkgs/issues/25887
