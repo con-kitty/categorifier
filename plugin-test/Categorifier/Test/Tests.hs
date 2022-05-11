@@ -653,7 +653,6 @@ baseTestTerms =
       mkUnaryTestConfig
       (\a -> ([t|[$a]|], [t|[($a, $a)]|]))
       [|map (id &&& id)|]
-    . insertTest (Proxy @"Point") mkUnaryTestConfig (\a -> (a, [t|Identity $a|])) [|pure|]
     . insertTest
       (Proxy @"Ap")
       mkUnaryTestConfig

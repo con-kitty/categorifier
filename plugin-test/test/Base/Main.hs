@@ -363,7 +363,15 @@ mkTestTerms
   . HInsert1 (Proxy @"Append") (TestCases (const [([t|[Word8]|], Nothing)]))
   . HInsert1 (Proxy @"Mappend") (TestCases (const [([t|[Word8]|], Nothing)]))
   . HInsert1 (Proxy @"ListAppend") (TestCases (const [([t|Word8|], Nothing)]))
-  . HInsert1 (Proxy @"Pure") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
+  . HInsert1
+    (Proxy @"Pure")
+    ( TestCases
+        ( const
+            [ ([t|Double|], pure ([|genFloating|], [|show|])),
+              ([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))
+            ]
+        )
+    )
   . HInsert1 (Proxy @"Return") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1
     (Proxy @"Error")
@@ -389,7 +397,6 @@ mkTestTerms
   . HInsert1 (Proxy @"Fmap'") (TestCases (const [([t|Word8|], Nothing)]))
   . HInsert1 (Proxy @"ConstNot") (TestCases (const [([t|Word8|], Nothing)]))
   . HInsert1 (Proxy @"MapList") (TestCases (const [([t|Word8|], Nothing)]))
-  . HInsert1 (Proxy @"Point") (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))
   . HInsert1 (Proxy @"Ap") (TestCases (const [])) -- no curry
   . HInsert1 (Proxy @"LiftA2") (TestCases (const [(([t|Validation ()|], [t|Int64|], [t|Int64|]), Nothing)]))
   . HInsert1 (Proxy @"Bind") (TestCases (const [([t|Word8|], Nothing)])) -- no curry
