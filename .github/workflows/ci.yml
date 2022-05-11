@@ -22,11 +22,11 @@ jobs:
         ls ${{ github.workspace }}
     - name: build for ghc 8.10.7
       run: |
-        nix search --allow-import-from-derivation .#ghc8107 --json 2> /dev/null | jq -r 'keys[]'
+        nix search --allow-import-from-derivation .#ghc8107
         nix search --allow-import-from-derivation .#ghc8107 --json 2> /dev/null | jq -r 'keys[]' | xargs -I {} nix build --print-build-logs .#{}
     - name: build for ghc 9.2.1
       run: |
-        nix search --allow-import-from-derivation .#ghc921 --json 2> /dev/null | jq -r 'keys[]'
+        nix search --allow-import-from-derivation .#ghc921
         nix search --allow-import-from-derivation .#ghc921 --json 2> /dev/null | jq -r 'keys[]' | xargs -I {} nix build --print-build-logs .#{}
   #   strategy:
   #     matrix:
