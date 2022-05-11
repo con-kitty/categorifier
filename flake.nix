@@ -14,6 +14,7 @@
         pkgs = import nixpkgs {
           overlays = [ concat.overlay ];
           inherit system;
+          config.allowBroken = true;
         };
 
         haskellOverlay = self: super: {
