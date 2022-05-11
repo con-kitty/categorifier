@@ -6,17 +6,12 @@
     concat = {
       url = "github:con-kitty/concat/wavewave-flake";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utlis.follows = "flake-utils";
     };
   };
   outputs = { self, nixpkgs, flake-utils, concat }:
     flake-utils.lib.eachSystem [ "x86_64-linux" "x86_64-darwin" ] (system:
       let
-        pkgs = import nixpkgs {
-          overlays = [ concat.overlay ];
-          inherit system;
-          config.allowBroken = true;
-        };
-
         haskellOverlay = self: super: {
           "categorifier-category" =
             self.callCabal2nix "categorifier-category" ./category { };
@@ -110,24 +105,32 @@
         ];
 
       in {
-        legacyPackages = let
-          newHaskellPackages = pkgs.lib.mapAttrs (ghcVer: ps:
-            ps.override (old: {
-              overrides =
-                pkgs.lib.composeExtensions (old.overrides or (_: _: { }))
-                haskellOverlay;
-            })) pkgs.haskell.packages;
+        # This package set is only useful for CI build test.
+        # In practice, users will create a development environment composed by overlays.
+        packages = let
+          packagesOnGHC = ghcVer:
+            let
+              overlayGHC = final: prev: {
+                haskellPackages = prev.haskell.packages.${ghcVer};
+              };
 
-          makePackageSetFor = ghcVer:
-            let hspkgs = builtins.getAttr ghcVer newHaskellPackages;
+              newPkgs = import nixpkgs {
+                overlays = [ overlayGHC (concat.overlay.${system}) ];
+                inherit system;
+                config.allowBroken = true;
+              };
+
+              newHaskellPackages = newPkgs.haskellPackages.override (old: {
+                overrides =
+                  newPkgs.lib.composeExtensions (old.overrides or (_: _: { }))
+                  haskellOverlay;
+              });
             in builtins.listToAttrs (builtins.map (p: {
-              name = p;
-              value = builtins.getAttr p hspkgs;
+              name = ghcVer + "_" + p;
+              value = builtins.getAttr p newHaskellPackages;
             }) categorifierComponentNames);
-        in {
-          "ghc8107" = makePackageSetFor "ghc8107";
-          "ghc921" = makePackageSetFor "ghc921";
-        };
+        in packagesOnGHC "ghc8107" // packagesOnGHC "ghc884"
+        // packagesOnGHC "ghc901" // packagesOnGHC "ghc921";
 
         # see these issues and discussions:
         # - https://github.com/NixOS/nixpkgs/issues/16394
@@ -143,8 +146,18 @@
         };
 
         devShell = let
-          hsenv = pkgs.haskellPackages.ghcWithPackages
+          ghcVer = "ghc8107";
+          overlayGHC = final: prev: {
+            haskellPackages = prev.haskell.packages.${ghcVer};
+          };
+
+          newPkgs = import nixpkgs {
+            overlays = [ overlayGHC concat.overlay.${system} ];
+            inherit system;
+          };
+
+          hsenv = newPkgs.haskellPackages.ghcWithPackages
             (p: [ p.cabal-install p.concat-examples ]);
-        in pkgs.mkShell { buildInputs = [ hsenv ]; };
+        in newPkgs.mkShell { buildInputs = [ hsenv ]; };
       });
 }
