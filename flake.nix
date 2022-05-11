@@ -81,31 +81,51 @@
 
         };
 
-      in {
-        packages = let
-          newHaskellPackages = pkgs.haskellPackages.override (old: {
-            overrides =
-              pkgs.lib.composeExtensions (old.overrides or (_: _: { }))
-              haskellOverlay;
-          });
+        categorifierComponentNames = [
+          "categorifier-category"
+          "categorifier-client"
+          "categorifier-common"
+          "categorifier-duoids"
+          "categorifier-ghc"
+          "categorifier-hedgehog"
+          "categorifier-adjunctions-integration"
+          "categorifier-adjunctions-integration-test"
+          "categorifier-categories-integration"
+          "categorifier-categories-integration-test"
+          "categorifier-concat-examples"
+          "categorifier-concat-integration"
+          "categorifier-concat-integration-test"
+          "categorifier-concat-extensions-category"
+          "categorifier-concat-extensions-integration"
+          "categorifier-concat-extensions-integration-test"
+          "categorifier-unconcat-category"
+          "categorifier-unconcat-integration"
+          "categorifier-unconcat-integration-test"
+          # "categorifier-vec-integration"
+          # "categorifier-vec-integration-test"
+          "categorifier-plugin"
+          "categorifier-plugin-test"
+          "categorifier-th"
+        ];
 
+      in {
+        legacyPackages = let
+          newHaskellPackages = pkgs.lib.mapAttrs (ghcVer: ps:
+            ps.override (old: {
+              overrides =
+                pkgs.lib.composeExtensions (old.overrides or (_: _: { }))
+                haskellOverlay;
+            })) pkgs.haskell.packages;
+
+          makePackageSetFor = ghcVer:
+            let hspkgs = builtins.getAttr ghcVer newHaskellPackages;
+            in builtins.listToAttrs (builtins.map (p: {
+              name = p;
+              value = builtins.getAttr p hspkgs;
+            }) categorifierComponentNames);
         in {
-          inherit (newHaskellPackages)
-            categorifier-category categorifier-client categorifier-common
-            categorifier-duoids categorifier-ghc categorifier-hedgehog
-            categorifier-adjunctions-integration
-            categorifier-adjunctions-integration-test
-            categorifier-categories-integration
-            categorifier-categories-integration-test
-            categorifier-concat-examples categorifier-concat-integration
-            categorifier-concat-integration-test
-            categorifier-concat-extensions-category
-            categorifier-concat-extensions-integration
-            categorifier-concat-extensions-integration-test
-            categorifier-unconcat-category categorifier-unconcat-integration
-            categorifier-unconcat-integration-test
-            #categorifier-vec-integration categorifier-vec-integration-test
-            categorifier-plugin categorifier-plugin-test categorifier-th;
+          "ghc8107" = makePackageSetFor "ghc8107";
+          "ghc921" = makePackageSetFor "ghc921";
         };
 
         # see these issues and discussions:
