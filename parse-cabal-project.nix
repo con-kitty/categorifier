@@ -1,3 +1,7 @@
+# Ideally, parsing cabal.project should be done via official tools
+# Related discussion here:
+# https://github.com/NixOS/cabal2nix/issues/286
+
 cabalProject:
 let
   content = builtins.readFile cabalProject;
