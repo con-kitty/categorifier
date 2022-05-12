@@ -20,12 +20,21 @@ jobs:
     - name: List files
       run: |
         ls ${{ github.workspace }}
-    - name: build for ghc 8.10.7
-      run: |
-        nix build --print-build-logs .#ghc8107_categorifier-category
-    - name: build for ghc 8.8.4
-      run: |
-        nix build --print-build-logs .#ghc884_categorifier-category
+    - name: build
+      strategy:
+        matrix:
+          ghc:
+            - "ghc8107"
+            - "ghc884"
+      steps:
+        run: |
+          nix build --print-build-logs .#${{ matrix.ghc }}_categorifier-category
+  #  - name: build for ghc 8.10.7
+  #    run: |
+  #      nix build --print-build-logs .#ghc8107_categorifier-category
+  #  - name: build for ghc 8.8.4
+  #    run: |
+  #      nix build --print-build-logs .#ghc884_categorifier-category
   #   strategy:
   #     matrix:
   #       ghc:
