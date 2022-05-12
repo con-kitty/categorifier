@@ -10,16 +10,10 @@
     };
   };
   outputs = { self, nixpkgs, flake-utils, concat }:
-    flake-utils.lib.eachSystem [ "x86_64-linux" "x86_64-darwin" ] (system:
+    flake-utils.lib.eachSystem flake-utils.lib.allSystems (system:
       let
         parseCabalProject = import ./parse-cabal-project.nix;
-        excluded = [
-          "categorifier-vec-integration"
-          "categorifier-vec-integration-test"
-        ];
-        categorifierPackages = let parsed = parseCabalProject ./cabal.project;
-        in builtins.filter ({ name, ... }: !(builtins.elem name excluded))
-        parsed;
+        categorifierPackages = parseCabalProject ./cabal.project;
         categorifierPackageNames =
           builtins.map ({ name, ... }: name) categorifierPackages;
         haskellOverlay = self: super:
@@ -54,9 +48,8 @@
               value = builtins.getAttr name newHaskellPackages;
             }) categorifierPackages);
 
-        in builtins.trace (builtins.elemAt categorifierPackageNames 0)
-        (packagesOnGHC "ghc8107" // packagesOnGHC "ghc884"
-          // packagesOnGHC "ghc901" // packagesOnGHC "ghc921");
+        in packagesOnGHC "ghc8107" // packagesOnGHC "ghc884"
+        // packagesOnGHC "ghc901" // packagesOnGHC "ghc921";
 
         # see these issues and discussions:
         # - https://github.com/NixOS/nixpkgs/issues/16394
