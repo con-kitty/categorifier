@@ -23,6 +23,10 @@
       url = "github:ndmitchell/hlint/v3.4";
       flake = false;
     };
+    linear-base = {
+      url = "github:tweag/linear-base/v0.2.0";
+      flake = false;
+    };
     # this library git repo has an inconsistency in version bound increasing.
     ghc-lib-parser-ex = {
       url =
@@ -30,7 +34,7 @@
       flake = false;
     };
   };
-  outputs = { self, nixpkgs, flake-utils, concat, yaya
+  outputs = { self, nixpkgs, flake-utils, concat, linear-base, yaya
     , ghc-typelits-natnormalise, hlint, ghc-lib-parser-ex }:
     flake-utils.lib.eachSystem flake-utils.lib.allSystems (system:
       let
@@ -44,6 +48,8 @@
                   "PyF" = haskellLib.dontCheck super.PyF;
                   # test is broken.
                   "barbies" = haskellLib.dontCheck super.barbies;
+                  # linear-base 0.2.0
+                  "linear-base" =  self.callCabal2nix "linear-base" linear-base { };
                   # yaya 0.4.2.1
                   "yaya" = self.callCabal2nix "yaya" (yaya + "/core") { };
                   # yaya-unsafe 0.2.0.1

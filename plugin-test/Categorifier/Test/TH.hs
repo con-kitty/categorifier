@@ -1,3 +1,7 @@
+{-# LANGUAGE CPP #-}
+#if MIN_VERSION_GLASGOW_HASKELL(9, 0, 0, 0)
+{-# LANGUAGE LinearTypes #-}
+#endif
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -40,6 +44,12 @@ import Language.Haskell.TH (Dec, Exp, Name, Q, Type)
 import qualified Language.Haskell.TH as TH
 import PyF (fmt)
 
+#if MIN_VERSION_GLASGOW_HASKELL(9, 0, 0, 0)
+-- | The one from linear-base doesn't work, because it's not parametric, but specialized to @%1@.
+forget :: forall {q} a b. (a %q -> b) %1 -> a -> b
+forget f a = f a
+#endif
+
 data TestCategory = TestCategory
   { arrName :: Name,
     arrTy :: Q Type,
@@ -60,8 +70,8 @@ mkFunNameFromArrow cat = mkSafeFunName . (fnPrefix cat <>)
 data TestStrategy
   = -- | If it compiles, the test should be considered a pass
     CheckCompileOnly
-  | -- | Compute the expected output from the input and verify that running the
-    -- function gives the correct value.
+  | -- | Compute the expected output from the input and verify that running the function gives the
+    --   correct value. The expression here should have the type @k a b -> a %q -> b@
     ComputeFromInput (Q Exp)
 
 data TestConfig = TestConfig
@@ -82,7 +92,12 @@ mkUnaryTestConfig funName' arrowTy = TestConfig arrowTy funName' [|id|]
 
 -- | Provide test configuration information for the specified arrow and binary function.
 mkBinaryTestConfig :: String -> TestCategory -> TestConfig
+#if MIN_VERSION_GLASGOW_HASKELL(9, 0, 0, 0)
+mkBinaryTestConfig funName' arrowTy =
+  TestConfig arrowTy funName' [|uncurry . fmap (forget forget) . forget forget|]
+#else
 mkBinaryTestConfig funName' arrowTy = TestConfig arrowTy funName' [|uncurry|]
+#endif
 
 -- | Provide test configuration information for the specified arrow and ternary function.
 mkTernaryTestConfig :: String -> TestCategory -> TestConfig
@@ -148,7 +163,7 @@ expectBuildFailure calcExpected i (TestConfig arrowTy funName' _) testTy =
 mkTopLevelPair :: TestCategory -> [(String, Name)] -> (Name, Q Exp)
 mkTopLevelPair arrowTy names =
   ( arrowLabel,
-    [|
+    [e|
       Hedgehog.checkSequential $
         Hedgehog.Group
           $(nameBaseLiteral $ arrName arrowTy)
@@ -205,11 +220,12 @@ mkTestTerms testTerms arrows testCases =
   ( uncurry (liftA2 (<>))
       . bimap
         ( \labels ->
-            [d|
-              allTestTerms :: IO [Bool]
-              allTestTerms =
-                sequenceA $(foldr (TH.appE . TH.appE (TH.conE '(:)) . TH.varE) [|[]|] labels)
-              |]
+            let emptyList = [|[]|]
+             in [d|
+                  allTestTerms :: IO [Bool]
+                  allTestTerms =
+                    sequenceA $(foldr (TH.appE . TH.appE (TH.conE '(:)) . TH.varE) emptyList labels)
+                  |]
         )
         (pure . join)
       . unzip
