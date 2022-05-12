@@ -84,6 +84,8 @@
 
           hsenv = newPkgs.haskellPackages.ghcWithPackages
             (p: [ p.cabal-install p.concat-examples ]);
-        in newPkgs.mkShell { buildInputs = [ hsenv ]; };
+        in newPkgs.mkShell {
+          buildInputs = [ hsenv newPkgs.haskell-language-server ];
+        };
       });
 }
