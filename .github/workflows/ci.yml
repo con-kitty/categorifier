@@ -10,6 +10,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ghc:
+          - "ghc8107"
+          - "ghc884"
     steps:
     - name: Install nix
       uses: cachix/install-nix-action@v16
@@ -21,14 +26,8 @@ jobs:
       run: |
         ls ${{ github.workspace }}
     - name: build
-      strategy:
-        matrix:
-          ghc:
-            - "ghc8107"
-            - "ghc884"
-      steps:
-        run: |
-          nix build --print-build-logs .#${{ matrix.ghc }}_categorifier-category
+      run: |
+        nix build --print-build-logs .#${{ matrix.ghc }}_categorifier-category
   #  - name: build for ghc 8.10.7
   #    run: |
   #      nix build --print-build-logs .#ghc8107_categorifier-category
