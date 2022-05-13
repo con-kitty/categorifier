@@ -13,6 +13,7 @@ where
 import Categorifier.Test.HList (HMap1 (..))
 import Categorifier.Test.TH (mkBinaryTestConfig, mkExprTest, mkUnaryTestConfig)
 import Categorifier.Test.Tests (TestTerms, insertTest)
+import Data.Fin (Fin)
 import Data.Proxy (Proxy (..))
 import qualified Data.Type.Nat as Nat
 import Data.Vec.Lazy (Vec (..))
@@ -26,11 +27,21 @@ testTerms =
     (\a -> ([t|Vec Nat.Nat9 $a|], [t|($a -> Vec Nat.Nat9 $a) -> Vec Nat.Nat9 $a|]))
     [|Vec.bind|]
     . insertTest
+      (Proxy @"IndexVec")
+      mkBinaryTestConfig
+      (\a -> ([t|Vec Nat.Nat9 $a|], [t|Fin Nat.Nat9 -> $a|]))
+      [|(Vec.!)|]
+    . insertTest
       (Proxy @"MapVec")
       mkUnaryTestConfig
       (\a -> ([t|Vec Nat.Nat9 $a|], [t|Vec Nat.Nat9 $a|]))
       [|Vec.map id|]
     . insertTest (Proxy @"SumVec") mkUnaryTestConfig (\a -> ([t|Vec Nat.Nat9 $a|], a)) [|Vec.sum|]
+    . insertTest
+      (Proxy @"TabulateVec")
+      mkUnaryTestConfig
+      (\a -> ([t|Fin Nat.Nat9 -> $a|], [t|Vec Nat.Nat9 $a|]))
+      [|Vec.tabulate|]
     . insertTest
       (Proxy @"TraverseVec")
       mkUnaryTestConfig
