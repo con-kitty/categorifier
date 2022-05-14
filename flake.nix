@@ -22,11 +22,6 @@
             value = self.callCabal2nix name (./. + "/${path}") { };
           }) categorifierPackages);
 
-        pkgs0 = import nixpkgs {
-          overlays = [ ];
-          inherit system;
-        };
-
       in {
         # This package set is only useful for CI build test.
         # In practice, users will create a development environment composed by overlays.
