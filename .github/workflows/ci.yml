@@ -29,7 +29,7 @@ jobs:
         ls ${{ github.workspace }}
     - name: build
       run: |
-        nix build --print-build-logs .#${{ matrix.ghc }}_categorifier-category
+        nix build --print-build-logs .#${{ matrix.ghc }}_all
   format:
     runs-on: ubuntu-20.04
     steps:

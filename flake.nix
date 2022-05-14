@@ -22,6 +22,11 @@
             value = self.callCabal2nix name (./. + "/${path}") { };
           }) categorifierPackages);
 
+        pkgs0 = import nixpkgs {
+          overlays = [ ];
+          inherit system;
+        };
+
       in {
         # This package set is only useful for CI build test.
         # In practice, users will create a development environment composed by overlays.
@@ -43,10 +48,24 @@
                   newPkgs.lib.composeExtensions (old.overrides or (_: _: { }))
                   haskellOverlay;
               });
-            in builtins.listToAttrs (builtins.map ({ name, ... }: {
-              name = ghcVer + "_" + name;
-              value = builtins.getAttr name newHaskellPackages;
-            }) categorifierPackages);
+
+              individualPackages = builtins.listToAttrs (builtins.map
+                ({ name, ... }: {
+                  name = ghcVer + "_" + name;
+                  value = builtins.getAttr name newHaskellPackages;
+                }) categorifierPackages);
+
+              allEnv = let
+                hsenv = newHaskellPackages.ghcWithPackages (p:
+                  let
+                    deps = builtins.map ({ name, ... }: p.${name})
+                      categorifierPackages;
+                  in deps);
+              in newPkgs.buildEnv {
+                name = "all-packages";
+                paths = [ hsenv ];
+              };
+            in individualPackages // { "${ghcVer}_all" = allEnv; };
 
         in packagesOnGHC "ghc8107" // packagesOnGHC "ghc884"
         // packagesOnGHC "ghc901" // packagesOnGHC "ghc921";
@@ -65,7 +84,7 @@
         };
 
         devShell = let
-          ghcVer = "ghc921";
+          ghcVer = "ghc8107";
           overlayGHC = final: prev: {
             haskellPackages = prev.haskell.packages.${ghcVer};
           };
@@ -77,6 +96,7 @@
 
           hsenv = newPkgs.haskellPackages.ghcWithPackages
             (p: [ p.cabal-install p.concat-examples ]);
+
         in newPkgs.mkShell {
           buildInputs = [ hsenv newPkgs.haskell-language-server ];
         };
