@@ -5,11 +5,12 @@
 
 module Categorifier.Vec.Client
   ( HasRep (..),
+    Rep,
     deriveHasRep,
   )
 where
 
-import Categorifier.Client (HasRep (..), deriveHasRep)
+import Categorifier.Client (HasRep (..), Rep, deriveHasRep)
 import Data.Vec.Lazy (Vec (..))
 
 deriveHasRep ''Vec

@@ -15,7 +15,7 @@ module Categorifier.Category
   )
 where
 
-import Categorifier.Client (HasRep (..))
+import Categorifier.Client (HasRep (..), Rep)
 import GHC.TypeLits (Symbol)
 import Unsafe.Coerce (unsafeCoerce)
 

@@ -8,6 +8,7 @@
 --   would mean you miss the instances.
 module Categorifier.Client.Internal
   ( HasRep (..),
+    Rep,
     deriveHasRep,
   )
 where
@@ -27,6 +28,42 @@ import Data.Tuple.Extra (fst3, snd3, thd3)
 import Data.Void (Void)
 import PyF (fmt)
 
+-- | The "standard representation" that forms an isomorphism with the underlying type. This type
+--   should only modify the current type (not the types contained within this one), and should
+--   consist only of `Either`, `Void`, `()`, `(,)` (strictly 2-tuples), and `Dict`.
+--
+--   E.g., the type
+-- > data Foo a = Num a => Bar a Int String | Baz (a -> a)
+--   would have an instance like the following
+-- > type instance Rep (Foo a) = Either (Dict (Num a), ((a, Int), String)) (a -> a)
+--  (the specific tuple groupings and orderings are not important, so long as the isomorphism holds,
+--   but making the structure as shallow as possible helps with performance).
+--
+--   Existentials are not supported (as they're not supported by type families in general), but some
+--   GADTs can be handled by creating multiple `HasRep` instances, one for each "return type" so
+--   long as all the return types are disjoint (again, as type families don't allow overlapping).
+--
+--  __NB__: The actual type here is considered an implementation detail, and should not be relied on
+--         (beyond the expectations provided above). Minor changes will not be considered breaking.
+--
+--  __NB__: This is intentionally not an associated type family of `HasRep` in order to avoid some
+--          overlapping instance issues with GADTs. E.g., given a type like
+--        > data Bar a where
+--        >   BNat :: Natural -> Bar Natural
+--        >   BDub :: Double -> Bar Double
+--        >   BEmpty :: Bar a
+--        >   BCombine :: Bar a -> Bar a -> Bar a
+--          there are three distinct `HasRep` instances, @Bar Natural@ and @Bar Double@ each have
+--          three constructors to handle, and @Bar a@ has two constructors to handle. However,
+--          @Bar a@ must be declared @overappable@, and that isn't allowed if the class has an
+--          associated type family.
+--
+--          We could replace @Bar a@ with separate instances for each concrete @a@ we need to
+--          support, but that introduces a lot of duplication. To avoid that, we keep the type
+--          family separate, allowing the overlappable instance, then only duplicate the
+--          @type instance `Rep`@ declaration for each concrete @a@ we need to support.
+type family Rep a
+
 -- | Convert to and from standard representations. Used for transforming case expression scrutinees
 --   and constructor applications. The 'repr' method should convert to a standard representation
 --  (unit, products, sums). The 'abst' method should reveal a constructor so that we can perform the
@@ -44,27 +81,6 @@ import PyF (fmt)
 --   expect from `Generic` instances (at least in GHC 8.10). If this changes in future, it would be
 --   good to support `Generic` as an alternative representation.
 class HasRep a where
-  -- | The "standard representation" that forms an isomorphism with the underlying type. This type
-  --   should only modify the current type (not the types contained within this one), and should
-  --   consist only of `Either`, `Void`, `()`, `(,)` (strictly 2-tuples), and `Dict`.
-  --
-  --   E.g., the type
-  -- > data Foo a = Num a => Bar a Int String | Baz (a -> a)
-  --   would have an instance like the following
-  -- > type Rep (Foo a) = Either (Dict (Num a), ((a, Int), String)) (a -> a)
-  --  (the specific tuple groupings and orderings are not important, so long as the isomporphism
-  --   holds, but making the structure as shallow as possible helps with performance).
-  --
-  --   Existentials are not supported (as they're not supported by type families in general), but
-  --   some GADTs can be handled by creating multiple `HasRep` instances, one for each "return type"
-  --   so long as all the return types are disjoint (again, as type families don't allow
-  --   overlapping).
-  --
-  --  __NB__: The actual type here is considered an implementation detail, and should not be relied
-  --          on (beyond the expectations provided above). Minor changes will not be considered
-  --          breaking.
-  type Rep a
-
   -- | Convert a value in the standard represetation to a value of the underlying type.
   --
   --  __NB__: The implementation should contain only pattern matching and data constructor
@@ -113,8 +129,9 @@ data DeriveCallFailure
 --   other than `Double` or `Int` can never be introduced, so this is distinct from the more
 --   problematic overlapping case that is currently impossible to support at all.
 --
+-- > type instance Rep (SomeExpr Double) = Either Double (SomeExpr Double, SomeExpr Double)
+-- > type instance Rep (SomeExpr Int) = Either Int (SomeExpr Int, SomeExpr Int)
 -- > instance HasRep (SomeExpr Double) where
--- >   type Rep (SomeExpr Double) = Either Double (SomeExpr Double, SomeExpr Double)
 -- >   abst = \case
 -- >     Left d -> DubLit d
 -- >     Right (x, y) -> Add x y
@@ -124,7 +141,6 @@ data DeriveCallFailure
 -- >     Add x y -> Right (x, y)
 -- >   {-# INLINE repr #-}
 -- > instance HasRep (SomeExpr Int) where
--- >   type Rep (SomeExpr Int) = Either Int (SomeExpr Int, SomeExpr Int)
 -- >   abst = \case
 -- >     Left i -> IntLit i
 -- >     Right (x, y) -> Add x y
@@ -135,7 +151,10 @@ data DeriveCallFailure
 -- >   {-# INLINE repr #-}
 deriveHasRep :: TH.Name -> TH.DecsQ
 deriveHasRep name =
-  either (Exception.throwIOAsException explainDeriveCallFailure) sequenceA . deriveHasRep'
+  either
+    (Exception.throwIOAsException explainDeriveCallFailure)
+    (sequenceA . foldMap (\(t, m) -> [t, m]))
+    . deriveHasRep'
     =<< TH.reify name
   where
     explainDeriveCallFailure = \case
@@ -191,7 +210,7 @@ groupByType = foldr gbt []
               existing
        in if hasMatched then updatedMap else (ty, pure (tq, p, e)) : updatedMap
 
-deriveHasRep' :: TH.Info -> Either DeriveCallFailure [TH.DecQ]
+deriveHasRep' :: TH.Info -> Either DeriveCallFailure [(TH.DecQ, TH.DecQ)]
 deriveHasRep' = \case
   TH.DataConI {} -> Left MisquotedName
   TH.TyConI (TH.DataD ctx name tyVarBndrs _ dataCons _) ->
@@ -204,7 +223,7 @@ deriveHasRep' = \case
 
     -- Produces one or more `HasRep` instances for the given `TH.Type`. It can be more than one in
     -- the case of GADTs.
-    hasReps :: TH.Type -> TH.Cxt -> [TH.Con] -> Either (NonEmpty GadtProcessingFailure) [TH.DecQ]
+    hasReps :: TH.Type -> TH.Cxt -> [TH.Con] -> Either (NonEmpty GadtProcessingFailure) [(TH.DecQ, TH.DecQ)]
     hasReps type0 ctx =
       fmap (fmap (uncurry sums) . groupByType)
         . traverseD (((first (fmap GadtMissingName) . getParallel) .) . noteAccum $ processCon type0 ctx)
@@ -225,13 +244,16 @@ deriveHasRep' = \case
       TH.RecGadtC names fieldTypes type1 ->
         (\conName -> (type1, hasRep' conName ctx $ fmap thd3 fieldTypes)) <$> listToMaybe names
 
-    sums :: TH.Type -> NonEmpty (TH.TypeQ, (TH.PatQ, TH.ExpQ), (TH.PatQ, TH.ExpQ)) -> TH.DecQ
+    sums :: TH.Type -> NonEmpty (TH.TypeQ, (TH.PatQ, TH.ExpQ), (TH.PatQ, TH.ExpQ)) -> (TH.DecQ, TH.DecQ)
     sums type0 cons =
-      hasRepInstD
-        (pure type0)
-        (mkNestedPairs (\x y -> [t|Either $x $y|]) [t|Void|] . toList =<< traverse fst3 cons)
-        (buildClauses (mkNestedSums (\x -> [p|Left $x|]) (\x -> [p|Right $x|])) id . toList $ fmap snd3 cons)
-        (buildClauses id (mkNestedSums (\x -> [|Left $x|]) (\x -> [|Right $x|])) . toList $ fmap thd3 cons)
+      ( repInstD
+          (pure type0)
+          (mkNestedPairs (\x y -> [t|Either $x $y|]) [t|Void|] . toList =<< traverse fst3 cons),
+        hasRepInstD
+          (pure type0)
+          (buildClauses (mkNestedSums (\x -> [p|Left $x|]) (\x -> [p|Right $x|])) id . toList $ fmap snd3 cons)
+          (buildClauses id (mkNestedSums (\x -> [|Left $x|]) (\x -> [|Right $x|])) . toList $ fmap thd3 cons)
+      )
 
     buildClauses ::
       ([TH.PatQ] -> [TH.PatQ]) -> ([TH.ExpQ] -> [TH.ExpQ]) -> [(TH.PatQ, TH.ExpQ)] -> [TH.ClauseQ]
@@ -241,13 +263,15 @@ deriveHasRep' = \case
         . bimap (fmap pure . patFn) (fmap (fmap TH.NormalB) . expFn)
         . unzip
 
-    hasRepInstD :: TH.TypeQ -> TH.TypeQ -> [TH.ClauseQ] -> [TH.ClauseQ] -> TH.DecQ
-    hasRepInstD type0 repTy abstClauses reprClauses =
+    repInstD :: TH.TypeQ -> TH.TypeQ -> TH.DecQ
+    repInstD type0 = TH.tySynInstD . TH.tySynEqn Nothing (foldl' TH.appT (TH.conT ''Rep) [type0])
+
+    hasRepInstD :: TH.TypeQ -> [TH.ClauseQ] -> [TH.ClauseQ] -> TH.DecQ
+    hasRepInstD type0 abstClauses reprClauses =
       TH.instanceD
         (pure [])
         [t|HasRep $type0|]
-        [ TH.tySynInstD $ TH.tySynEqn Nothing (foldl' TH.appT (TH.conT ''Rep) [type0]) repTy,
-          TH.funD 'abst abstClauses,
+        [ TH.funD 'abst abstClauses,
           TH.pragInlD 'abst TH.Inline TH.FunLike TH.AllPhases,
           TH.funD 'repr reprClauses,
           TH.pragInlD 'repr TH.Inline TH.FunLike TH.AllPhases
