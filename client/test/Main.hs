@@ -129,11 +129,10 @@ prop_altVecSIso =
   let a = genFloating @Double
    in iso (genAltVec @(Nat.FromGHC 10) a) (genRepAltVecS a)
 
--- | It's currently not supported to derive a working `Client.HasRep` for this type, so we test this
---   with manual instances.
---
---   In this case, @a@ can only be `Double` or `Int`, because those are the only base cases. So we
---   can fully define `Client.HasRep` with only two instances (and two `Client.Rep` instances).
+-- | This type has overlapping instances, but can be fully supported with `Client.deriveHasRep`,
+--   since @a@ can only be `Double` or `Int`, because those are the only base cases. So we let
+--  `Client.deriveHasRep` create all three instances, even though the @overlappable@ one (for
+--   @`HasRep` (`SomeExpr` a)@) can never be referenced.
 data SomeExpr a where
   DubLit :: Double -> SomeExpr Double
   IntLit :: Int -> SomeExpr Int
@@ -143,29 +142,7 @@ deriving instance Eq a => Eq (SomeExpr a)
 
 deriving instance Show a => Show (SomeExpr a)
 
-type instance Client.Rep (SomeExpr Double) = Either Double (SomeExpr Double, SomeExpr Double)
-
-type instance Client.Rep (SomeExpr Int) = Either Int (SomeExpr Int, SomeExpr Int)
-
-instance Client.HasRep (SomeExpr Double) where
-  abst = \case
-    Left d -> DubLit d
-    Right (x, y) -> Add x y
-  {-# INLINE abst #-}
-  repr = \case
-    DubLit d -> Left d
-    Add x y -> Right (x, y)
-  {-# INLINE repr #-}
-
-instance Client.HasRep (SomeExpr Int) where
-  abst = \case
-    Left i -> IntLit i
-    Right (x, y) -> Add x y
-  {-# INLINE abst #-}
-  repr = \case
-    IntLit i -> Left i
-    Add x y -> Right (x, y)
-  {-# INLINE repr #-}
+Client.deriveHasRep ''SomeExpr
 
 genSomeExprDouble :: Hedgehog.Gen (SomeExpr Double)
 genSomeExprDouble =
@@ -200,15 +177,11 @@ prop_someExprIntIso = iso genSomeExprInt genRepSomeExprInt
 -- | A slightly more complicated type than `SomeExpr`, allowing @a@ to be something other than one
 --   of the concrete types used in the other constructor result types (`Double` and `Int`).
 --
---   In this case, we need three `Client.HasRep` instances (`Double`, `Int`, and @a@). The instance
---   for @a@ has two extra requirements: 1. it needs to be @overlappable@ and 2. it needs an
---   equality constraint matching the general @`Client.Rep` a@ pattern. Then we need a `Client.Rep`
---   instance for each concrete type we want @a@ to be. Instances matching the concrete
---  `Client.HasRep` types (`Double` and `Int`) have to cover all the cases that can be specialized
---   that way, then the remaining cases (`Bool` and `Char`) need to match the pattern in the
---   equality constraint on the @`Client.HasRep` a@ instance. Also, if you don't know all the types
---   that are needed, downstream users can add their own
---   @type instance `Client.Rep` (`WeirdExpr` _)@ as necessary.
+--  `Client.deriveHasRep` can provide all the `Client.HasRep` instances as well as the `Client.Rep`
+--   instances for the base cases (`Double` and `Int`). However, any other types used for @a@ must
+--   have `Client.Rep` instances defined manually. Also, if you don't know all the types that are
+--   needed, downstream users can add their own @type instance `Client.Rep` (`WeirdExpr` _)@ as
+--   necessary.
 data WeirdExpr a where
   WeirdDub :: Double -> WeirdExpr Double
   WeirdInt :: Int -> WeirdExpr Int
@@ -219,56 +192,15 @@ deriving instance Eq a => Eq (WeirdExpr a)
 
 deriving instance Show a => Show (WeirdExpr a)
 
-type instance
-  Client.Rep (WeirdExpr Double) =
-    Either Double (Either () (WeirdExpr Double, WeirdExpr Double))
-
-type instance Client.Rep (WeirdExpr Int) = Either Int (Either () (WeirdExpr Int, WeirdExpr Int))
+Client.deriveHasRep ''WeirdExpr
 
 -- | A simple helper synonym that you can export to insulate users from changes to the type.
-type RepPattern a = Either () (WeirdExpr a, WeirdExpr a)
+--   Ideally, this would be produced by `Client.deriveHasRep` for any @overlappable@ case.
+type WeirdExprRepPattern a = Either () (WeirdExpr a, WeirdExpr a)
 
-type instance Client.Rep (WeirdExpr Bool) = RepPattern Bool
+type instance Client.Rep (WeirdExpr Bool) = WeirdExprRepPattern Bool
 
-type instance Client.Rep (WeirdExpr Char) = RepPattern Char
-
-instance Client.HasRep (WeirdExpr Double) where
-  abst = \case
-    Left d -> WeirdDub d
-    Right (Left ()) -> Empty
-    Right (Right (x, y)) -> Combine x y
-  {-# INLINE abst #-}
-  repr = \case
-    WeirdDub d -> Left d
-    Empty -> Right (Left ())
-    Combine x y -> Right (Right (x, y))
-  {-# INLINE repr #-}
-
-instance Client.HasRep (WeirdExpr Int) where
-  abst = \case
-    Left i -> WeirdInt i
-    Right (Left ()) -> Empty
-    Right (Right (x, y)) -> Combine x y
-  {-# INLINE abst #-}
-  repr = \case
-    WeirdInt i -> Left i
-    Empty -> Right (Left ())
-    Combine x y -> Right (Right (x, y))
-  {-# INLINE repr #-}
-
-instance
-  {-# OVERLAPPABLE #-}
-  (Client.Rep (WeirdExpr a) ~ RepPattern a) =>
-  Client.HasRep (WeirdExpr a)
-  where
-  abst = \case
-    Left () -> Empty
-    Right (x, y) -> Combine x y
-  {-# INLINE abst #-}
-  repr = \case
-    Empty -> Left ()
-    Combine x y -> Right (x, y)
-  {-# INLINE repr #-}
+type instance Client.Rep (WeirdExpr Char) = WeirdExprRepPattern Char
 
 genWeirdExprDouble :: Hedgehog.Gen (WeirdExpr Double)
 genWeirdExprDouble =

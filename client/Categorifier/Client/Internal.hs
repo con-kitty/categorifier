@@ -17,12 +17,12 @@ import qualified Categorifier.Common.IO.Exception as Exception
 import Categorifier.Duoidal (Parallel (..), traverseD)
 import Categorifier.Duoidal.Either (noteAccum)
 import qualified Categorifier.TH as TH
+import Control.Monad ((<=<))
 import Data.Bifunctor (Bifunctor (..))
 import Data.Constraint (Dict (..))
 import Data.Foldable (foldl', toList)
 import Data.List.NonEmpty (NonEmpty (..))
-import qualified Data.List.NonEmpty as NE
-import Data.Maybe (listToMaybe)
+import Data.Maybe (isJust, listToMaybe)
 import Data.Semigroup (Any (..))
 import Data.Tuple.Extra (fst3, snd3, thd3)
 import Data.Void (Void)
@@ -151,10 +151,7 @@ data DeriveCallFailure
 -- >   {-# INLINE repr #-}
 deriveHasRep :: TH.Name -> TH.DecsQ
 deriveHasRep name =
-  either
-    (Exception.throwIOAsException explainDeriveCallFailure)
-    (sequenceA . foldMap (\(t, m) -> [t, m]))
-    . deriveHasRep'
+  either (Exception.throwIOAsException explainDeriveCallFailure) sequenceA . deriveHasRep'
     =<< TH.reify name
   where
     explainDeriveCallFailure = \case
@@ -173,44 +170,42 @@ explainGadtProcessingFailure = \case
 This should be impossible.|]
   UnableToAlphaRename _ -> ""
 
-groupByType :: [(TH.Type, (TH.TypeQ, a, b))] -> [(TH.Type, NonEmpty (TH.TypeQ, a, b))]
-groupByType = foldr gbt []
+findDistinctTypes :: [TH.Type] -> [TH.Type]
+findDistinctTypes = foldr gbt []
   where
+    gbt ty existing = if any (isJust . TH.alphaEquiv ty) existing then existing else ty : existing
+
+groupByType :: [(TH.Type, (TH.TypeQ, a, b))] -> [(TH.Type, (Bool, [(TH.TypeQ, a, b)]))]
+groupByType tys = foldr gbt distinctTys tys
+  where
+    distinctTys = fmap (,(False, [])) . findDistinctTypes $ fst <$> tys
     gbt (ty, (tq, p, e)) existing =
-      let (Any hasMatched, updatedMap) =
+      let rewrite m =
+            either
+              -- __TODO__: This throws too soon, but it's complicated to propagate this
+              --           particular failure. We need to build the `Rep` outside of `Q`.
+              (Exception.throwIOAsException explainGadtProcessingFailure . UnableToAlphaRename)
+              pure
+              . TH.rewriteType m
+              =<< tq
+          (Any hasMatched, updatedMap) =
             traverse
-              ( \(t, es) ->
+              ( \(t, (overlappable, es)) ->
                   -- if the types are alpha equivalent, then alpha rename the `Rep` of the type to
                   -- match the variables in the group key.
                   maybe
-                    (Any False, (t, es))
-                    ( \m ->
-                        ( Any True,
-                          ( t,
-                            NE.cons
-                              ( either
-                                  -- __TODO__: This throws too soon, but it's complicated to
-                                  --           propagate this particular failure. We need to build
-                                  --           the `Rep` outised of `Q`.
-                                  ( Exception.throwIOAsException explainGadtProcessingFailure
-                                      . UnableToAlphaRename
-                                  )
-                                  pure
-                                  . TH.alphaRename m
-                                  =<< tq,
-                                p,
-                                e
-                              )
-                              es
-                          )
-                        )
+                    (Any False, (t, (overlappable, es)))
+                    ( \case
+                        (EQ, m) -> (Any True, (t, (overlappable, (rewrite m, p, e) : es)))
+                        (GT, m) -> (Any False, (t, (overlappable, (rewrite m, p, e) : es)))
+                        (LT, _) -> (Any False, (t, (True, es)))
                     )
-                    $ TH.alphaEquiv ty t
+                    $ TH.compareTypes ty t
               )
               existing
-       in if hasMatched then updatedMap else (ty, pure (tq, p, e)) : updatedMap
+       in if hasMatched then updatedMap else (ty, (False, pure (tq, p, e))) : updatedMap
 
-deriveHasRep' :: TH.Info -> Either DeriveCallFailure [(TH.DecQ, TH.DecQ)]
+deriveHasRep' :: TH.Info -> Either DeriveCallFailure [TH.DecQ]
 deriveHasRep' = \case
   TH.DataConI {} -> Left MisquotedName
   TH.TyConI (TH.DataD ctx name tyVarBndrs _ dataCons _) ->
@@ -223,9 +218,9 @@ deriveHasRep' = \case
 
     -- Produces one or more `HasRep` instances for the given `TH.Type`. It can be more than one in
     -- the case of GADTs.
-    hasReps :: TH.Type -> TH.Cxt -> [TH.Con] -> Either (NonEmpty GadtProcessingFailure) [(TH.DecQ, TH.DecQ)]
+    hasReps :: TH.Type -> TH.Cxt -> [TH.Con] -> Either (NonEmpty GadtProcessingFailure) [TH.DecQ]
     hasReps type0 ctx =
-      fmap (fmap (uncurry sums) . groupByType)
+      fmap (uncurry sums <=< groupByType)
         . traverseD (((first (fmap GadtMissingName) . getParallel) .) . noteAccum $ processCon type0 ctx)
 
     processCon ::
@@ -244,16 +239,19 @@ deriveHasRep' = \case
       TH.RecGadtC names fieldTypes type1 ->
         (\conName -> (type1, hasRep' conName ctx $ fmap thd3 fieldTypes)) <$> listToMaybe names
 
-    sums :: TH.Type -> NonEmpty (TH.TypeQ, (TH.PatQ, TH.ExpQ), (TH.PatQ, TH.ExpQ)) -> (TH.DecQ, TH.DecQ)
-    sums type0 cons =
-      ( repInstD
-          (pure type0)
-          (mkNestedPairs (\x y -> [t|Either $x $y|]) [t|Void|] . toList =<< traverse fst3 cons),
-        hasRepInstD
-          (pure type0)
-          (buildClauses (mkNestedSums (\x -> [p|Left $x|]) (\x -> [p|Right $x|])) id . toList $ fmap snd3 cons)
-          (buildClauses id (mkNestedSums (\x -> [|Left $x|]) (\x -> [|Right $x|])) . toList $ fmap thd3 cons)
-      )
+    sums :: TH.Type -> (Bool, [(TH.TypeQ, (TH.PatQ, TH.ExpQ), (TH.PatQ, TH.ExpQ))]) -> [TH.DecQ]
+    sums type0 (overlappable, cons) =
+      let repTy = mkNestedPairs (\x y -> [t|Either $x $y|]) [t|Void|] =<< traverse fst3 cons
+       in hasRepInstD
+            (if overlappable then pure repTy else Nothing)
+            (pure type0)
+            ( buildClauses (mkNestedSums (\x -> [p|Left $x|]) (\x -> [p|Right $x|])) id $
+                fmap snd3 cons
+            )
+            ( buildClauses id (mkNestedSums (\x -> [|Left $x|]) (\x -> [|Right $x|])) $
+                fmap thd3 cons
+            ) :
+          if overlappable then mempty else pure $ repInstD (pure type0) repTy
 
     buildClauses ::
       ([TH.PatQ] -> [TH.PatQ]) -> ([TH.ExpQ] -> [TH.ExpQ]) -> [(TH.PatQ, TH.ExpQ)] -> [TH.ClauseQ]
@@ -266,10 +264,11 @@ deriveHasRep' = \case
     repInstD :: TH.TypeQ -> TH.TypeQ -> TH.DecQ
     repInstD type0 = TH.tySynInstD . TH.tySynEqn Nothing (foldl' TH.appT (TH.conT ''Rep) [type0])
 
-    hasRepInstD :: TH.TypeQ -> [TH.ClauseQ] -> [TH.ClauseQ] -> TH.DecQ
-    hasRepInstD type0 abstClauses reprClauses =
-      TH.instanceD
-        (pure [])
+    hasRepInstD :: Maybe TH.TypeQ -> TH.TypeQ -> [TH.ClauseQ] -> [TH.ClauseQ] -> TH.DecQ
+    hasRepInstD mRepTy type0 abstClauses reprClauses =
+      TH.instanceWithOverlapD
+        (TH.Overlappable <$ mRepTy)
+        (maybe (pure []) (fmap pure . TH.appT (TH.appT TH.equalityT (TH.appT (TH.conT ''Rep) type0))) mRepTy)
         [t|HasRep $type0|]
         [ TH.funD 'abst abstClauses,
           TH.pragInlD 'abst TH.Inline TH.FunLike TH.AllPhases,
