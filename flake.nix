@@ -12,6 +12,18 @@
   outputs = { self, nixpkgs, flake-utils, concat }:
     flake-utils.lib.eachSystem flake-utils.lib.allSystems (system:
       let
+        haskellLib = (import nixpkgs { inherit system; }).haskell.lib;
+        overlay_PyF = final: prev: {
+          haskellPackages = prev.haskellPackages.override (old: {
+            overrides =
+              final.lib.composeExtensions (old.overrides or (_: _: { }))
+              (self: super: {
+                # test is broken for some GHC versions.
+                "PyF" = haskellLib.dontCheck super.PyF;
+              });
+          });
+        };
+
         parseCabalProject = import ./parse-cabal-project.nix;
         categorifierPackages = parseCabalProject ./cabal.project;
         categorifierPackageNames =
@@ -33,7 +45,8 @@
               };
 
               newPkgs = import nixpkgs {
-                overlays = [ overlayGHC (concat.overlay.${system}) ];
+                overlays =
+                  [ overlayGHC overlay_PyF (concat.overlay.${system}) ];
                 inherit system;
                 config.allowBroken = true;
               };
@@ -70,13 +83,16 @@
         # - https://github.com/NixOS/nixpkgs/issues/25887
         # - https://github.com/NixOS/nixpkgs/issues/26561
         # - https://discourse.nixos.org/t/nix-haskell-development-2020/6170
-        overlay = final: prev: {
-          haskellPackages = prev.haskellPackages.override (old: {
-            overrides =
-              final.lib.composeExtensions (old.overrides or (_: _: { }))
-              haskellOverlay;
-          });
-        };
+        overlays = [
+          overlay_PyF
+          (final: prev: {
+            haskellPackages = prev.haskellPackages.override (old: {
+              overrides =
+                final.lib.composeExtensions (old.overrides or (_: _: { }))
+                haskellOverlay;
+            });
+          })
+        ];
 
         devShell = let
           ghcVer = "ghc8107";
