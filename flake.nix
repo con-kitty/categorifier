@@ -91,8 +91,10 @@
 
               allEnv = let
                 # CI error: https://github.com/con-kitty/categorifier/runs/6457812761?check_suite_focus=true#step:5:8545
-                excluded =
-                  [ "categorifier-concat-extensions-integration-test" ];
+                excluded = [
+                  "categorifier-concat-extensions-integration-test"
+                  "categorifier-vec-integration-test"
+                ];
                 filtered = builtins.filter
                   ({ name, ... }: !(builtins.elem name excluded))
                   categorifierPackages;
