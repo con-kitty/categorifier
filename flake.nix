@@ -90,10 +90,14 @@
                 }) categorifierPackages);
 
               allEnv = let
+                # CI error: https://github.com/con-kitty/categorifier/runs/6457812761?check_suite_focus=true#step:5:8545
+                excluded =
+                  [ "categorifier-concat-extensions-integration-test" ];
+                filtered = builtins.filter
+                  ({ name, ... }: !(builtins.elem name excluded))
+                  categorifierPackages;
                 hsenv = newHaskellPackages.ghcWithPackages (p:
-                  let
-                    deps = builtins.map ({ name, ... }: p.${name})
-                      categorifierPackages;
+                  let deps = builtins.map ({ name, ... }: p.${name}) filtered;
                   in deps);
               in newPkgs.buildEnv {
                 name = "all-packages";
