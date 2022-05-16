@@ -8,11 +8,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1652245564,
-        "narHash": "sha256-k/npMaUOp8f39xd4KXVobaP4U+aL057/U16u6wY7urY=",
+        "lastModified": 1652724666,
+        "narHash": "sha256-zC7R3xhpg9QMVYIOfZDNutBez0mMZJNlA4QhdmgEYBU=",
         "owner": "con-kitty",
         "repo": "concat",
-        "rev": "10478c78ee280bde708a6da5bc2402b84901fd25",
+        "rev": "d457c17a61c02f99945523c07446f88c3825abdf",
         "type": "github"
       },
       "original": {
@@ -72,7 +72,25 @@
       "inputs": {
         "concat": "concat",
         "flake-utils": "flake-utils_2",
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": "nixpkgs",
+        "yaya": "yaya"
+      }
+    },
+    "yaya": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1648062986,
+        "narHash": "sha256-9vI57ESpQG/c0zNSZSbwX/MFzUq+NvwfAAlMCcLaBa4=",
+        "owner": "sellout",
+        "repo": "yaya",
+        "rev": "c96718e6de9787284ace3602451f194ac7711ace",
+        "type": "github"
+      },
+      "original": {
+        "owner": "sellout",
+        "repo": "yaya",
+        "rev": "c96718e6de9787284ace3602451f194ac7711ace",
+        "type": "github"
       }
     }
   },

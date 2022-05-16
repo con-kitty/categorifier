@@ -8,8 +8,13 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.flake-utlis.follows = "flake-utils";
     };
+    yaya = {
+      # 0.4.2.1
+      url = "github:sellout/yaya/c96718e6de9787284ace3602451f194ac7711ace";
+      flake = false;
+    };
   };
-  outputs = { self, nixpkgs, flake-utils, concat }:
+  outputs = { self, nixpkgs, flake-utils, concat, yaya }:
     flake-utils.lib.eachSystem flake-utils.lib.allSystems (system:
       let
         haskellLib = (import nixpkgs { inherit system; }).haskell.lib;
@@ -18,7 +23,11 @@
             overrides =
               final.lib.composeExtensions (old.overrides or (_: _: { }))
               (self: super: {
-                "yaya" = self.callHackage "yaya" "0.4.2.1" { };
+                # yaya 0.4.2.1
+                "yaya" = self.callCabal2nix "yaya" (yaya + "/core") { };
+                # yaya-unsafe 0.2.0.1
+                "yaya-unsafe" =
+                  self.callCabal2nix "yaya-unsafe" (yaya + "/unsafe") { };
                 # test is broken for some GHC versions.
                 "PyF" = haskellLib.dontCheck super.PyF;
               });
