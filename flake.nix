@@ -44,6 +44,22 @@
             value = self.callCabal2nix name (./. + "/${path}") { };
           }) categorifierPackages);
 
+        # see these issues and discussions:
+        # - https://github.com/NixOS/nixpkgs/issues/16394
+        # - https://github.com/NixOS/nixpkgs/issues/25887
+        # - https://github.com/NixOS/nixpkgs/issues/26561
+        # - https://discourse.nixos.org/t/nix-haskell-development-2020/6170
+        fullOverlays = [
+          overlay_deps
+          (final: prev: {
+            haskellPackages = prev.haskellPackages.override (old: {
+              overrides =
+                final.lib.composeExtensions (old.overrides or (_: _: { }))
+                haskellOverlay;
+            });
+          })
+        ];
+
       in {
         # This package set is only useful for CI build test.
         # In practice, users will create a development environment composed by overlays.
@@ -88,21 +104,7 @@
         in packagesOnGHC "ghc8107" // packagesOnGHC "ghc884"
         // packagesOnGHC "ghc901" // packagesOnGHC "ghc921";
 
-        # see these issues and discussions:
-        # - https://github.com/NixOS/nixpkgs/issues/16394
-        # - https://github.com/NixOS/nixpkgs/issues/25887
-        # - https://github.com/NixOS/nixpkgs/issues/26561
-        # - https://discourse.nixos.org/t/nix-haskell-development-2020/6170
-        overlays = [
-          overlay_deps
-          (final: prev: {
-            haskellPackages = prev.haskellPackages.override (old: {
-              overrides =
-                final.lib.composeExtensions (old.overrides or (_: _: { }))
-                haskellOverlay;
-            });
-          })
-        ];
+        overlays = fullOverlays;
 
         devShell = let
           ghcVer = "ghc8107";
@@ -111,15 +113,21 @@
           };
 
           newPkgs = import nixpkgs {
-            overlays = [ overlayGHC concat.overlay.${system} ];
+            # Here we use the full overlays from this flake, but the categorifier-*
+            # packages will not be provided in the shell. The overlay is only used
+            # to extract dependencies.
+            overlays = [ overlayGHC concat.overlay.${system} ] ++ fullOverlays;
             inherit system;
           };
 
-          hsenv = newPkgs.haskellPackages.ghcWithPackages
-            (p: [ p.cabal-install p.concat-examples ]);
-
-        in newPkgs.mkShell {
-          buildInputs = [ hsenv newPkgs.haskell-language-server ];
+        in newPkgs.haskellPackages.shellFor {
+          packages = ps:
+            builtins.map (name: ps.${name}) categorifierPackageNames;
+          buildInputs = [
+            newPkgs.haskellPackages.cabal-install
+            newPkgs.haskell-language-server
+          ];
+          withHoogle = false;
         };
       });
 }
