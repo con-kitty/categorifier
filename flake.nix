@@ -106,7 +106,8 @@
             in individualPackages // { "${ghcVer}_all" = allEnv; };
 
         in packagesOnGHC "ghc8107" // packagesOnGHC "ghc884"
-        // packagesOnGHC "ghc901" // packagesOnGHC "ghc921";
+        // packagesOnGHC "ghc901" // packagesOnGHC "ghc921"
+        // packagesOnGHC "ghcHEAD";
 
         overlays = fullOverlays;
 
