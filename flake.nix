@@ -13,11 +13,12 @@
     flake-utils.lib.eachSystem flake-utils.lib.allSystems (system:
       let
         haskellLib = (import nixpkgs { inherit system; }).haskell.lib;
-        overlay_PyF = final: prev: {
+        overlay_deps = final: prev: {
           haskellPackages = prev.haskellPackages.override (old: {
             overrides =
               final.lib.composeExtensions (old.overrides or (_: _: { }))
               (self: super: {
+                "yaya" = self.callHackage "yaya" "0.4.2.1" { };
                 # test is broken for some GHC versions.
                 "PyF" = haskellLib.dontCheck super.PyF;
               });
@@ -46,7 +47,7 @@
 
               newPkgs = import nixpkgs {
                 overlays =
-                  [ overlayGHC overlay_PyF (concat.overlay.${system}) ];
+                  [ overlayGHC overlay_deps (concat.overlay.${system}) ];
                 inherit system;
                 config.allowBroken = true;
               };
@@ -84,7 +85,7 @@
         # - https://github.com/NixOS/nixpkgs/issues/26561
         # - https://discourse.nixos.org/t/nix-haskell-development-2020/6170
         overlays = [
-          overlay_PyF
+          overlay_deps
           (final: prev: {
             haskellPackages = prev.haskellPackages.override (old: {
               overrides =
