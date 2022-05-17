@@ -84,7 +84,9 @@
         haskellOverlay = self: super:
           builtins.listToAttrs (builtins.map ({ name, path }: {
             inherit name;
-            value = self.callCabal2nix name (./. + "/${path}") { };
+            value =
+              let p = self.callCabal2nix name (./. + "/${path}") { };
+              in haskellLib.appendConfigureFlag p "--ghc-options=-Werror";
           }) categorifierPackages);
 
         # see these issues and discussions:

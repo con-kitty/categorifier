@@ -60,6 +60,10 @@ constraints:
   , vec >=0.3 && <0.5
   , yaya >=0.3.2 && <0.5
 
+-- TODO: Uncomment with Cabal 3.8
+-- program-options
+--   ghc-options: -Werror
+
 tests: True
 
 packages:
