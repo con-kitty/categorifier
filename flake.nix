@@ -29,34 +29,37 @@
           haskellPackages = prev.haskellPackages.override (old: {
             overrides =
               final.lib.composeExtensions (old.overrides or (_: _: { }))
-              (self: super: {
-                # test is broken.
-                "barbies" = haskellLib.dontCheck super.barbies;
-                # loose base bound
-                "boring" = haskellLib.doJailbreak super.boring;
-                # fin-0.2.1
-                "fin" = haskellLib.doJailbreak
-                  super.fin; # self.callCabal2nix "fin" (vec + "/fin") { };
-                # loosen ghc-bignum bound on GHC-9.2.1
-                "ghc-typelits-natnormalise" =
-                  self.callCabal2nix "ghc-typelits-natnormalise"
-                  ghc-typelits-natnormalise { };
-                # due to random, hashable on GHC-9.2.1
-                "linear" = haskellLib.doJailbreak super.linear_1_21_7;
-                # loosen base bound on GHC-9.2.1
-                "some" = haskellLib.doJailbreak super.some;
-                # loosen base bound on GHC-9.2.1
-                "universe-base" = super.universe-base_1_1_3;
-                # loosen base bound on GHC-9.2.1
-                "vec" = haskellLib.doJailbreak super.vec;
-                # yaya 0.4.2.1
-                "yaya" = self.callCabal2nix "yaya" (yaya + "/core") { };
-                # yaya-unsafe 0.2.0.1
-                "yaya-unsafe" =
-                  self.callCabal2nix "yaya-unsafe" (yaya + "/unsafe") { };
-                # test is broken for some GHC versions.
-                "PyF" = haskellLib.dontCheck super.PyF;
-              });
+              (self: super:
+                { # test is broken for some GHC versions.
+                  "PyF" = haskellLib.dontCheck super.PyF;
+                  # test is broken.
+                  "barbies" = haskellLib.dontCheck super.barbies;
+                  # yaya 0.4.2.1
+                  "yaya" = self.callCabal2nix "yaya" (yaya + "/core") { };
+                  # yaya-unsafe 0.2.0.1
+                  "yaya-unsafe" =
+                    self.callCabal2nix "yaya-unsafe" (yaya + "/unsafe") { };
+                } // (prev.lib.optionalAttrs
+                  (prev.haskellPackages.ghc.version == "9.2.1") {
+                    # loose base bound
+                    "boring" = haskellLib.doJailbreak super.boring;
+                    # fin-0.2.1
+                    "fin" = haskellLib.doJailbreak super.fin;
+                    # loosen ghc-bignum bound on GHC-9.2.1
+                    "ghc-typelits-natnormalise" =
+                      self.callCabal2nix "ghc-typelits-natnormalise"
+                      ghc-typelits-natnormalise { };
+                    # hashable-1.4.0.0
+                    #"hashable" = super.hashable_1_4_0_0;
+                    # due to random, hashable on GHC-9.2.1
+                    "linear" = haskellLib.doJailbreak super.linear_1_21_7;
+                    # loosen base bound on GHC-9.2.1
+                    "some" = haskellLib.doJailbreak super.some;
+                    # loosen base bound on GHC-9.2.1
+                    "universe-base" = super.universe-base_1_1_3;
+                    # loosen base bound on GHC-9.2.1
+                    "vec" = haskellLib.doJailbreak super.vec;
+                  }));
           });
         };
 
@@ -139,28 +142,34 @@
 
         overlays = fullOverlays;
 
-        devShell = let
-          ghcVer = "ghc921";
-          overlayGHC = final: prev: {
-            haskellPackages = prev.haskell.packages.${ghcVer};
-          };
+        devShells = let
+          mkDevShell = ghcVer:
+            let
+              overlayGHC = final: prev: {
+                haskellPackages = prev.haskell.packages.${ghcVer};
+              };
 
-          newPkgs = import nixpkgs {
-            # Here we use the full overlays from this flake, but the categorifier-*
-            # packages will not be provided in the shell. The overlay is only used
-            # to extract dependencies.
-            overlays = [ overlayGHC concat.overlay.${system} ] ++ fullOverlays;
-            inherit system;
-          };
+              newPkgs = import nixpkgs {
+                # Here we use the full overlays from this flake, but the categorifier-*
+                # packages will not be provided in the shell. The overlay is only used
+                # to extract dependencies.
+                overlays = [ overlayGHC concat.overlay.${system} ]
+                  ++ fullOverlays;
+                inherit system;
+              };
 
-        in newPkgs.haskellPackages.shellFor {
-          packages = ps:
-            builtins.map (name: ps.${name}) categorifierPackageNames;
-          buildInputs = [
-            newPkgs.haskellPackages.cabal-install
-            newPkgs.haskell-language-server
-          ];
-          withHoogle = false;
+            in newPkgs.haskellPackages.shellFor {
+              packages = ps:
+                builtins.map (name: ps.${name}) categorifierPackageNames;
+              buildInputs = [ newPkgs.haskellPackages.cabal-install ] ++
+                # haskell-language-server on GHC 9.2.1 is broken yet.
+                newPkgs.lib.optional (ghcVer != "ghc921")
+                [ newPkgs.haskell-language-server ];
+              withHoogle = false;
+            };
+        in {
+          "ghc8107" = mkDevShell "ghc8107";
+          "ghc921" = mkDevShell "ghc921";
         };
       });
 }
