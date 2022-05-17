@@ -46,7 +46,6 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        fail-fast: false
         ghc:
           # NB: PyF doesn't work with GHC <8.4 (guibou/PyF#94)
           - "8.4.1"
