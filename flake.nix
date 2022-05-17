@@ -23,6 +23,8 @@
             overrides =
               final.lib.composeExtensions (old.overrides or (_: _: { }))
               (self: super: {
+                # test is broken.
+                "barbies" = haskellLib.dontCheck super.barbies;
                 # yaya 0.4.2.1
                 "yaya" = self.callCabal2nix "yaya" (yaya + "/core") { };
                 # yaya-unsafe 0.2.0.1
