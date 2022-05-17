@@ -38,7 +38,7 @@ jobs:
         cat flake.nix
     - name: dry-run
       run: |
-        nix build --dry-run --print-build-logs .#${{ matrix.ghc }}_all
+        nix build --dry-run --print-build-logs .#${{ matrix.ghc }}_all || ${{ matrix.experimental }}
     - name: build
       run: |
         nix build --print-build-logs .#${{ matrix.ghc }}_all || ${{ matrix.experimental }}
