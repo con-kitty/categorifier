@@ -32,10 +32,23 @@
               (self: super: {
                 # test is broken.
                 "barbies" = haskellLib.dontCheck super.barbies;
-                # loose ghc-bignum bound on GHC-9.2.1
+                # loose base bound
+                "boring" = haskellLib.doJailbreak super.boring;
+                # fin-0.2.1
+                "fin" = haskellLib.doJailbreak
+                  super.fin; # self.callCabal2nix "fin" (vec + "/fin") { };
+                # loosen ghc-bignum bound on GHC-9.2.1
                 "ghc-typelits-natnormalise" =
-                  self.callCabal2nix "" ghc-typelits-natnormalise { };
-                #  haskellLib.doJailbreak super.ghc-typelits-natnormalise;
+                  self.callCabal2nix "ghc-typelits-natnormalise"
+                  ghc-typelits-natnormalise { };
+                # due to random, hashable on GHC-9.2.1
+                "linear" = haskellLib.doJailbreak super.linear_1_21_7;
+                # loosen base bound on GHC-9.2.1
+                "some" = haskellLib.doJailbreak super.some;
+                # loosen base bound on GHC-9.2.1
+                "universe-base" = super.universe-base_1_1_3;
+                # loosen base bound on GHC-9.2.1
+                "vec" = haskellLib.doJailbreak super.vec;
                 # yaya 0.4.2.1
                 "yaya" = self.callCabal2nix "yaya" (yaya + "/core") { };
                 # yaya-unsafe 0.2.0.1
