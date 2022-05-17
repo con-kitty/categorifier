@@ -83,12 +83,11 @@ instance ConCat.ClosedCat Term where
 instance ConCat.OkFunctor Term f where
   okFunctor = ConCat.Entail (Sub Dict)
 
--- | __TODO__: It seems weird that we need a `Functor` instance here.
-instance Functor f => ConCat.FunctorCat Term f where
+instance ConCat.FunctorCat Term f where
   fmapC = unaryZero
   unzipC = ZeroId
 
-instance Functor f => ConCat.Strong Term f where
+instance ConCat.Strong Term f where
   strength = ZeroId
 
 instance ConCat.TraversableCat Term t f where
@@ -200,11 +199,11 @@ instance ConCat.ClosedCat Hask where
 instance ConCat.OkFunctor Hask f where
   okFunctor = ConCat.Entail (Sub Dict)
 
-instance Functor f => ConCat.FunctorCat Hask f where
+instance ConCat.FunctorCat (->) f => ConCat.FunctorCat Hask f where
   fmapC (Hask fn) = Hask (ConCat.fmapC fn)
   unzipC = Hask ConCat.unzipC
 
-instance Functor f => ConCat.Strong Hask f where
+instance ConCat.Strong (->) f => ConCat.Strong Hask f where
   strength = Hask ConCat.strength
 
 instance ConCat.TraversableCat (->) t f => ConCat.TraversableCat Hask t f where
