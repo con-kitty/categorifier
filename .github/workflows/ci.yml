@@ -20,8 +20,8 @@ jobs:
           - "ghc921"
         experimental: [false]
         include:
-          ghc: "ghcHEAD"
-          experimental: true
+          - ghc: "ghcHEAD"
+            experimental: true
     steps:
     - name: Install nix
       uses: cachix/install-nix-action@v16
