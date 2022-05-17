@@ -49,8 +49,6 @@
                     "ghc-typelits-natnormalise" =
                       self.callCabal2nix "ghc-typelits-natnormalise"
                       ghc-typelits-natnormalise { };
-                    # hashable-1.4.0.0
-                    #"hashable" = super.hashable_1_4_0_0;
                     # due to random, hashable on GHC-9.2.1
                     "linear" = haskellLib.doJailbreak super.linear_1_21_7;
                     # loosen base bound on GHC-9.2.1
