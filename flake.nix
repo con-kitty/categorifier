@@ -127,7 +127,7 @@
         overlays = fullOverlays;
 
         devShell = let
-          ghcVer = "ghc8107";
+          ghcVer = "ghc921";
           overlayGHC = final: prev: {
             haskellPackages = prev.haskell.packages.${ghcVer};
           };
