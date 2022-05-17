@@ -10,6 +10,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
         ghc:
@@ -17,8 +18,10 @@ jobs:
           - "ghc884"
           - "ghc901"
           - "ghc921"
-          - "ghcHEAD"
-    continue-on-error: ${{ matrix.ghc == 'ghcHEAD' }}
+        experimental: [false]
+        include:
+          ghc: "ghcHEAD"
+          experimental: true
     steps:
     - name: Install nix
       uses: cachix/install-nix-action@v16
