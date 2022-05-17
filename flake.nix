@@ -98,22 +98,16 @@
               };
 
               newPkgs = import nixpkgs {
-                overlays =
-                  [ overlayGHC overlay_deps (concat.overlay.${system}) ];
+                overlays = [ overlayGHC (concat.overlay.${system}) ]
+                  ++ fullOverlays;
                 inherit system;
                 config.allowBroken = true;
               };
 
-              newHaskellPackages = newPkgs.haskellPackages.override (old: {
-                overrides =
-                  newPkgs.lib.composeExtensions (old.overrides or (_: _: { }))
-                  haskellOverlay;
-              });
-
               individualPackages = builtins.listToAttrs (builtins.map
                 ({ name, ... }: {
                   name = ghcVer + "_" + name;
-                  value = builtins.getAttr name newHaskellPackages;
+                  value = builtins.getAttr name newPkgs.haskellPackages;
                 }) categorifierPackages);
 
               allEnv = let
@@ -125,7 +119,7 @@
                 filtered = builtins.filter
                   ({ name, ... }: !(builtins.elem name excluded))
                   categorifierPackages;
-                hsenv = newHaskellPackages.ghcWithPackages (p:
+                hsenv = newPkgs.haskellPackages.ghcWithPackages (p:
                   let deps = builtins.map ({ name, ... }: p.${name}) filtered;
                   in deps);
               in newPkgs.buildEnv {
