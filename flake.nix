@@ -13,8 +13,15 @@
       url = "github:sellout/yaya/c96718e6de9787284ace3602451f194ac7711ace";
       flake = false;
     };
+    ghc-typelits-natnormalise = {
+      # 0.7.7
+      url =
+        "github:clash-lang/ghc-typelits-natnormalise/a68b722a6b10a932621dbf578f1408745a37a5ca";
+      flake = false;
+    };
   };
-  outputs = { self, nixpkgs, flake-utils, concat, yaya }:
+  outputs =
+    { self, nixpkgs, flake-utils, concat, yaya, ghc-typelits-natnormalise }:
     flake-utils.lib.eachSystem flake-utils.lib.allSystems (system:
       let
         haskellLib = (import nixpkgs { inherit system; }).haskell.lib;
@@ -25,6 +32,10 @@
               (self: super: {
                 # test is broken.
                 "barbies" = haskellLib.dontCheck super.barbies;
+                # loose ghc-bignum bound on GHC-9.2.1
+                "ghc-typelits-natnormalise" =
+                  self.callCabal2nix "" ghc-typelits-natnormalise { };
+                #  haskellLib.doJailbreak super.ghc-typelits-natnormalise;
                 # yaya 0.4.2.1
                 "yaya" = self.callCabal2nix "yaya" (yaya + "/core") { };
                 # yaya-unsafe 0.2.0.1

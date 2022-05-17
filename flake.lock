@@ -52,6 +52,23 @@
         "type": "github"
       }
     },
+    "ghc-typelits-natnormalise": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1649255014,
+        "narHash": "sha256-NYbDIhQo+9xw0+16v0M+BRAVSYcThPhj+nTswSYxesM=",
+        "owner": "clash-lang",
+        "repo": "ghc-typelits-natnormalise",
+        "rev": "a68b722a6b10a932621dbf578f1408745a37a5ca",
+        "type": "github"
+      },
+      "original": {
+        "owner": "clash-lang",
+        "repo": "ghc-typelits-natnormalise",
+        "rev": "a68b722a6b10a932621dbf578f1408745a37a5ca",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1652182392,
@@ -72,6 +89,7 @@
       "inputs": {
         "concat": "concat",
         "flake-utils": "flake-utils_2",
+        "ghc-typelits-natnormalise": "ghc-typelits-natnormalise",
         "nixpkgs": "nixpkgs",
         "yaya": "yaya"
       }
