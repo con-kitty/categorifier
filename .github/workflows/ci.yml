@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: ${{ matrix.experimental }}
     strategy:
+      fail-fast: false
       matrix:
         ghc:
           - "ghc8107"
@@ -40,7 +41,7 @@ jobs:
         nix build --dry-run --print-build-logs .#${{ matrix.ghc }}_all
     - name: build
       run: |
-        nix build --print-build-logs .#${{ matrix.ghc }}_all
+        nix build --print-build-logs .#${{ matrix.ghc }}_all || ${{ matrix.experimental }}
   format:
     runs-on: ubuntu-20.04
     steps:
