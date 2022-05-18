@@ -15,8 +15,8 @@ jobs:
       fail-fast: false
       matrix:
         ghc:
-          - "ghc8107"
           - "ghc884"
+          - "ghc8107"
           - "ghc901"
           - "ghc921"
         experimental: [false]
