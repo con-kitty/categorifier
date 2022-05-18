@@ -26,22 +26,60 @@
         "categorifier-ghc" = self.callCabal2nix "categorifier-ghc" ./ghc { };
         "categorifier-hedgehog" =
           self.callCabal2nix "categorifier-hedgehog" ./hedgehog { };
+        "categorifier-adjunctions-integration" =
+          self.callCabal2nix "categorifier-adjunctions-integration"
+          ./integrations/adjunctions/integration-test { };
+        "categorifier-adjunctions-integration-test" =
+          self.callCabal2nix "categorifier-adjunctions-integration-test"
+          ./integrations/adjunctions/integration { };
+        "categorifier-categories-integration" =
+          self.callCabal2nix "categorifier-categories-integration"
+          ./integrations/categories/integration { };
+        "categorifier-categories-integration-test" =
+          self.callCabal2nix "categorifier-categories-integration-test"
+          ./integrations/categories/integration-test { };
+        "categorifier-concat-examples" =
+          self.callCabal2nix "categorifier-concat-examples"
+          ./integrations/concat/examples { };
+        "categorifier-concat-integration" =
+          self.callCabal2nix "categorifier-concat-integration"
+          ./integrations/concat/integration { };
+        "categorifier-concat-integration-test" =
+          self.callCabal2nix "categorifier-concat-integration-test"
+          ./integrations/concat/integration-test { };
+        "categorifier-concat-extensions-category" =
+          self.callCabal2nix "categorifier-concat-extensions-category"
+          ./integrations/concat-extensions/category { };
+        "categorifier-concat-extensions-integration" =
+          self.callCabal2nix "categorifier-concat-extensions-integration"
+          ./integrations/concat-extensions/integration { };
+        "categorifier-concat-extensions-integration-test" =
+          self.callCabal2nix "categorifier-concat-extensions-integration-test"
+          ./integrations/concat-extensions/integration-test { };
+        "categorifier-unconcat-category" =
+          self.callCabal2nix "categorifier-unconcat-category"
+          ./integrations/unconcat/category { };
+        "categorifier-unconcat-integration" =
+          self.callCabal2nix "categorifier-unconcat-integration"
+          ./integrations/unconcat/integration { };
+        "categorifier-unconcat-integration-test" =
+          self.callCabal2nix "categorifier-unconcat-integration-test"
+          ./integrations/unconcat/integration-test { };
+        "categorifier-vec-integration" =
+          self.callCabal2nix "categorifier-vec-integration"
+          ./integrations/vec/integration { };
+        "categorifier-vec-integration-test" =
+          self.callCabal2nix "categorifier-vec-integration-test"
+          ./integrations/vec/integration-test { };
         "categorifier-plugin" =
           self.callCabal2nix "categorifier-plugin" ./plugin { };
+        "categorifier-plugin-test" =
+          self.callCabal2nix "categorifier-plugin-test" ./plugin-test { };
         "categorifier-th" = self.callCabal2nix "categorifier-th" ./th { };
-      };
 
-      newHaskellPackages =
-        pkgs.haskellPackages.override { overrides = haskellOverlay; };
+      };
 
     in {
-      packages.x86_64-linux = {
-        inherit (newHaskellPackages)
-          categorifier-category categorifier-client categorifier-common
-          categorifier-duoids categorifier-ghc categorifier-plugin
-          categorifier-th;
-      };
-
       # see these issues and discussions:
       # - https://github.com/NixOS/nixpkgs/issues/16394
       # - https://github.com/NixOS/nixpkgs/issues/25887
@@ -55,7 +93,8 @@
       };
 
       devShell.x86_64-linux = let
-        hsenv = pkgs.haskellPackages.ghcWithPackages (p: [ p.cabal-install ]);
+        hsenv = pkgs.haskellPackages.ghcWithPackages
+          (p: [ p.cabal-install p.concat-examples ]);
       in pkgs.mkShell { buildInputs = [ hsenv ]; };
     };
 }

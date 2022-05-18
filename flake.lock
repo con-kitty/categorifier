@@ -7,11 +7,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1651792803,
-        "narHash": "sha256-5uxGpWpONXIxyB7mKb0djhWfYQar9XGMIQYDsI7PU4c=",
+        "lastModified": 1651854399,
+        "narHash": "sha256-FnKqFzFDaNWpLdJwi1kHmBQK0DbwuRNDN/2JuOOZvUQ=",
         "owner": "con-kitty",
         "repo": "concat",
-        "rev": "364038f541ee53864c2103cd55e16af283a08d45",
+        "rev": "2cb72b794b4cfbcf8293e5e184879e3767d199c6",
         "type": "github"
       },
       "original": {
