@@ -35,9 +35,9 @@ jobs:
     - name: Cat flake.nix
       run: cat flake.nix
     - name: dry-run
-      run: nix build --dry-run --print-build-logs .#${{ matrix.ghc }}_all || ${{ matrix.experimental }}
+      run: nix build --dry-run -j1 --print-build-logs .#${{ matrix.ghc }}_all || ${{ matrix.experimental }}
     - name: build
-      run: nix build --print-build-logs .#${{ matrix.ghc }}_all || ${{ matrix.experimental }}
+      run: nix build --print-build-logs -j1 .#${{ matrix.ghc }}_all || ${{ matrix.experimental }}
   # We currently want to maintain at least non-nix build with up-to-date hackage index to check
   # the traditional builds keeps working.
   non-nix-build:
