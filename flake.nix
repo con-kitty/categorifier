@@ -173,6 +173,7 @@
               withHoogle = false;
             };
         in {
+          "default" = mkDevShell "ghc921";
           "ghc8107" = mkDevShell "ghc8107";
           "ghc921" = mkDevShell "ghc921";
         };
