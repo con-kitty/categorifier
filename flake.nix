@@ -19,9 +19,19 @@
         "github:clash-lang/ghc-typelits-natnormalise/a68b722a6b10a932621dbf578f1408745a37a5ca";
       flake = false;
     };
+    hlint = {
+      url = "github:ndmitchell/hlint/v3.4";
+      flake = false;
+    };
+    # this library git repo has an inconsistency in version bound increasing.
+    ghc-lib-parser-ex = {
+      url =
+        "https://hackage.haskell.org/package/ghc-lib-parser-ex-9.2.0.3/ghc-lib-parser-ex-9.2.0.3.tar.gz";
+      flake = false;
+    };
   };
-  outputs =
-    { self, nixpkgs, flake-utils, concat, yaya, ghc-typelits-natnormalise }:
+  outputs = { self, nixpkgs, flake-utils, concat, yaya
+    , ghc-typelits-natnormalise, hlint, ghc-lib-parser-ex }:
     flake-utils.lib.eachSystem flake-utils.lib.allSystems (system:
       let
         haskellLib = (import nixpkgs { inherit system; }).haskell.lib;
@@ -45,10 +55,16 @@
                     "boring" = haskellLib.doJailbreak super.boring;
                     # fin-0.2.1
                     "fin" = haskellLib.doJailbreak super.fin;
+                    # ghc-lib-parser-ex-9.2.0.3
+                    "ghc-lib-parser-ex" =
+                      self.callCabal2nix "ghc-lib-parser-ex" ghc-lib-parser-ex
+                      { };
                     # loosen ghc-bignum bound on GHC-9.2.1
                     "ghc-typelits-natnormalise" =
                       self.callCabal2nix "ghc-typelits-natnormalise"
                       ghc-typelits-natnormalise { };
+                    # hlint-3.4
+                    "hlint" = self.callCabal2nix "hlint" hlint { };
                     # due to random, hashable on GHC-9.2.1
                     "linear" = haskellLib.doJailbreak super.linear_1_21_7;
                     # loosen base bound on GHC-9.2.1
