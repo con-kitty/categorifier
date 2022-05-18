@@ -153,7 +153,12 @@
             in newPkgs.haskellPackages.shellFor {
               packages = ps:
                 builtins.map (name: ps.${name}) categorifierPackageNames;
-              buildInputs = [ newPkgs.haskellPackages.cabal-install ] ++
+              buildInputs =
+                # for the following tools, we use the nixpkgs default CLI tools.
+                [
+                  newPkgs.haskell.packages.ghc8107.cabal-install
+                  newPkgs.haskell.packages.ghc8107.hlint
+                ] ++
                 # haskell-language-server on GHC 9.2.1 is broken yet.
                 newPkgs.lib.optional (ghcVer != "ghc921")
                 [ newPkgs.haskell-language-server ];
