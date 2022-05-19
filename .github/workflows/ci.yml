@@ -10,7 +10,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: false
       matrix:
@@ -42,14 +41,13 @@ jobs:
   # the traditional builds keeps working.
   non-nix-build:
     runs-on: ubuntu-latest
-    continue-on-error: true
     strategy:
       matrix:
         ghc:
           # NB: PyF doesn't work with GHC <8.4 (guibou/PyF#94)
           - "8.4.1"
           - "8.6.1"
-          - "8.10.1" # # need an earlier revision than in Nix, because there's an API breakage that only affects 8.10.7
+          - "8.10.1" # need an earlier revision than in Nix, because there's an API breakage that only affects 8.10.7
           - "9.2.2" # there's an API breakage introduced here
     env:
       CONFIG: "--enable-tests --enable-benchmarks"
