@@ -8,8 +8,7 @@ on:
       - opened
       - synchronize
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  nix-build:
     strategy:
       fail-fast: false
       matrix:
@@ -18,10 +17,16 @@ jobs:
           - "ghc8107"
           - "ghc901"
           - "ghc921"
+        os: [ubuntu-latest]
         experimental: [false]
         include:
+          - ghc: "ghc921"
+            os: macos-latest
+            experimental: false
           - ghc: "ghcHEAD"
+            os: ubuntu-latest
             experimental: true
+    runs-on: ${{ matrix.os }}
     steps:
     - name: Install nix
       uses: cachix/install-nix-action@v16
@@ -29,17 +34,13 @@ jobs:
         nix_path: nixpkgs=channel:nixos-unstable
     - name: Checkout repositiory code
       uses: actions/checkout@v3
-    - name: List files
-      run: ls ${{ github.workspace }}
-    - name: Cat flake.nix
-      run: cat flake.nix
     - name: dry-run
       run: nix build --dry-run --print-build-logs .#${{ matrix.ghc }}_all || ${{ matrix.experimental }}
     - name: build
       run: nix build --print-build-logs -j1 .#${{ matrix.ghc }}_all || ${{ matrix.experimental }}
   # We currently want to maintain at least non-nix build with up-to-date hackage index to check
   # the traditional builds keeps working.
-  non-nix-build:
+  cabal-build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
