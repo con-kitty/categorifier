@@ -1,0 +1,148 @@
+{
+  "nodes": {
+    "concat": {
+      "inputs": {
+        "flake-utils": "flake-utils",
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1652808558,
+        "narHash": "sha256-gVMOsKkLeIxthdbx0EZjCwn85wlN22Wq69eCG5Y/BPQ=",
+        "owner": "con-kitty",
+        "repo": "concat",
+        "rev": "c4b2711222727a9f5cbcc5e80681c1de1e6f6035",
+        "type": "github"
+      },
+      "original": {
+        "owner": "con-kitty",
+        "ref": "wavewave-flake",
+        "repo": "concat",
+        "type": "github"
+      }
+    },
+    "flake-utils": {
+      "locked": {
+        "lastModified": 1649676176,
+        "narHash": "sha256-OWKJratjt2RW151VUlJPRALb7OU2S5s+f0vLj4o1bHM=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "a4b154ebbdc88c8498a5c7b01589addc9e9cb678",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
+    "flake-utils_2": {
+      "locked": {
+        "lastModified": 1649676176,
+        "narHash": "sha256-OWKJratjt2RW151VUlJPRALb7OU2S5s+f0vLj4o1bHM=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "a4b154ebbdc88c8498a5c7b01589addc9e9cb678",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
+    "ghc-lib-parser-ex": {
+      "flake": false,
+      "locked": {
+        "narHash": "sha256-9ptNsJ7c8C147M7Ov4cPyeUHuLc8kmgKapLoIjCNjxQ=",
+        "type": "tarball",
+        "url": "https://hackage.haskell.org/package/ghc-lib-parser-ex-9.2.0.3/ghc-lib-parser-ex-9.2.0.3.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://hackage.haskell.org/package/ghc-lib-parser-ex-9.2.0.3/ghc-lib-parser-ex-9.2.0.3.tar.gz"
+      }
+    },
+    "ghc-typelits-natnormalise": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1649255014,
+        "narHash": "sha256-NYbDIhQo+9xw0+16v0M+BRAVSYcThPhj+nTswSYxesM=",
+        "owner": "clash-lang",
+        "repo": "ghc-typelits-natnormalise",
+        "rev": "a68b722a6b10a932621dbf578f1408745a37a5ca",
+        "type": "github"
+      },
+      "original": {
+        "owner": "clash-lang",
+        "repo": "ghc-typelits-natnormalise",
+        "rev": "a68b722a6b10a932621dbf578f1408745a37a5ca",
+        "type": "github"
+      }
+    },
+    "hlint": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1650806052,
+        "narHash": "sha256-e3cXbpVAp5x9s03DRQf31++/nBSqcVufh21kJOy3c+A=",
+        "owner": "ndmitchell",
+        "repo": "hlint",
+        "rev": "cd529ad925bd40579bd0bef06f86cfae6c0da783",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ndmitchell",
+        "ref": "v3.4",
+        "repo": "hlint",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1652182392,
+        "narHash": "sha256-H9Bmor+kfogrE0X7Fi5sh0gCUWDG4pnmYxedJyIT41A=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "aa2f845096f72dde4ad0c168eeec387cbd2eae04",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-21.11",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "concat": "concat",
+        "flake-utils": "flake-utils_2",
+        "ghc-lib-parser-ex": "ghc-lib-parser-ex",
+        "ghc-typelits-natnormalise": "ghc-typelits-natnormalise",
+        "hlint": "hlint",
+        "nixpkgs": "nixpkgs",
+        "yaya": "yaya"
+      }
+    },
+    "yaya": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1648062986,
+        "narHash": "sha256-9vI57ESpQG/c0zNSZSbwX/MFzUq+NvwfAAlMCcLaBa4=",
+        "owner": "sellout",
+        "repo": "yaya",
+        "rev": "c96718e6de9787284ace3602451f194ac7711ace",
+        "type": "github"
+      },
+      "original": {
+        "owner": "sellout",
+        "repo": "yaya",
+        "rev": "c96718e6de9787284ace3602451f194ac7711ace",
+        "type": "github"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
