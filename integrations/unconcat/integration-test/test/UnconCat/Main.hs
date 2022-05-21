@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -18,7 +17,6 @@ import Categorifier.Test.Tests
   ( TestCases (..),
     TestCategory (..),
     TestStrategy (..),
-    builtinTestCategories,
     defaultTestTerms,
     mkTestTerms,
   )
@@ -35,12 +33,11 @@ import System.Exit (exitFailure, exitSuccess)
 
 mkTestTerms
   defaultTestTerms
-  --               name     type         prefix       strategy
-  ( [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
-      TestCategory ''Hask [t|Hask|] "hask" (ComputeFromInput [|runHask|])
-    ]
-      <> builtinTestCategories
-  )
+  --             name   type      prefix  strategy
+  [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
+    TestCategory ''(->) [t|(->)|] "plainArrow" $ ComputeFromInput [|id|],
+    TestCategory ''Hask [t|Hask|] "hask" (ComputeFromInput [|runHask|])
+  ]
   -- core
   . HInsert1 (Proxy @"LamId") (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))
   . HInsert1 (Proxy @"ComposeLam") (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))
@@ -268,10 +265,16 @@ mkTestTerms
     )
   . HInsert1 (Proxy @"Acos") (TestCases (const [])) -- no support for `acos` in ConCat
   . HInsert1 (Proxy @"Acosh") (TestCases (const [])) -- no support for `acosh` in ConCat
+  . HInsert1 (Proxy @"AcoshDouble") (TestCases (const [])) -- no support for `acoshDouble` in ConCat
+  . HInsert1 (Proxy @"AcoshFloat") (TestCases (const [])) -- no support for `acoshFloat` in ConCat
   . HInsert1 (Proxy @"Asin") (TestCases (const [])) -- no support for `asin` in ConCat
   . HInsert1 (Proxy @"Asinh") (TestCases (const [])) -- no support for `asinh` in ConCat
+  . HInsert1 (Proxy @"AsinhDouble") (TestCases (const [])) -- no support for `asinhDouble` in ConCat
+  . HInsert1 (Proxy @"AsinhFloat") (TestCases (const [])) -- no support for `asinhFloat` in ConCat
   . HInsert1 (Proxy @"Atan") (TestCases (const [])) -- no support for `atan` in ConCat
   . HInsert1 (Proxy @"Atanh") (TestCases (const [])) -- no support for `atanh` in ConCat
+  . HInsert1 (Proxy @"AtanhDouble") (TestCases (const [])) -- no support for `atanhDouble` in ConCat
+  . HInsert1 (Proxy @"AtanhFloat") (TestCases (const [])) -- no support for `atanhFloat` in ConCat
   . HInsert1 (Proxy @"Cos") (TestCases (const [])) -- no support for `cos` in ConCat
   . HInsert1 (Proxy @"Cosh") (TestCases (const [])) -- no support for `cosh` in ConCat
   . HInsert1 (Proxy @"AcosDouble") (TestCases (const [])) -- no support for `acosDouble` in ConCat
@@ -800,17 +803,7 @@ mkTestTerms
   . HInsert1 (Proxy @"ToList") (TestCases (const [])) -- can only work with specialization
   . HInsert1 (Proxy @"Even") (TestCases (const []))
   . HInsert1 (Proxy @"Odd") (TestCases (const []))
-#if MIN_VERSION_base(4, 13, 0)
-  . HInsert1 (Proxy @"AcoshDouble") (TestCases (const [])) -- no support for `acoshDouble` in ConCat
-  . HInsert1 (Proxy @"AcoshFloat") (TestCases (const [])) -- no support for `acoshFloat` in ConCat
-  . HInsert1 (Proxy @"AsinhDouble") (TestCases (const [])) -- no support for `asinhDouble` in ConCat
-  . HInsert1 (Proxy @"AsinhFloat") (TestCases (const [])) -- no support for `asinhFloat` in ConCat
-  . HInsert1 (Proxy @"AtanhDouble") (TestCases (const [])) -- no support for `atanhDouble` in ConCat
-  . HInsert1 (Proxy @"AtanhFloat") (TestCases (const [])) -- no support for `atanhFloat` in ConCat
   $ HEmpty1
-#else
-  $ HEmpty1
-#endif
 
 main :: IO ()
 main = bool exitFailure exitSuccess . and =<< allTestTerms

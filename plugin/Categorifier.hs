@@ -30,13 +30,14 @@ import PyF (fmt)
 --   for more information.
 plugin :: GhcPlugins.Plugin
 plugin =
-  GhcPlugins.defaultPurePlugin
+  GhcPlugins.defaultPlugin
     { GhcPlugins.installCoreToDos =
         \opts ->
           join
             . GhcPlugins.liftIO
             . liftA2 Categorifier.Core.install (partitionOptions' opts)
-            . pure
+            . pure,
+      GhcPlugins.pluginRecompile = GhcPlugins.purePlugin
     }
 
 partitionOptions' :: [GhcPlugins.CommandLineOption] -> IO (Map OptionGroup [Text])

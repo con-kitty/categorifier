@@ -21,12 +21,8 @@ module Categorifier.GHC.Types
     module VarEnv,
     module VarSet,
     pattern CCallSpec,
-    pattern LitDouble,
-    pattern LitFloat,
     pattern LitNumber,
-    pattern LitString,
     WithIdInfo (..),
-    mkLitString,
     mkLocalVar,
     mkSysLocal,
     setLiteralType,
@@ -56,7 +52,7 @@ import GHC.Utils.Error as ErrUtils
 import GHC.Types.Id as Id hiding (mkSysLocal)
 import qualified GHC.Types.Id as Id
 import GHC.Types.Id.Info as IdInfo
-import GHC.Types.Literal as Literal hiding (LitDouble, LitFloat, LitNumber, LitString, mkLitString)
+import GHC.Types.Literal as Literal hiding (LitNumber)
 import qualified GHC.Types.Literal as Literal
 import GHC.Types.Name as Name hiding (varName)
 import GHC.Types.Name.Reader as RdrName
@@ -77,15 +73,8 @@ import qualified ForeignCall
 import Id hiding (mkSysLocal)
 import qualified Id
 import IdInfo
-#if MIN_VERSION_ghc(8, 8, 0)
-import Literal hiding (LitDouble, LitFloat, LitNumber, LitString, mkLitString)
-import qualified Literal
-#elif MIN_VERSION_ghc(8, 6, 0)
 import Literal hiding (LitNumber)
 import qualified Literal
-#else
-import Literal
-#endif
 import Name hiding (varName)
 import RdrName
 import SrcLoc
@@ -108,41 +97,11 @@ pattern CCallSpec target conv safety <- ForeignCall.CCallSpec target conv safety
 pattern CCallSpec target conv safety = ForeignCall.CCallSpec target conv safety
 #endif
 
-pattern LitDouble :: Rational -> Literal
-#if MIN_VERSION_ghc(8, 8, 0)
-pattern LitDouble n = Literal.LitDouble n
-#else
-pattern LitDouble n = MachDouble n
-#endif
-
-pattern LitFloat :: Rational -> Literal
-#if MIN_VERSION_ghc(8, 8, 0)
-pattern LitFloat n = Literal.LitFloat n
-#else
-pattern LitFloat n = MachFloat n
-#endif
-
 pattern LitNumber :: Integer -> Literal
 #if MIN_VERSION_ghc(9, 0, 0)
 pattern LitNumber n <- Literal.LitNumber _ n
-#elif MIN_VERSION_ghc(8, 6, 0)
+#else
 pattern LitNumber n <- Literal.LitNumber _ n _
-#else
-pattern LitNumber n <- LitInteger n _
-#endif
-
-pattern LitString :: ByteString -> Literal
-#if MIN_VERSION_ghc(8, 8, 0)
-pattern LitString t = Literal.LitString t
-#else
-pattern LitString t = MachStr t
-#endif
-
-mkLitString :: String -> Literal
-#if MIN_VERSION_ghc(8, 8, 0)
-mkLitString = Literal.mkLitString
-#else
-mkLitString = mkMachString
 #endif
 
 mkLocalVar :: IdDetails -> Name -> Core.Type -> IdInfo -> Id

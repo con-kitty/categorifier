@@ -609,7 +609,11 @@ lookupName ::
   Plugins.ModuleName -> (String -> Plugins.OccName) -> String -> CoreM (Maybe Plugins.Name)
 lookupName modu mkOcc str = do
   hscEnv <- Plugins.getHscEnv
-  Plugins.liftIO . Plugins.lookupRdrNameInModuleForPlugins hscEnv modu . Plugins.Unqual $ mkOcc str
+  Plugins.liftIO
+    . fmap (fmap fst)
+    . Plugins.lookupRdrNameInModuleForPlugins hscEnv modu
+    . Plugins.Unqual
+    $ mkOcc str
 
 -- __TODO__: This can throw in `lookupRdrNameInModuleForPlugins` if it can't find the module. We
 --           should capture that.

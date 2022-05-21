@@ -20,7 +20,6 @@ import Categorifier.Test.Tests
   ( TestCases (..),
     TestCategory (..),
     TestStrategy (..),
-    builtinTestCategories,
     mkTestTerms,
   )
 import qualified Categorifier.Test.Vec as Vec
@@ -40,12 +39,11 @@ import System.Exit (exitFailure, exitSuccess)
 
 mkTestTerms
   Vec.testTerms
-  --               name   type      prefix       strategy
-  ( [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
-      TestCategory ''Hask [t|Hask|] "hask" (ComputeFromInput [|runHask|])
-    ]
-      <> builtinTestCategories
-  )
+  --             name   type      prefix  strategy
+  [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
+    TestCategory ''(->) [t|(->)|] "plainArrow" $ ComputeFromInput [|id|],
+    TestCategory ''Hask [t|Hask|] "hask" (ComputeFromInput [|runHask|])
+  ]
   . HInsert1
     (Proxy @"BindVec")
     ( TestCases

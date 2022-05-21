@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -22,7 +21,6 @@ import Categorifier.Test.Tests
   ( TestCases (..),
     TestCategory (..),
     TestStrategy (..),
-    builtinTestCategories,
     defaultTestTerms,
     mkTestTerms,
     zerosafeUnsignedPrimitiveCases,
@@ -43,12 +41,11 @@ import System.Exit (exitFailure, exitSuccess)
 
 mkTestTerms
   defaultTestTerms
-  --               name   type      prefix       strategy
-  ( [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
-      TestCategory ''Hask [t|Hask|] "hask" (ComputeFromInput [|runHask|])
-    ]
-      <> builtinTestCategories
-  )
+  --             name   type      prefix  strategy
+  [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
+    TestCategory ''(->) [t|(->)|] "plainArrow" $ ComputeFromInput [|id|],
+    TestCategory ''Hask [t|Hask|] "hask" (ComputeFromInput [|runHask|])
+  ]
   -- core
   . HInsert1 (Proxy @"LamId") (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))
   . HInsert1 (Proxy @"ComposeLam") (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))
@@ -283,10 +280,16 @@ mkTestTerms
     )
   . HInsert1 (Proxy @"Acos") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Acosh") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"AcoshDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"AcoshFloat") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Asin") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Asinh") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"AsinhDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"AsinhFloat") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Atan") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Atanh") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"AtanhDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"AtanhFloat") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Cos") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Cosh") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"AcosDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
@@ -1018,17 +1021,7 @@ mkTestTerms
   . HInsert1 (Proxy @"ToList") (TestCases (const [])) -- can only work with specialization
   . HInsert1 (Proxy @"Even") (TestCases (const []))
   . HInsert1 (Proxy @"Odd") (TestCases (const []))
-#if MIN_VERSION_base(4, 13, 0)
-  . HInsert1 (Proxy @"AcoshDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
-  . HInsert1 (Proxy @"AcoshFloat") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
-  . HInsert1 (Proxy @"AsinhDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
-  . HInsert1 (Proxy @"AsinhFloat") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
-  . HInsert1 (Proxy @"AtanhDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
-  . HInsert1 (Proxy @"AtanhFloat") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
   $ HEmpty1
-#else
-  $ HEmpty1
-#endif
 
 main :: IO ()
 main = bool exitFailure exitSuccess . and =<< allTestTerms

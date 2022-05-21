@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 -- To avoid having to specify massive HList types.
 {-# LANGUAGE PartialTypeSignatures #-}
@@ -99,11 +98,7 @@ zerosafeUnsignedPrimitiveCases =
 -- | Before GHC 8.6, `->` is an illegal type constructor and can't be TH-quoted, so we do it
 --   conditionally here to avoid needing to use CPP everywhere.
 builtinTestCategories :: [TestCategory]
-#if MIN_VERSION_GLASGOW_HASKELL(8, 6, 0, 0)
 builtinTestCategories = [TestCategory ''(->) [t|(->)|] "plainArrow" $ ComputeFromInput [|id|]]
-#else
-builtinTestCategories = []
-#endif
 
 -- | A helper to avoid duplicating the key when inserting a new test.
 insertTest ::
@@ -187,38 +182,6 @@ pluginTestTerms =
       [|repr|]
     $ HEmpty1
 
-newerTestTerms :: TestTerms _
-#if MIN_VERSION_base(4, 13, 0)
-newerTestTerms =
-  insertTest (Proxy @"AcoshDouble")
-    mkUnaryTestConfig
-    (\() -> ([t|Double|], [t|Double|]))
-    [|GHC.Float.acoshDouble|]
-    . insertTest (Proxy @"AcoshFloat")
-          mkUnaryTestConfig
-          (\() -> ([t|Float|], [t|Float|]))
-          [|GHC.Float.acoshFloat|]
-    . insertTest (Proxy @"AsinhDouble")
-          mkUnaryTestConfig
-          (\() -> ([t|Double|], [t|Double|]))
-          [|GHC.Float.asinhDouble|]
-    . insertTest (Proxy @"AsinhFloat")
-          mkUnaryTestConfig
-          (\() -> ([t|Float|], [t|Float|]))
-          [|GHC.Float.asinhFloat|]
-    . insertTest (Proxy @"AtanhDouble")
-          mkUnaryTestConfig
-          (\() -> ([t|Double|], [t|Double|]))
-          [|GHC.Float.atanhDouble|]
-    . insertTest (Proxy @"AtanhFloat")
-          mkUnaryTestConfig
-          (\() -> ([t|Float|], [t|Float|]))
-          [|GHC.Float.atanhFloat|]
-    $ HEmpty1
-#else
-newerTestTerms = HEmpty1
-#endif
-
 {-# ANN baseTestTerms "HLint: ignore Avoid lambda" #-}
 {-# ANN baseTestTerms "HLint: ignore Redundant uncurry" #-}
 {-# ANN baseTestTerms "HLint: ignore Use <>" #-}
@@ -285,10 +248,40 @@ baseTestTerms =
       [|\a b c -> bool a b c|]
     . insertTest (Proxy @"Acos") mkUnaryTestConfig (\a -> (a, a)) [|acos|]
     . insertTest (Proxy @"Acosh") mkUnaryTestConfig (\a -> (a, a)) [|acosh|]
+    . insertTest
+      (Proxy @"AcoshDouble")
+      mkUnaryTestConfig
+      (\() -> ([t|Double|], [t|Double|]))
+      [|GHC.Float.acoshDouble|]
+    . insertTest
+      (Proxy @"AcoshFloat")
+      mkUnaryTestConfig
+      (\() -> ([t|Float|], [t|Float|]))
+      [|GHC.Float.acoshFloat|]
     . insertTest (Proxy @"Asin") mkUnaryTestConfig (\a -> (a, a)) [|asin|]
     . insertTest (Proxy @"Asinh") mkUnaryTestConfig (\a -> (a, a)) [|asinh|]
+    . insertTest
+      (Proxy @"AsinhDouble")
+      mkUnaryTestConfig
+      (\() -> ([t|Double|], [t|Double|]))
+      [|GHC.Float.asinhDouble|]
+    . insertTest
+      (Proxy @"AsinhFloat")
+      mkUnaryTestConfig
+      (\() -> ([t|Float|], [t|Float|]))
+      [|GHC.Float.asinhFloat|]
     . insertTest (Proxy @"Atan") mkUnaryTestConfig (\a -> (a, a)) [|atan|]
     . insertTest (Proxy @"Atanh") mkUnaryTestConfig (\a -> (a, a)) [|atanh|]
+    . insertTest
+      (Proxy @"AtanhDouble")
+      mkUnaryTestConfig
+      (\() -> ([t|Double|], [t|Double|]))
+      [|GHC.Float.atanhDouble|]
+    . insertTest
+      (Proxy @"AtanhFloat")
+      mkUnaryTestConfig
+      (\() -> ([t|Float|], [t|Float|]))
+      [|GHC.Float.atanhFloat|]
     . insertTest (Proxy @"Cos") mkUnaryTestConfig (\a -> (a, a)) [|cos|]
     . insertTest (Proxy @"Cosh") mkUnaryTestConfig (\a -> (a, a)) [|cosh|]
     . insertTest
@@ -710,4 +703,4 @@ baseTestTerms =
       [|Data.Foldable.toList|]
     . insertTest (Proxy @"Even") mkUnaryTestConfig (\a -> (a, [t|Bool|])) [|even|]
     . insertTest (Proxy @"Odd") mkUnaryTestConfig (\a -> (a, [t|Bool|])) [|odd|]
-    $ newerTestTerms
+    $ HEmpty1
