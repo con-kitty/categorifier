@@ -19,6 +19,7 @@ library
       Categorifier.GHC.Data
       Categorifier.GHC.Driver
       Categorifier.GHC.HsToCore
+      Categorifier.GHC.Plugins
       Categorifier.GHC.Runtime
       Categorifier.GHC.Tc
       Categorifier.GHC.Types

@@ -25,6 +25,7 @@ import Categorifier.Hierarchy
     identifier,
     mkMethodApps,
   )
+import qualified Control.Arrow
 import qualified Data.Functor.Rep
 import qualified Data.Map as Map
 import qualified GHC.Base
@@ -33,18 +34,18 @@ hierarchy :: Lookup (Hierarchy CategoryStack)
 hierarchy = do
   kindexV <-
     pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      op <- identifier "Data.Functor.Rep" "index"
-      rep <- findTyCon "Data.Functor.Rep" "Rep"
+      arr <- identifier 'Control.Arrow.arr
+      op <- identifier 'Data.Functor.Rep.index
+      rep <- findTyCon ''Data.Functor.Rep.Rep
       pure $ \onDict cat f a -> do
         let repfTy = Plugins.mkTyConApp rep [f]
         op' <- mkMethodApps onDict op [f] [a] []
         mkMethodApps onDict arr [cat] [Plugins.mkAppTy f a, Plugins.funTy repfTy a] [op']
   ktabulateV <-
     pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      op <- identifier "Data.Functor.Rep" "tabulate"
-      rep <- findTyCon "Data.Functor.Rep" "Rep"
+      arr <- identifier 'Control.Arrow.arr
+      op <- identifier 'Data.Functor.Rep.tabulate
+      rep <- findTyCon ''Data.Functor.Rep.Rep
       pure $ \onDict cat f a -> do
         let repfTy = Plugins.mkTyConApp rep [f]
         op' <- mkMethodApps onDict op [f] [a] []

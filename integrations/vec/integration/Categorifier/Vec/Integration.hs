@@ -23,10 +23,11 @@ import qualified Categorifier.GHC.Types as Plugins
 import Categorifier.Hierarchy (findTyCon)
 import qualified Data.Map as Map
 import qualified Data.Vec.Lazy
+import Prelude hiding (lookup)
 
 symbolLookup :: Lookup SymbolLookup
 symbolLookup = do
-  vec <- findTyCon "Data.Vec.Lazy" "Vec"
+  vec <- findTyCon ''Data.Vec.Lazy.Vec
   pure $ SymbolLookup (Map.singleton ''Data.Vec.Lazy.Vec vec) mempty
 
 makerMapFun :: MakerMapFun
