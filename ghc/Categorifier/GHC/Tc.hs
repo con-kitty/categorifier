@@ -34,7 +34,7 @@ import GHC.Tc.Types.Constraint as TcRnTypes
 import GHC.Tc.Types.Evidence as TcEvidence
 import GHC.Tc.Types.Origin as TcType
 import GHC.Tc.Utils.Monad as TcRnMonad
-import GHC.Tc.Utils.Zonk as TcHsSyn hiding (emptyZonkEnv)
+import GHC.Tc.Utils.Zonk as TcHsSyn
 import qualified GHC.Tc.Utils.Zonk as TcHsSyn
 #else
 #if MIN_VERSION_ghc(8, 10, 0)
@@ -46,7 +46,7 @@ import TcType
 #endif
 import TcErrors
 import TcEvidence
-import TcHsSyn hiding (emptyZonkEnv)
+import TcHsSyn
 import qualified TcHsSyn
 import TcInteract
 import TcRnDriver hiding (runTcInteractive)
@@ -54,13 +54,6 @@ import qualified TcRnDriver
 import TcRnMonad
 import TcSMonad (TcS, runTcS)
 import TcSimplify
-#endif
-
-emptyZonkEnv :: TcM _
-#if MIN_VERSION_ghc(8, 8, 0)
-emptyZonkEnv = TcHsSyn.emptyZonkEnv
-#else
-emptyZonkEnv = pure TcHsSyn.emptyZonkEnv
 #endif
 
 runTcInteractive ::

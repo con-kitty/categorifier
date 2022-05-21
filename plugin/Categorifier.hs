@@ -30,7 +30,7 @@ import PyF (fmt)
 --   for more information.
 plugin :: GhcPlugins.Plugin
 plugin =
-  GhcPlugins.defaultPurePlugin
+  GhcPlugins.defaultPlugin
     { GhcPlugins.installCoreToDos =
         \opts ->
           join
