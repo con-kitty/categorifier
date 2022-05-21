@@ -15,7 +15,7 @@ import GHC.Data.FastString as FastString
 import GHC.Data.Pair as Pair
 #else
 import Bag
-import FastString hiding (mkLitString)
+import FastString
 import Pair
 #endif
 

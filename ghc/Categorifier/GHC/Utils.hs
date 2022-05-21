@@ -17,19 +17,19 @@ where
 import qualified Categorifier.GHC.Data as Data
 import qualified Categorifier.GHC.Driver as Driver
 #if MIN_VERSION_ghc(9, 2, 0)
-import GHC.Utils.Logger hiding (HasLogger, Logger, getLogger)
 import qualified GHC.Utils.Logger as Logger
 #endif
 #if MIN_VERSION_ghc(9, 0, 0)
+#if MIN_VERSION_ghc(9, 2, 0)
 import GHC.Utils.Error as ErrUtils hiding (pprMsgEnvelopeBagWithLoc)
 import qualified GHC.Utils.Error as ErrUtils
-import GHC.Utils.Misc as Util
-#if MIN_VERSION_ghc(9, 2, 0)
 import GHC.Utils.Outputable as Outputable
 #else
+import GHC.Utils.Error as ErrUtils
 import GHC.Utils.Outputable as Outputable hiding (renderWithStyle)
 import qualified GHC.Utils.Outputable as Outputable
 #endif
+import GHC.Utils.Misc as Util
 import GHC.Utils.Panic as Panic
 #else
 import ErrUtils

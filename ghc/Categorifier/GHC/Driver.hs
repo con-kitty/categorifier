@@ -13,14 +13,18 @@ where
 import GHC.Driver.Env.Types as HscTypes
 import GHC.Driver.Ppr as Outputable
 #else
-import GHC.Driver.Types as HscTypes
-import GHC.Utils.Outputable as Outputable hiding (renderWithStyle)
+import GHC.Driver.Types as HscTypes hiding
+  ( InteractiveContext (..),
+    InteractiveImport (..),
+    ModGuts (..),
+  )
+import GHC.Utils.Outputable as Outputable hiding (Outputable (..), renderWithStyle)
 #endif
 import GHC.Driver.Plugins as Plugins
 import GHC.Driver.Session as DynFlags
 #else
 import DynFlags
-import HscTypes
-import Outputable hiding (renderWithStyle)
+import HscTypes hiding (InteractiveContext (..), InteractiveImport (..), ModGuts (..))
+import Outputable hiding (Outputable (..), renderWithStyle)
 import Plugins
 #endif

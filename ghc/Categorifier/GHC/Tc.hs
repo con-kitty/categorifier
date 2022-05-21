@@ -17,7 +17,9 @@ where
 
 import qualified Categorifier.GHC.Driver as Driver
 import qualified Categorifier.GHC.Types as Types
+#if MIN_VERSION_ghc(9, 2, 0)
 import Control.Arrow (Arrow (..))
+#endif
 #if MIN_VERSION_ghc(9, 0, 0)
 import GHC.Tc.Errors as TcErrors
 import GHC.Tc.Module as TcRnDriver hiding (runTcInteractive)

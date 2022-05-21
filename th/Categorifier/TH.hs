@@ -32,14 +32,17 @@ import Control.Monad.Trans.State.Lazy (StateT (..), evalStateT, get, modify)
 import Data.Align (alignWith)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Bool (bool)
-import Data.Foldable (foldl')
 import Data.List.NonEmpty (NonEmpty, nonEmpty)
 import qualified Data.List.NonEmpty as NE
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.These (These (..))
+#if MIN_VERSION_template_haskell(2, 16, 0)
 import Language.Haskell.TH hiding (TyVarBndr (..), conP, reifyType)
+#else
+import Language.Haskell.TH hiding (TyVarBndr (..), conP)
+#endif
 import qualified Language.Haskell.TH as TH
 import PyF (fmt)
 
