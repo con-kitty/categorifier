@@ -3,7 +3,6 @@
 module Categorifier.GHC.Runtime
   ( module DynamicLoading,
     module HscTypes,
-    lookupRdrNameInModuleForPlugins,
   )
 where
 
@@ -16,19 +15,8 @@ import GHC.Runtime.Context as HscTypes
 #else
 import GHC.Driver.Types as HscTypes
 #endif
-import GHC.Runtime.Loader as DynamicLoading hiding (lookupRdrNameInModuleForPlugins)
-import qualified GHC.Runtime.Loader as DynamicLoading
+import GHC.Runtime.Loader as DynamicLoading
 #else
-import DynamicLoading hiding (lookupRdrNameInModuleForPlugins)
-import qualified DynamicLoading
+import DynamicLoading
 import HscTypes
-#endif
-
-lookupRdrNameInModuleForPlugins ::
-  Driver.HscEnv -> Unit.ModuleName -> Types.RdrName -> IO (Maybe Types.Name)
-#if MIN_VERSION_ghc(8, 6, 0)
-lookupRdrNameInModuleForPlugins hscEnv modu =
-  fmap (fmap fst) . DynamicLoading.lookupRdrNameInModuleForPlugins hscEnv modu
-#else
-lookupRdrNameInModuleForPlugins = DynamicLoading.lookupRdrNameInModuleForPlugins
 #endif

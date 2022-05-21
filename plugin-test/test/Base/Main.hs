@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -169,10 +168,16 @@ mkTestTerms
   . HInsert1 (Proxy @"Bool") (TestCases (const [([t|Double|], Nothing)]))
   . HInsert1 (Proxy @"Acos") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Acosh") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"AcoshDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"AcoshFloat") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Asin") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Asinh") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"AsinhDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"AsinhFloat") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Atan") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Atanh") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"AtanhDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
+  . HInsert1 (Proxy @"AtanhFloat") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Cos") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Cosh") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"AcosDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
@@ -398,17 +403,7 @@ mkTestTerms
   . HInsert1 (Proxy @"ToList") (TestCases (const [])) -- can only work with specialization
   . HInsert1 (Proxy @"Even") (TestCases (const [([t|Int64|], pure ([|Gen.enumBounded|], [|show|]))]))
   . HInsert1 (Proxy @"Odd") (TestCases (const [([t|Int64|], pure ([|Gen.enumBounded|], [|show|]))]))
-#if MIN_VERSION_base(4, 13, 0)
-  . HInsert1 (Proxy @"AcoshDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
-  . HInsert1 (Proxy @"AcoshFloat") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
-  . HInsert1 (Proxy @"AsinhDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
-  . HInsert1 (Proxy @"AsinhFloat") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
-  . HInsert1 (Proxy @"AtanhDouble") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
-  . HInsert1 (Proxy @"AtanhFloat") (TestCases (const [((), pure ([|genFloating|], [|show|]))]))
   $ HEmpty1
-#else
-  $ HEmpty1
-#endif
 
 main :: IO ()
 main = bool exitFailure exitSuccess . and =<< allTestTerms

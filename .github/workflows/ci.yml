@@ -44,9 +44,6 @@ jobs:
     strategy:
       matrix:
         ghc:
-          # NB: PyF doesn't work with GHC <8.4 (guibou/PyF#94)
-          - "8.4.1"
-          - "8.6.1"
           - "8.10.1" # need an earlier revision than in Nix, because there's an API breakage that only affects 8.10.7
           - "9.2.2" # there's an API breakage introduced here
     env:
@@ -66,7 +63,7 @@ jobs:
             ${{ steps.setup-haskell-cabal.outputs.cabal-store }}
             dist-newstyle
           key: ${{ runner.os }}-${{ matrix.ghc }}-${{ hashFiles('cabal.project.freeze') }}
-      - run: cabal v2-test all $CONFIG || true
+      - run: cabal v2-test all $CONFIG
   format:
     runs-on: ubuntu-20.04
     steps:

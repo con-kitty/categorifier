@@ -1,5 +1,4 @@
 {-# LANGUAGE ApplicativeDo #-}
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -166,59 +165,7 @@ combineMakerMapFuns fs symLookup dflags logger m n target expr cat var args modu
     maps = fmap (\f -> f symLookup dflags logger m n target expr cat var args modu catFun catLambda) fs
 
 baseMakerMapFun :: MakerMapFun
-baseMakerMapFun = combineMakerMapFuns [olderMakerMapFun, newerMakerMapFun]
-
-newerMakerMapFun :: MakerMapFun
-#if MIN_VERSION_base(4, 13, 0)
-newerMakerMapFun
-  symLookup
-  _dflags
-  _logger
-  m@Makers {..}
-  _n
-  _target
-  _expr
-  _cat
-  _var
-  _args
-  _modu
-  _categorifyFun
-  categorifyLambda =
-    Map.fromListWith
-      const
-      [ ( 'GHC.Float.acoshDouble,
-          \rest -> pure $ maker1 rest =<\< mkACosh Plugins.doubleTy
-        ),
-        ( 'GHC.Float.acoshFloat,
-          \rest -> do
-            floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
-            pure $ maker1 rest =<\< mkACosh (Plugins.mkTyConTy floatTyCon)
-        ),
-        ( 'GHC.Float.asinhDouble,
-          \rest -> pure $ maker1 rest =<\< mkASinh Plugins.doubleTy
-        ),
-        ( 'GHC.Float.asinhFloat,
-          \rest -> do
-            floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
-            pure $ maker1 rest =<\< mkASinh (Plugins.mkTyConTy floatTyCon)
-        ),
-        ( 'GHC.Float.atanhDouble,
-          \rest -> pure $ maker1 rest =<\< mkATanh Plugins.doubleTy
-        ),
-        ( 'GHC.Float.atanhFloat,
-          \rest -> do
-            floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
-            pure $ maker1 rest =<\< mkATanh (Plugins.mkTyConTy floatTyCon)
-        )
-      ]
-    where
-      maker1 = makeMaker1 m categorifyLambda
-#else
-newerMakerMapFun _ _ _ _ _ _ _ _ _ _ _ _ _ = mempty
-#endif
-
-olderMakerMapFun :: MakerMapFun
-olderMakerMapFun
+baseMakerMapFun
   symLookup
   _dflags
   _logger
@@ -631,6 +578,14 @@ olderMakerMapFun
                 Plugins.Type a : _floating : rest -> pure $ maker1 rest =<\< mkACosh a
                 _ -> Nothing
             ),
+            ( 'GHC.Float.acoshDouble,
+              \rest -> pure $ maker1 rest =<\< mkACosh Plugins.doubleTy
+            ),
+            ( 'GHC.Float.acoshFloat,
+              \rest -> do
+                floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+                pure $ maker1 rest =<\< mkACosh (Plugins.mkTyConTy floatTyCon)
+            ),
             ( 'GHC.Float.asin,
               \case
                 Plugins.Type a : _floating : rest -> pure $ maker1 rest =<\< mkASin a
@@ -648,6 +603,14 @@ olderMakerMapFun
               \case
                 Plugins.Type a : _floating : rest -> pure $ maker1 rest =<\< mkASinh a
                 _ -> Nothing
+            ),
+            ( 'GHC.Float.asinhDouble,
+              \rest -> pure $ maker1 rest =<\< mkASinh Plugins.doubleTy
+            ),
+            ( 'GHC.Float.asinhFloat,
+              \rest -> do
+                floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+                pure $ maker1 rest =<\< mkASinh (Plugins.mkTyConTy floatTyCon)
             ),
             ( 'GHC.Float.atan,
               \case
@@ -671,6 +634,14 @@ olderMakerMapFun
               \case
                 Plugins.Type a : _floating : rest -> pure $ maker1 rest =<\< mkATanh a
                 _ -> Nothing
+            ),
+            ( 'GHC.Float.atanhDouble,
+              \rest -> pure $ maker1 rest =<\< mkATanh Plugins.doubleTy
+            ),
+            ( 'GHC.Float.atanhFloat,
+              \rest -> do
+                floatTyCon <- Map.lookup ''GHC.Types.Float (tyConLookup symLookup)
+                pure $ maker1 rest =<\< mkATanh (Plugins.mkTyConTy floatTyCon)
             ),
             ( 'GHC.Float.cos,
               \case

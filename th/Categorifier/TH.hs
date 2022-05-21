@@ -18,7 +18,6 @@ module Categorifier.TH
     reifyType,
     specializeT,
     splitTy,
-    tySynInstD',
     tyVarBndrName,
   )
 where
@@ -111,16 +110,12 @@ alphaEquiv' (TH.ForallVisT b t, TH.ForallVisT b' t') =
   --          (order of @b@ matters)
   bool Nothing (alphaEquiv t t') $ length b == length b'
 #endif
-#if MIN_VERSION_template_haskell(2, 15, 0)
-alphaEquiv' (TH.AppKindT t k, TH.AppKindT t' k') = (<>) <$> alphaEquiv t t' <*> alphaEquiv k k'
-alphaEquiv' (TH.ImplicitParamT s t, TH.ImplicitParamT s' t') =
-  bool Nothing (alphaEquiv t t') $ s == s'
-#endif
 alphaEquiv' ty = case ty of
   (TH.ForallT b c t, TH.ForallT b' c' t') ->
     -- __TODO__: Ensure that the kinds of @b@ match, and that those names are added to the map
     --          (order of @b@ matters)
     bool Nothing (alphaEquiv t t') $ length b == length b' && c == c'
+  (TH.AppKindT t k, TH.AppKindT t' k') -> (<>) <$> alphaEquiv t t' <*> alphaEquiv k k'
   (TH.AppT c e, TH.AppT c' e') -> (<>) <$> alphaEquiv c c' <*> alphaEquiv e e'
   (TH.SigT t k, TH.SigT t' k') -> (<>) <$> alphaEquiv t t' <*> alphaEquiv k k'
   (TH.VarT n, TH.VarT n') ->
@@ -129,6 +124,7 @@ alphaEquiv' ty = case ty of
     pure [(n, n')]
   (TH.ConT n, TH.ConT n') -> bool Nothing (pure []) $ n == n'
   (TH.PromotedT n, TH.PromotedT n') -> bool Nothing (pure []) $ n == n'
+  (TH.ImplicitParamT s t, TH.ImplicitParamT s' t') -> bool Nothing (alphaEquiv t t') $ s == s'
   (TH.InfixT t n u, TH.InfixT t' n' u') ->
     bool Nothing ((<>) <$> alphaEquiv t t' <*> alphaEquiv u u') $ n == n'
   (TH.UInfixT t n u, TH.UInfixT t' n' u') ->
@@ -160,17 +156,15 @@ alphaRename' _ TH.MulArrowT = pure TH.MulArrowT
 #if MIN_VERSION_template_haskell(2, 16, 0)
 alphaRename' m (TH.ForallVisT b t) = TH.ForallVisT b <$> alphaRename' m t
 #endif
-#if MIN_VERSION_template_haskell(2, 15, 0)
-alphaRename' m (TH.AppKindT t k) = TH.AppKindT <$> alphaRename' m t <*\> alphaRename' m k
-alphaRename' m (TH.ImplicitParamT s t) = TH.ImplicitParamT s <$> alphaRename' m t
-#endif
 alphaRename' m (TH.ForallT b c t) =
   TH.ForallT b <$> traverseD (alphaRename' m) c <*\> alphaRename' m t
+alphaRename' m (TH.AppKindT t k) = TH.AppKindT <$> alphaRename' m t <*\> alphaRename' m k
 alphaRename' m (TH.AppT c e) = TH.AppT <$> alphaRename' m c <*\> alphaRename' m e
 alphaRename' m (TH.SigT t k) = TH.SigT <$> alphaRename' m t <*\> alphaRename' m k
 alphaRename' m (TH.VarT n) = fmap TH.VarT . getParallel $ noteAccum (flip lookup m) n
 alphaRename' _ (TH.ConT n) = pure $ TH.ConT n
 alphaRename' _ (TH.PromotedT n) = pure $ TH.PromotedT n
+alphaRename' m (TH.ImplicitParamT s t) = TH.ImplicitParamT s <$> alphaRename' m t
 alphaRename' m (TH.InfixT t n t') =
   TH.InfixT <$> alphaRename' m t <*\> pure n <*\> alphaRename' m t'
 alphaRename' m (TH.UInfixT t n t') =
@@ -241,18 +235,16 @@ specializeT' TH.MulArrowT = pure TH.MulArrowT
 #if MIN_VERSION_template_haskell(2, 16, 0)
 specializeT' (TH.ForallVisT bs t) = TH.ForallVisT bs <$> specializeT' t
 #endif
-#if MIN_VERSION_template_haskell(2, 15, 0)
-specializeT' (TH.AppKindT t k) = TH.AppKindT <$> specializeT' t <*> pure k
-specializeT' (TH.ImplicitParamT s t) = TH.ImplicitParamT s <$> specializeT' t
-#endif
 specializeT' (TH.ForallT bs ctx t) =
   TH.ForallT bs <$> fmap (filter hasVarT) (traverse specializeT' ctx) <*> specializeT' t
+specializeT' (TH.AppKindT t k) = TH.AppKindT <$> specializeT' t <*> pure k
 specializeT' (TH.AppT a b) = TH.AppT <$> specializeT' a <*> specializeT' b
 specializeT' (TH.SigT t k) = TH.SigT <$> specializeT' t <*> pure k
 -- If @n@ is substitutable, do so, otherwise leave the `TH.VarT` alone.
 specializeT' (TH.VarT n) = lift . fromMaybe (pure $ TH.VarT n) . Map.lookup n =<< get
 specializeT' (TH.ConT n) = pure $ TH.ConT n
 specializeT' (TH.PromotedT n) = pure $ TH.ConT n
+specializeT' (TH.ImplicitParamT s t) = TH.ImplicitParamT s <$> specializeT' t
 specializeT' (TH.InfixT a n b) = TH.InfixT <$> specializeT' a <*> pure n <*> specializeT' b
 specializeT' (TH.UInfixT a n b) = TH.UInfixT <$> specializeT' a <*> pure n <*> specializeT' b
 specializeT' (TH.ParensT t) = TH.ParensT <$> specializeT' t
@@ -309,16 +301,14 @@ hasVarT TH.MulArrowT = False
 #if MIN_VERSION_template_haskell(2, 16, 0)
 hasVarT (TH.ForallVisT _ _) = True
 #endif
-#if MIN_VERSION_template_haskell(2, 15, 0)
-hasVarT (TH.AppKindT t _) = hasVarT t
-hasVarT (TH.ImplicitParamT _ t) = hasVarT t
-#endif
 hasVarT TH.ForallT {} = True
+hasVarT (TH.AppKindT t _) = hasVarT t
 hasVarT (TH.AppT a b) = hasVarT a || hasVarT b
 hasVarT (TH.SigT t _) = hasVarT t
 hasVarT (TH.VarT _) = True
 hasVarT (TH.ConT _) = False
 hasVarT (TH.PromotedT _) = False
+hasVarT (TH.ImplicitParamT _ t) = hasVarT t
 hasVarT (TH.InfixT a _ b) = hasVarT a || hasVarT b
 hasVarT (TH.UInfixT a _ b) = hasVarT a || hasVarT b
 hasVarT (TH.ParensT t) = hasVarT t
@@ -347,11 +337,3 @@ splitTy (TH.ForallT vs ctx t) = first ((vs, ctx) <>) <$> splitTy t
 splitTy (TH.ForallVisT _ t) = splitTy t
 #endif
 splitTy typ = Exception.throwIOAsException (("unsupported type " <>) . show) typ
-
-tySynInstD' :: TH.Name -> [TH.TypeQ] -> TH.TypeQ -> DecQ
-#if MIN_VERSION_template_haskell(2, 15, 0)
-tySynInstD' name params =
-  TH.tySynInstD . TH.tySynEqn Nothing (foldl' TH.appT (TH.conT name) params)
-#else
-tySynInstD' name params = TH.tySynInstD name . TH.tySynEqn params
-#endif

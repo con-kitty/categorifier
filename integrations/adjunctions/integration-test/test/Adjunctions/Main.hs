@@ -21,7 +21,6 @@ import Categorifier.Test.Tests
   ( TestCases (..),
     TestCategory (..),
     TestStrategy (..),
-    builtinTestCategories,
     mkTestTerms,
   )
 import Data.Bool (bool)
@@ -37,12 +36,11 @@ import System.Exit (exitFailure, exitSuccess)
 
 mkTestTerms
   Adjunctions.testTerms
-  --               name   type      prefix       strategy
-  ( [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
-      TestCategory ''Hask [t|Hask|] "hask" (ComputeFromInput [|runHask|])
-    ]
-      <> builtinTestCategories
-  )
+  --             name   type      prefix  strategy
+  [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
+    TestCategory ''(->) [t|(->)|] "plainArrow" $ ComputeFromInput [|id|],
+    TestCategory ''Hask [t|Hask|] "hask" (ComputeFromInput [|runHask|])
+  ]
   -- adjunctions
   . HInsert1 (Proxy @"PureRep") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"FmapRep") (TestCases (const []))

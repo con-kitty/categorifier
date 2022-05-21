@@ -5,7 +5,6 @@ module Categorifier.GHC.Driver
     module HscTypes,
     module Outputable,
     module Plugins,
-    defaultPurePlugin,
   )
 where
 
@@ -24,12 +23,4 @@ import DynFlags
 import HscTypes
 import Outputable hiding (renderWithStyle)
 import Plugins
-#endif
-
--- | Like `defaultPlugin`, but specifies that the plugin is pure (when GHC allows).
-defaultPurePlugin :: Plugin
-#if MIN_VERSION_ghc(8, 6, 0)
-defaultPurePlugin = defaultPlugin {pluginRecompile = purePlugin}
-#else
-defaultPurePlugin = defaultPlugin
 #endif
