@@ -29,6 +29,7 @@ import Control.Monad.Trans.RWS.Strict (RWST (..), withRWST)
 import Data.Bifunctor (Bifunctor (..))
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
+import qualified Language.Haskell.TH as TH
 
 type CategoryStack =
   ExceptT
@@ -53,10 +54,10 @@ data CategoryState = CategoryState
 
 data MissingSymbol
   = IncorrectType Plugins.Name Plugins.Type
-  | MissingDataCon Plugins.ModuleName String
-  | MissingId Plugins.ModuleName String
-  | MissingName Plugins.ModuleName String
-  | MissingTyCon Plugins.ModuleName String
+  | MissingDataCon TH.Name
+  | MissingId TH.Name
+  | MissingName TH.Name
+  | MissingTyCon TH.Name
 
 -- | This type lets us perform everything in `Plugins.CoreM` while tracking failures properly. It
 --   uses `Parallel` explicitly rather than relying on the `Categorifier.Duoid` operations because

@@ -96,14 +96,14 @@ instance Monoid SymbolLookup where
 --   already, so we don't need to enumerate too many of them here.
 baseSymbolLookup :: Lookup SymbolLookup
 baseSymbolLookup = do
-  int16TyCon <- findTyCon "GHC.Int" "Int16"
-  int32TyCon <- findTyCon "GHC.Int" "Int32"
-  int64TyCon <- findTyCon "GHC.Int" "Int64"
-  int8TyCon <- findTyCon "GHC.Int" "Int8"
-  floatTyCon <- findTyCon "GHC.Types" "Float"
-  word16TyCon <- findTyCon "GHC.Word" "Word16"
-  word32TyCon <- findTyCon "GHC.Word" "Word32"
-  word64TyCon <- findTyCon "GHC.Word" "Word64"
+  int16TyCon <- findTyCon ''GHC.Int.Int16
+  int32TyCon <- findTyCon ''GHC.Int.Int32
+  int64TyCon <- findTyCon ''GHC.Int.Int64
+  int8TyCon <- findTyCon ''GHC.Int.Int8
+  floatTyCon <- findTyCon ''GHC.Types.Float
+  word16TyCon <- findTyCon ''GHC.Word.Word16
+  word32TyCon <- findTyCon ''GHC.Word.Word32
+  word64TyCon <- findTyCon ''GHC.Word.Word64
   pure $
     SymbolLookup
       ( Map.fromList

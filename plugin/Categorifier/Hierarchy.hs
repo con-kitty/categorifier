@@ -1,7 +1,10 @@
 {-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE MagicHash #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE TemplateHaskellQuotes #-}
 {-# LANGUAGE TupleSections #-}
 
 -- | Defines various mappings between categorical representations and the plugin, allowing us to
@@ -22,9 +25,10 @@ module Categorifier.Hierarchy
     -- * building hierarchies
     findDataCon,
     findId,
-    findName,
+    findTHName,
     findTyCon,
     identifier,
+    nameFromText,
     mkFunctionApps,
     mkMethodApps,
     mkMethodApps',
@@ -51,22 +55,49 @@ module Categorifier.Hierarchy
   )
 where
 
+import qualified Categorifier.Category
+import qualified Categorifier.Client
+import qualified Categorifier.Core.Base
+import qualified Categorifier.Core.Functions
 import Categorifier.Core.Types (CategoryStack, Lookup, MissingSymbol (..))
 import Categorifier.Duoidal (Parallel (..))
 import qualified Categorifier.GHC.Builtin as Plugins
 import Categorifier.GHC.Core (CoreExpr, CoreM, Type)
 import qualified Categorifier.GHC.Core as Plugins
 import qualified Categorifier.GHC.Data as Plugins
+import qualified Categorifier.GHC.Plugins as Plugins (thNameToGhcName)
 import qualified Categorifier.GHC.Runtime as Plugins
 import qualified Categorifier.GHC.Types as Plugins
 import qualified Categorifier.GHC.Unit as Plugins
 import Control.Applicative (Alternative (..))
+import qualified Control.Applicative
+import qualified Control.Arrow
+import qualified Control.Category
 import Control.Monad ((<=<))
+import qualified Control.Monad
 import Control.Monad.Trans.Except (ExceptT (..))
+import Data.Bifunctor (bimap)
 import Data.Bits (FiniteBits (..))
+import qualified Data.Bool
+import qualified Data.Either
+import qualified Data.Foldable
+import qualified Data.Function
 import Data.Functor.Identity (Identity (..))
 import Data.Maybe (fromMaybe)
 import Data.Monoid (Dual (..))
+import Data.Text (Text)
+import qualified Data.Text as Text
+import qualified Data.Tuple
+import qualified GHC.Base
+import qualified GHC.Classes
+import qualified GHC.Err
+import qualified GHC.Float
+import qualified GHC.Int
+import qualified GHC.Real
+import qualified GHC.Word
+import qualified Language.Haskell.TH as TH
+import qualified Numeric
+import qualified Unsafe.Coerce
 import Prelude hiding (mod)
 
 -- | These are operations that we need to use in __Hask__, rather than in the target category.
@@ -107,35 +138,35 @@ data HaskOps f = HaskOps
 
 concatOps :: Monad f => Lookup (HaskOps f)
 concatOps = do
-  abstH <- repOp "abst"
+  abstH <- repOp 'Categorifier.Core.Functions.abst
   eitherH <- do
-    op <- identifier "Data.Either" "either"
+    op <- identifier 'Data.Either.either
     pure (\a b c f g e -> runIdentity $ mkFunctionApps Identity op [a, c, b] [f, g, e])
   ffcallH <- do
-    op <- identifier "Categorifier.Category" "ffcall"
+    op <- identifier 'Categorifier.Category.ffcall
     pure $ \onDict cat ity a b i f ->
       mkMethodApps onDict op [cat, ity, a, b] [] [i, f]
   fixH <- do
-    op <- identifier "Data.Function" "fix"
+    op <- identifier 'Data.Function.fix
     pure (\t e -> runIdentity $ mkFunctionApps Identity op [t] [e])
   fstH <- do
-    op <- identifier "Data.Tuple" "fst"
+    op <- identifier 'Data.Tuple.fst
     pure (\a b e -> runIdentity $ mkFunctionApps Identity op [a, b] [e])
   indirectionH <- do
-    op <- identifier "Categorifier.Category" "indirection"
+    op <- identifier 'Categorifier.Category.indirection
     pure $ \onDict cat a b s ->
       mkMethodApps onDict op [Plugins.typeKind a, Plugins.typeKind b, cat, a, b] [] [s]
-  reprH <- repOp "repr"
+  reprH <- repOp 'Categorifier.Core.Functions.repr
   sndH <- do
-    op <- identifier "Data.Tuple" "snd"
+    op <- identifier 'Data.Tuple.snd
     pure (\a b e -> runIdentity $ mkFunctionApps Identity op [a, b] [e])
   curryH <- do
-    op <- identifier "Data.Tuple" "curry"
+    op <- identifier 'Data.Tuple.curry
     pure (\a b c e -> runIdentity $ mkFunctionApps Identity op [a, b, c] [e])
   pure HaskOps {..}
   where
     repOp name = do
-      op <- identifier "Categorifier.Core.Functions" name
+      op <- identifier name
       pure $ \onDict a -> mkFunctionApps onDict op [a] []
 
 -- | This structure relates categorical concepts to operations in a particular library. Each field
@@ -615,58 +646,64 @@ lookupName modu mkOcc str = do
     . Plugins.Unqual
     $ mkOcc str
 
--- __TODO__: This can throw in `lookupRdrNameInModuleForPlugins` if it can't find the module. We
---           should capture that.
-lookupRdr ::
-  Plugins.ModuleName ->
-  (String -> Plugins.OccName) ->
-  (Plugins.Name -> CoreM a) ->
-  String ->
-  CoreM (Maybe a)
-lookupRdr modu mkOcc mkThing = traverse mkThing <=< lookupName modu mkOcc
-
-findName :: String -> String -> Lookup Plugins.Name
-findName modu str =
+nameFromStrings :: String -> String -> Lookup Plugins.Name
+nameFromStrings modu str =
   let mod = Plugins.mkModuleName modu
+      thName = TH.mkName $ modu <> "." <> str
    in Parallel
         ( ExceptT
-            (maybe (Left . pure $ MissingName mod str) pure <$> lookupName mod Plugins.mkVarOcc str)
+            (maybe (Left . pure $ MissingName thName) pure <$> lookupName mod Plugins.mkVarOcc str)
         )
 
-findDataCon :: String -> String -> Lookup Plugins.DataCon
-findDataCon modu str =
-  let mod = Plugins.mkModuleName modu
-   in Parallel
-        ( ExceptT
-            ( maybe (Left . pure $ MissingDataCon mod str) pure
-                <$> lookupRdr mod Plugins.mkDataOcc Plugins.lookupDataCon str
-            )
+-- | This is still needed for @Categorifier.Core.categorifyRules@. Apparently @thNameToGhcName@
+-- can't load a @TH.Name@ made by @TH.mkName@, unless we specify the package when loading the name.
+nameFromText :: Text -> Lookup Plugins.Name
+nameFromText =
+  uncurry nameFromStrings
+    . bimap (Text.unpack . Text.dropWhileEnd (== '.')) Text.unpack
+    . Text.breakOnEnd "."
+
+lookupRdr :: (Plugins.Name -> CoreM a) -> TH.Name -> CoreM (Maybe a)
+lookupRdr mkThing = traverse mkThing <=< Plugins.thNameToGhcName
+
+findTHName :: TH.Name -> Lookup Plugins.Name
+findTHName tn =
+  Parallel
+    ( ExceptT
+        (maybe (Left . pure $ MissingName tn) pure <$> Plugins.thNameToGhcName tn)
+    )
+
+findDataCon :: TH.Name -> Lookup Plugins.DataCon
+findDataCon tn =
+  Parallel
+    ( ExceptT
+        ( maybe (Left . pure $ MissingDataCon tn) pure
+            <$> lookupRdr Plugins.lookupDataCon tn
         )
+    )
 
 -- | A helper for building `Hierarchy`s, also useful for looking up other `Plugins.Id`s in the
 --   appropriate context.
-findId :: String -> String -> Lookup Plugins.Id
-findId modu str =
-  let mod = Plugins.mkModuleName modu
-   in Parallel
-        ( ExceptT
-            ( maybe (Left . pure $ MissingId mod str) pure
-                <$> lookupRdr mod Plugins.mkVarOcc Plugins.lookupId str
-            )
+findId :: TH.Name -> Lookup Plugins.Id
+findId tn =
+  Parallel
+    ( ExceptT
+        ( maybe (Left . pure $ MissingId tn) pure
+            <$> lookupRdr Plugins.lookupId tn
         )
+    )
 
-findTyCon :: String -> String -> Lookup Plugins.TyCon
-findTyCon modu str =
-  let mod = Plugins.mkModuleName modu
-   in Parallel
-        ( ExceptT
-            ( maybe (Left . pure $ MissingTyCon mod str) pure
-                <$> lookupRdr mod Plugins.mkTcOcc Plugins.lookupTyCon str
-            )
+findTyCon :: TH.Name -> Lookup Plugins.TyCon
+findTyCon tn =
+  Parallel
+    ( ExceptT
+        ( maybe (Left . pure $ MissingTyCon tn) pure
+            <$> lookupRdr Plugins.lookupTyCon tn
         )
+    )
 
-identifier :: String -> String -> Lookup CoreExpr
-identifier = (fmap Plugins.Var .) . findId
+identifier :: TH.Name -> Lookup CoreExpr
+identifier = fmap Plugins.Var . findId
 
 -- | Very much like `mkMethodApps`, but as a function is not a member of a type class, there are no
 --   class parameters to apply (or class dictionary to resolve).
@@ -750,22 +787,22 @@ mkMethodApps' onDictCls onDictMeth fn tc tys terms = do
 --            dynamically load a parameterized type successfully.
 baseHierarchy :: Lookup (Hierarchy CategoryStack)
 baseHierarchy = do
-  absV <- closedUnaryOp "Prelude" "abs"
+  absV <- closedUnaryOp 'Prelude.abs
   abstCV <-
     pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      rep <- findTyCon "Categorifier.Client" "Rep"
-      op <- identifier "Categorifier.Client" "abst"
+      arr <- identifier 'Control.Arrow.arr
+      rep <- findTyCon ''Categorifier.Client.Rep
+      op <- identifier 'Categorifier.Client.abst
       pure $ \onDict cat a ->
         mkMethodApps onDict arr [cat] [Plugins.mkTyConApp rep [a], a] . pure
           =<< mkMethodApps onDict op [a] [] []
-  acosV <- closedUnaryOp "Numeric" "acos"
-  acoshV <- closedUnaryOp "Numeric" "acosh"
+  acosV <- closedUnaryOp 'Numeric.acos
+  acoshV <- closedUnaryOp 'Numeric.acosh
   andV <-
     pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      uncur <- identifier "Data.Tuple" "uncurry"
-      op <- identifier "GHC.Classes" "&&"
+      arr <- identifier 'Control.Arrow.arr
+      uncur <- identifier 'Data.Tuple.uncurry
+      op <- identifier '(GHC.Classes.&&)
       pure
         ( \onDict cat -> do
             op' <- mkFunctionApps onDict op [] []
@@ -780,9 +817,9 @@ baseHierarchy = do
         )
   apV <-
     pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      uncur <- identifier "Data.Tuple" "uncurry"
-      op <- identifier "Control.Applicative" "<*>"
+      arr <- identifier 'Control.Arrow.arr
+      uncur <- identifier 'Data.Tuple.uncurry
+      op <- identifier '(Control.Applicative.<*>)
       pure
         ( \onDict cat f a b -> do
             let fa = Plugins.mkAppTy f a
@@ -792,12 +829,12 @@ baseHierarchy = do
             uncur' <- mkFunctionApps onDict uncur [ffun, fa, fb] [op']
             mkMethodApps onDict arr [cat] [Plugins.mkBoxedTupleTy [ffun, fa], fb] [uncur']
         )
-  appendV <- closedBinaryOp "GHC.Base" "<>"
+  appendV <- closedBinaryOp '(GHC.Base.<>)
   applyV <-
     pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      op <- identifier "Data.Function" "$"
-      uncur <- identifier "Data.Tuple" "uncurry"
+      arr <- identifier 'Control.Arrow.arr
+      op <- identifier '(Data.Function.$)
+      uncur <- identifier 'Data.Tuple.uncurry
       pure $
         \onDict cat a b -> do
           let fun = Plugins.mkAppTys Plugins.properFunTy [a, b]
@@ -805,16 +842,16 @@ baseHierarchy = do
           uncur' <- mkFunctionApps onDict uncur [fun, a, b] [op']
           mkMethodApps onDict arr [cat] [Plugins.mkBoxedTupleTy [fun, a], b] [uncur']
   let apply2V = Nothing
-  arctan2V <- closedBinaryOp "GHC.Float" "atan2"
-  asinV <- closedUnaryOp "Numeric" "asin"
-  asinhV <- closedUnaryOp "Numeric" "asinh"
-  atanV <- closedUnaryOp "Numeric" "atan"
-  atanhV <- closedUnaryOp "Numeric" "atanh"
+  arctan2V <- closedBinaryOp 'GHC.Float.atan2
+  asinV <- closedUnaryOp 'Numeric.asin
+  asinhV <- closedUnaryOp 'Numeric.asinh
+  atanV <- closedUnaryOp 'Numeric.atan
+  atanhV <- closedUnaryOp 'Numeric.atanh
   bindV <-
     pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      op <- identifier "Control.Monad" ">>="
-      uncur <- identifier "Data.Tuple" "uncurry"
+      arr <- identifier 'Control.Arrow.arr
+      op <- identifier '(Control.Monad.>>=)
+      uncur <- identifier 'Data.Tuple.uncurry
       pure $
         \onDict cat m a b -> do
           let ma = Plugins.mkAppTy m a
@@ -825,27 +862,27 @@ baseHierarchy = do
           mkMethodApps onDict arr [cat] [Plugins.mkBoxedTupleTy [ma, fun], mb] [uncur']
   bottomV <-
     pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      op <- identifier "GHC.Err" "undefined"
+      arr <- identifier 'Control.Arrow.arr
+      op <- identifier 'GHC.Err.undefined
       pure $ \onDict cat a b ->
         mkMethodApps onDict arr [cat] [a, b] . pure
           =<< mkFunctionApps onDict op [Plugins.liftedRepTy, Plugins.funTy a b] []
   coerceV <-
     pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      op <- identifier "Unsafe.Coerce" "unsafeCoerce"
+      arr <- identifier 'Control.Arrow.arr
+      op <- identifier 'Unsafe.Coerce.unsafeCoerce
       pure $ \onDict cat from to ->
         mkMethodApps onDict arr [cat] [from, to] . pure =<< mkFunctionApps onDict op [from, to] []
-  compareV <- binaryOp (Just $ Plugins.mkTyConTy Plugins.orderingTyCon) "GHC.Classes" "compare"
+  compareV <- binaryOp (Just $ Plugins.mkTyConTy Plugins.orderingTyCon) 'GHC.Classes.compare
   composeV <-
     pure <$> do
-      fn <- identifier "Control.Category" "."
+      fn <- identifier '(Control.Category..)
       pure $ \onDict cat a b c -> mkMethodApps onDict fn [Plugins.typeKind a, cat] [b, c, a] []
   let compose2V = Nothing
   constV <-
     pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      op <- identifier "Data.Function" "const"
+      arr <- identifier 'Control.Arrow.arr
+      op <- identifier 'Data.Function.const
       pure $
         \onDict cat a b ->
           -- Builds a lambda expecting the expression we want to return before applying `arr`. I.e.,
@@ -856,14 +893,14 @@ baseHierarchy = do
                         =<< mkFunctionApps onDict op [b, a] [Plugins.Var v]
                     )
   let constraintV = Nothing
-  cosV <- closedUnaryOp "Numeric" "cos"
-  coshV <- closedUnaryOp "Numeric" "cosh"
+  cosV <- closedUnaryOp 'Numeric.cos
+  coshV <- closedUnaryOp 'Numeric.cosh
   let curryV = Nothing
   distlV <-
     pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      op <- identifier "Categorifier.Core.Base" "distlB"
-      eith <- findTyCon "Data.Either" "Either"
+      arr <- identifier 'Control.Arrow.arr
+      op <- identifier 'Categorifier.Core.Base.distlB
+      eith <- findTyCon ''Data.Either.Either
       pure $ \onDict cat a b c ->
         mkMethodApps
           onDict
@@ -874,73 +911,73 @@ baseHierarchy = do
           ]
           . pure
           =<< mkFunctionApps onDict op [Plugins.mkTyConTy eith, a, b, c] []
-  divV <- closedBinaryOp "GHC.Real" "div"
-  divideV <- closedBinaryOp "Prelude" "/"
+  divV <- closedBinaryOp 'GHC.Real.div
+  divideV <- closedBinaryOp '(Prelude./)
   doubleToFloatV <-
     pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      op <- identifier "GHC.Float" "double2Float"
+      arr <- identifier 'Control.Arrow.arr
+      op <- identifier 'GHC.Float.double2Float
       pure (\onDict cat -> mkMethodApps onDict arr [cat] [Plugins.doubleTy, Plugins.floatTy] [op])
-  equalV <- binaryRel "GHC.Classes" "=="
-  evenV <- unaryRel "GHC.Real" "even"
+  equalV <- binaryRel '(GHC.Classes.==)
+  evenV <- unaryRel 'GHC.Real.even
   exlV <-
     pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      op <- identifier "Data.Tuple" "fst"
+      arr <- identifier 'Control.Arrow.arr
+      op <- identifier 'Data.Tuple.fst
       pure $ \onDict cat a b ->
         mkMethodApps onDict arr [cat] [Plugins.mkBoxedTupleTy [a, b], a] . pure
           =<< mkFunctionApps onDict op [a, b] []
-  expV <- closedUnaryOp "Numeric" "exp"
+  expV <- closedUnaryOp 'Numeric.exp
   exrV <-
     pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      op <- identifier "Data.Tuple" "snd"
+      arr <- identifier 'Control.Arrow.arr
+      op <- identifier 'Data.Tuple.snd
       pure $ \onDict cat a b ->
         mkMethodApps onDict arr [cat] [Plugins.mkBoxedTupleTy [a, b], b] . pure
           =<< mkFunctionApps onDict op [a, b] []
   fixV <-
     pure <$> do
-      fn <- identifier "Categorifier.Core.Base" "fixB"
+      fn <- identifier 'Categorifier.Core.Base.fixB
       pure (\onDict cat a x -> mkFunctionApps onDict fn [cat, a, x] [])
   floatToDoubleV <-
     pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      op <- identifier "GHC.Float" "float2Double"
+      arr <- identifier 'Control.Arrow.arr
+      op <- identifier 'GHC.Float.float2Double
       pure (\onDict cat -> mkMethodApps onDict arr [cat] [Plugins.floatTy, Plugins.doubleTy] [op])
   let fmodV = Nothing
   forkV <-
     pure <$> do
-      fn <- identifier "Control.Arrow" "&&&"
+      fn <- identifier '(Control.Arrow.&&&)
       pure (\onDict cat a b c -> mkMethodApps onDict fn [cat] [a, b, c] [])
-  fpIsNegativeZeroV <- unaryRel "GHC.Float" "isNegativeZero"
-  fpIsInfiniteV <- unaryRel "GHC.Float" "isInfinite"
+  fpIsNegativeZeroV <- unaryRel 'GHC.Float.isNegativeZero
+  fpIsInfiniteV <- unaryRel 'GHC.Float.isInfinite
   let fpIsFiniteV = Nothing
-  fpIsNaNV <- unaryRel "GHC.Float" "isNaN"
-  fpIsDenormalV <- unaryRel "GHC.Float" "isDenormalized"
+  fpIsNaNV <- unaryRel 'GHC.Float.isNaN
+  fpIsDenormalV <- unaryRel 'GHC.Float.isDenormalized
   fromIntegerV <-
     pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      op <- identifier "Prelude" "fromInteger"
-      int <- findTyCon "Prelude" "Integer"
+      arr <- identifier 'Control.Arrow.arr
+      op <- identifier 'Prelude.fromInteger
+      int <- findTyCon ''Prelude.Integer
       pure $ \onDict cat a ->
         mkMethodApps onDict arr [cat] [Plugins.mkTyConTy int, a] . pure
           =<< mkFunctionApps onDict op [a] []
   fromIntegralV <-
     pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      op <- identifier "GHC.Real" "fromIntegral"
+      arr <- identifier 'Control.Arrow.arr
+      op <- identifier 'GHC.Real.fromIntegral
       pure $ \onDict cat a b ->
         mkMethodApps onDict arr [cat] [a, b] . pure =<< mkFunctionApps onDict op [a, b] []
-  geV <- binaryRel "GHC.Classes" ">="
-  gtV <- binaryRel "GHC.Classes" ">"
+  geV <- binaryRel '(GHC.Classes.>=)
+  gtV <- binaryRel '(GHC.Classes.>)
   idV <-
     pure <$> do
-      fn <- identifier "Control.Category" "id"
+      fn <- identifier 'Control.Category.id
       pure (\onDict cat a -> mkMethodApps onDict fn [Plugins.typeKind a, cat] [a] [])
   ifV <-
     pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      op <- identifier "Categorifier.Core.Base" "ifThenElseB"
+      arr <- identifier 'Control.Arrow.arr
+      op <- identifier 'Categorifier.Core.Base.ifThenElseB
       pure $ \onDict cat a ->
         mkMethodApps
           onDict
@@ -949,16 +986,16 @@ baseHierarchy = do
           [Plugins.mkBoxedTupleTy [Plugins.boolTy, Plugins.mkBoxedTupleTy [a, a]], a]
           . pure
           =<< mkFunctionApps onDict op [a] []
-  inlV <- eitherOp "Left" const
-  inrV <- eitherOp "Right" (\_ x -> x)
+  inlV <- eitherOp 'Data.Either.Left const
+  inrV <- eitherOp 'Data.Either.Right (\_ x -> x)
   joinV <-
     pure <$> do
-      fn <- identifier "Control.Arrow" "|||"
+      fn <- identifier '(Control.Arrow.|||)
       pure (\onDict cat a1 a2 b -> mkMethodApps onDict fn [cat] [a1, b, a2] [])
   lassocV <-
     pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      op <- identifier "Categorifier.Core.Base" "lassocB"
+      arr <- identifier 'Control.Arrow.arr
+      op <- identifier 'Categorifier.Core.Base.lassocB
       pure $ \onDict cat a b c ->
         mkMethodApps
           onDict
@@ -969,39 +1006,39 @@ baseHierarchy = do
           ]
           . pure
           =<< mkFunctionApps onDict op [a, b, c] []
-  leV <- binaryRel "GHC.Classes" "<="
+  leV <- binaryRel '(GHC.Classes.<=)
   let liftA2V = Nothing
-  logV <- closedUnaryOp "Numeric" "log"
-  ltV <- binaryRel "GHC.Classes" "<"
+  logV <- closedUnaryOp 'Numeric.log
+  ltV <- binaryRel '(GHC.Classes.<)
   let mapV = Nothing
-  maxV <- closedBinaryOp "Prelude" "max"
+  maxV <- closedBinaryOp 'Prelude.max
   let maximumV = Nothing
-  minV <- closedBinaryOp "Prelude" "min"
+  minV <- closedBinaryOp 'Prelude.min
   let minimumV = Nothing
-  minusV <- closedBinaryOp "Prelude" "-"
-  modV <- closedBinaryOp "GHC.Real" "mod"
+  minusV <- closedBinaryOp '(Prelude.-)
+  modV <- closedBinaryOp 'GHC.Real.mod
   let nativeV = Nothing
-  negateV <- closedUnaryOp "Prelude" "negate"
+  negateV <- closedUnaryOp 'Prelude.negate
   let indexV = Nothing
   realToFracV <-
     pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      op <- identifier "GHC.Real" "realToFrac"
+      arr <- identifier 'Control.Arrow.arr
+      op <- identifier 'GHC.Real.realToFrac
       pure $ \onDict cat a b ->
         mkMethodApps onDict arr [cat] [a, b] . pure =<< mkFunctionApps onDict op [a, b] []
   let tabulateV = Nothing
   notV <-
     pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      op <- identifier "Data.Bool" "not"
+      arr <- identifier 'Control.Arrow.arr
+      op <- identifier 'Data.Bool.not
       pure (\onDict cat -> mkMethodApps onDict arr [cat] [Plugins.boolTy, Plugins.boolTy] [op])
-  notEqualV <- binaryRel "GHC.Classes" "/="
-  oddV <- unaryRel "GHC.Real" "odd"
+  notEqualV <- binaryRel '(GHC.Classes./=)
+  oddV <- unaryRel 'GHC.Real.odd
   orV <-
     pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      uncur <- identifier "Data.Tuple" "uncurry"
-      op <- identifier "GHC.Classes" "||"
+      arr <- identifier 'Control.Arrow.arr
+      uncur <- identifier 'Data.Tuple.uncurry
+      op <- identifier '(GHC.Classes.||)
       pure
         ( \onDict cat -> do
             op' <- mkFunctionApps onDict op [] []
@@ -1014,30 +1051,30 @@ baseHierarchy = do
               [Plugins.mkBoxedTupleTy [Plugins.boolTy, Plugins.boolTy], Plugins.boolTy]
               [uncur']
         )
-  plusV <- closedBinaryOp "Prelude" "+"
+  plusV <- closedBinaryOp '(Prelude.+)
   pointV <-
     pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      op <- identifier "Control.Applicative" "pure"
+      arr <- identifier 'Control.Arrow.arr
+      op <- identifier 'Control.Applicative.pure
       pure $ \onDict cat f a ->
         mkMethodApps onDict arr [cat] [a, Plugins.mkAppTy f a] . pure
           =<< mkMethodApps onDict op [f] [a] []
-  powV <- closedBinaryOp "Numeric" "**"
+  powV <- closedBinaryOp '(Numeric.**)
   let powIV = Nothing
   powIntV <-
     pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      uncur <- identifier "Data.Tuple" "uncurry"
-      op <- identifier "GHC.Real" "^"
+      arr <- identifier 'Control.Arrow.arr
+      uncur <- identifier 'Data.Tuple.uncurry
+      op <- identifier '(GHC.Real.^)
       pure $ \onDict cat a -> do
         op' <- mkFunctionApps onDict op [a, Plugins.intTy] []
         uncur' <- mkFunctionApps onDict uncur [a, Plugins.intTy, a] [op']
         mkMethodApps onDict arr [cat] [Plugins.mkBoxedTupleTy [a, Plugins.intTy], a] [uncur']
-  quotV <- closedBinaryOp "GHC.Real" "quot"
+  quotV <- closedBinaryOp 'GHC.Real.quot
   rassocV <-
     pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      op <- identifier "Categorifier.Core.Base" "rassocB"
+      arr <- identifier 'Control.Arrow.arr
+      op <- identifier 'Categorifier.Core.Base.rassocB
       pure $ \onDict cat a b c ->
         mkMethodApps
           onDict
@@ -1048,25 +1085,25 @@ baseHierarchy = do
           ]
           . pure
           =<< mkFunctionApps onDict op [a, b, c] []
-  recipV <- closedUnaryOp "Prelude" "recip"
-  remV <- closedBinaryOp "GHC.Real" "rem"
+  recipV <- closedUnaryOp 'Prelude.recip
+  remV <- closedBinaryOp 'GHC.Real.rem
   reprCV <-
     pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      rep <- findTyCon "Categorifier.Client" "Rep"
-      op <- identifier "Categorifier.Client" "repr"
+      arr <- identifier 'Control.Arrow.arr
+      rep <- findTyCon ''Categorifier.Client.Rep
+      op <- identifier 'Categorifier.Client.repr
       pure $ \onDict cat a ->
         mkMethodApps onDict arr [cat] [a, Plugins.mkTyConApp rep [a]] . pure
           =<< mkMethodApps onDict op [a] [] []
   let sequenceAV = Nothing
-  signumV <- closedUnaryOp "Prelude" "signum"
-  sinV <- closedUnaryOp "Numeric" "sin"
-  sinhV <- closedUnaryOp "Numeric" "sinh"
-  sqrtV <- closedUnaryOp "Numeric" "sqrt"
+  signumV <- closedUnaryOp 'Prelude.signum
+  sinV <- closedUnaryOp 'Numeric.sin
+  sinhV <- closedUnaryOp 'Numeric.sinh
+  sqrtV <- closedUnaryOp 'Numeric.sqrt
   strengthV <-
     pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      op <- identifier "Categorifier.Core.Base" "strengthB"
+      arr <- identifier 'Control.Arrow.arr
+      op <- identifier 'Categorifier.Core.Base.strengthB
       pure $ \onDict cat f a b ->
         mkMethodApps
           onDict
@@ -1079,26 +1116,26 @@ baseHierarchy = do
           =<< mkFunctionApps onDict op [f, a, b] []
   sumV <-
     pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      op <- identifier "Data.Foldable" "sum"
+      arr <- identifier 'Control.Arrow.arr
+      op <- identifier 'Data.Foldable.sum
       pure $ \onDict cat f a -> do
         mkMethodApps onDict arr [cat] [f, a] . pure
           =<< mkMethodApps onDict op [f] [a] []
   swapV <-
     pure <$> do
-      arr <- identifier "Control.Arrow" "arr"
-      op <- identifier "Data.Tuple" "swap"
+      arr <- identifier 'Control.Arrow.arr
+      op <- identifier 'Data.Tuple.swap
       pure $ \onDict cat a b ->
         mkMethodApps onDict arr [cat] [Plugins.mkBoxedTupleTy [a, b], Plugins.mkBoxedTupleTy [b, a]]
           . pure
           =<< mkFunctionApps onDict op [a, b] []
-  tanV <- closedUnaryOp "Numeric" "tan"
-  tanhV <- closedUnaryOp "Numeric" "tanh"
-  timesV <- closedBinaryOp "Prelude" "*"
+  tanV <- closedUnaryOp 'Numeric.tan
+  tanhV <- closedUnaryOp 'Numeric.tanh
+  timesV <- closedBinaryOp '(Prelude.*)
   let traverseV = Nothing
   uncurryV <-
     pure <$> do
-      fn <- identifier "Categorifier.Core.Base" "uncurryB"
+      fn <- identifier 'Categorifier.Core.Base.uncurryB
       pure (\onDict cat a b c -> mkFunctionApps onDict fn [cat, a, b, c] [])
   pure Hierarchy {..}
   where
@@ -1106,19 +1143,19 @@ baseHierarchy = do
     binaryRel = binaryOp (Just Plugins.boolTy)
     closedUnaryOp = unaryOp Nothing
     closedBinaryOp = binaryOp Nothing
-    unaryOp mbResTy modu ident =
+    unaryOp mbResTy name =
       pure <$> do
-        arr <- identifier "Control.Arrow" "arr"
-        op <- identifier modu ident
+        arr <- identifier 'Control.Arrow.arr
+        op <- identifier name
         pure $ \onDict cat a -> do
           let resTy = fromMaybe a mbResTy
           mkMethodApps onDict arr [cat] [a, resTy] . pure
             =<< mkMethodApps onDict op [a] [] []
-    binaryOp mbResTy modu ident =
+    binaryOp mbResTy name =
       pure <$> do
-        arr <- identifier "Control.Arrow" "arr"
-        uncur <- identifier "Data.Tuple" "uncurry"
-        op <- identifier modu ident
+        arr <- identifier 'Control.Arrow.arr
+        uncur <- identifier 'Data.Tuple.uncurry
+        op <- identifier name
         pure $ \onDict cat a -> do
           let resTy = fromMaybe a mbResTy
           op' <- mkMethodApps onDict op [a] [] []
@@ -1126,9 +1163,9 @@ baseHierarchy = do
           mkMethodApps onDict arr [cat] [Plugins.mkBoxedTupleTy [a, a], resTy] [uncur']
     eitherOp opName select =
       pure <$> do
-        arr <- identifier "Control.Arrow" "arr"
-        eith <- findTyCon "Data.Either" "Either"
-        op <- Plugins.Var . Plugins.dataConWorkId <$> findDataCon "Data.Either" opName
+        arr <- identifier 'Control.Arrow.arr
+        eith <- findTyCon ''Data.Either.Either
+        op <- Plugins.Var . Plugins.dataConWorkId <$> findDataCon opName
         pure $ \onDict cat a b ->
           mkMethodApps onDict arr [cat] [select a b, Plugins.mkTyConApp eith [a, b]] . pure
             =<< mkFunctionApps onDict op [a, b] []
@@ -1157,22 +1194,22 @@ getIntegerConstructors :: Lookup [IntConstructor]
 getIntegerConstructors = traverse mkIntCons ints
   where
     mkIntCons ::
-      (Integer, Bool, String, String, String, Maybe Plugins.PrimOp) ->
+      (Integer, Bool, TH.Name, TH.Name, Maybe Plugins.PrimOp) ->
       Lookup IntConstructor
-    mkIntCons (i, s, m, t, d, n) =
-      (\tc dc -> IntConstructor i s tc dc n) <$> findTyCon m t <*> findDataCon m d
+    mkIntCons (i, s, t, d, n) =
+      (\tc dc -> IntConstructor i s tc dc n) <$> findTyCon t <*> findDataCon d
     ints =
       -- (size, is signed, module, boxed type, boxing data con, narrowing op)
-      [ (8, True, "GHC.Int", "Int8", "I8#", pure Plugins.Narrow8IntOp),
-        (16, True, "GHC.Int", "Int16", "I16#", pure Plugins.Narrow16IntOp),
-        (32, True, "GHC.Int", "Int32", "I32#", pure Plugins.Narrow32IntOp),
-        (64, True, "GHC.Int", "Int64", "I64#", Nothing),
-        (toInteger $ finiteBitSize (0 :: Int), True, "GHC.Int", "Int", "I#", Nothing),
-        (8, False, "GHC.Word", "Word8", "W8#", pure Plugins.Narrow8WordOp),
-        (16, False, "GHC.Word", "Word16", "W16#", pure Plugins.Narrow16WordOp),
-        (32, False, "GHC.Word", "Word32", "W32#", pure Plugins.Narrow32WordOp),
-        (64, False, "GHC.Word", "Word64", "W64#", Nothing),
-        (toInteger $ finiteBitSize (0 :: Word), False, "GHC.Word", "Word", "W#", Nothing)
+      [ (8, True, ''GHC.Int.Int8, 'GHC.Int.I8#, pure Plugins.Narrow8IntOp),
+        (16, True, ''GHC.Int.Int16, 'GHC.Int.I16#, pure Plugins.Narrow16IntOp),
+        (32, True, ''GHC.Int.Int32, 'GHC.Int.I32#, pure Plugins.Narrow32IntOp),
+        (64, True, ''GHC.Int.Int64, 'GHC.Int.I64#, Nothing),
+        (toInteger $ finiteBitSize (0 :: Int), True, ''GHC.Int.Int, 'GHC.Int.I#, Nothing),
+        (8, False, ''GHC.Word.Word8, 'GHC.Word.W8#, pure Plugins.Narrow8WordOp),
+        (16, False, ''GHC.Word.Word16, 'GHC.Word.W16#, pure Plugins.Narrow16WordOp),
+        (32, False, ''GHC.Word.Word32, 'GHC.Word.W32#, pure Plugins.Narrow32WordOp),
+        (64, False, ''GHC.Word.Word64, 'GHC.Word.W64#, Nothing),
+        (toInteger $ finiteBitSize (0 :: Word), False, ''GHC.Word.Word, 'GHC.Word.W#, Nothing)
       ]
 
 newtype GetTagInfo = GetTagInfo
@@ -1180,7 +1217,7 @@ newtype GetTagInfo = GetTagInfo
   }
 
 getGetTagInfo :: Lookup GetTagInfo
-getGetTagInfo = GetTagInfo <$> findId "GHC.Base" "getTag"
+getGetTagInfo = GetTagInfo <$> findId 'GHC.Base.getTag
 
 data BaseIdentifiers = BaseIdentifiers
   { baseIntConstructors :: [IntConstructor],

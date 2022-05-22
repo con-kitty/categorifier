@@ -23,6 +23,7 @@ library
   build-depends:
     , base
     , bytestring
+    , categories
     , categorifier-duoids
     , categorifier-ghc
     , categorifier-plugin

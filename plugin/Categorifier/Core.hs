@@ -47,8 +47,9 @@ import Categorifier.Hierarchy
     baseHierarchy,
     concatOps,
     findId,
-    findName,
+    findTHName,
     getBaseIdentifiers,
+    nameFromText,
   )
 import qualified Categorifier.TH as TH
 import Control.Monad (unless, (<=<))
@@ -96,7 +97,7 @@ install opts todos = do
   dflags <- Plugins.getDynFlags
   convert <-
     either (throwIOAsException $ prettyMissingSymbols dflags) pure <=< runExceptT . getParallel $
-      idFromTHName conversionFunction
+      findId conversionFunction
   logger <- Plugins.getLogger
   -- TODO: support partial application of `Categorify.expression` (#33).
   let allOurTodos = [categorifyTodo, postsimplifier convert logger dflags, removeCategorify]
@@ -192,14 +193,14 @@ prettyMissingSymbols dflags =
       ( \case
           IncorrectType name ty ->
             [fmt|\n  - `{Plugins.showPpr dflags name}` was found, but didn't have type `{Plugins.showPpr dflags ty}`|]
-          MissingDataCon modu name ->
-            [fmt|\n  - data constructor {name} in {Plugins.moduleNameString modu}|]
-          MissingId modu name ->
-            [fmt|\n  - identifier {name} in {Plugins.moduleNameString modu}|]
-          MissingName modu name ->
-            [fmt|\n  - name {name} in {Plugins.moduleNameString modu}|]
-          MissingTyCon modu name ->
-            [fmt|\n  - type constructor {name} in {Plugins.moduleNameString modu}|]
+          MissingDataCon name ->
+            [fmt|\n  - data constructor {show name}|]
+          MissingId name ->
+            [fmt|\n  - identifier {show name}|]
+          MissingName name ->
+            [fmt|\n  - name {show name}|]
+          MissingTyCon name ->
+            [fmt|\n  - type constructor {show name}|]
       )
 
 -- | A plugin pass that adds our `categorify` rule to the list of simplifier rules to be run.
@@ -293,56 +294,26 @@ the "Categorifier" plugin. But errors from the plugin have been deferred to runt
 so you see this message instead of the actual compile-time failure. Compile
 without `-fplugin-opt Categorifier:defer-failures` to see what actually went wrong.|]
 
--- | Convert a name from Template Haskell to Core. Template Haskell ensures the name is resolvable
---   when the plugin is compiled, which can help avoid failures when client code is compiled.
-idFromTHName :: TH.Name -> Lookup Plugins.Id
-idFromTHName name =
-  maybe
-    ( Parallel . lift $
-        throwIOAsException
-          (("This name should have been global, but has no module: " <>) . TH.nameBase)
-          name
-    )
-    (flip findId $ TH.nameBase name)
-    $ TH.nameModule name
-
-nameFromTHName :: TH.Name -> Lookup Plugins.Name
-nameFromTHName name =
-  maybe
-    ( Parallel . lift $
-        throwIOAsException
-          (("This name should have been global, but has no module: " <>) . TH.nameBase)
-          name
-    )
-    (flip findName $ TH.nameBase name)
-    $ TH.nameModule name
-
 -- |
 -- __TODO__: `Dynamic.getValueSafely` throws in many cases. Try to catch, accumulate, return in
 --           `Either` (not that we can drop the IO regardless).
 getDynamicValueSafely :: Plugins.HscEnv -> Plugins.Name -> Plugins.Type -> IO (Maybe a)
 getDynamicValueSafely = Runtime.getValueSafely
 
-nameFromText :: Text -> Lookup Plugins.Name
-nameFromText =
-  uncurry findName
-    . bimap (Text.unpack . Text.dropWhileEnd (== '.')) Text.unpack
-    . Text.breakOnEnd "."
-
 additionalBoxersTy :: Lookup Plugins.Type
-additionalBoxersTy = Plugins.exprType . Plugins.Var <$> idFromTHName 'PrimOp.noAdditionalBoxers
+additionalBoxersTy = Plugins.exprType . Plugins.Var <$> findId 'PrimOp.noAdditionalBoxers
 
 autoInterpreterTy :: Lookup Plugins.Type
-autoInterpreterTy = Plugins.exprType . Plugins.Var <$> idFromTHName 'neverAutoInterpret
+autoInterpreterTy = Plugins.exprType . Plugins.Var <$> findId 'neverAutoInterpret
 
 hierarchyTy :: Lookup Plugins.Type
-hierarchyTy = Plugins.exprType . Plugins.Var <$> idFromTHName 'baseHierarchy
+hierarchyTy = Plugins.exprType . Plugins.Var <$> findId 'baseHierarchy
 
 lookupTy :: Lookup Plugins.Type
-lookupTy = Plugins.exprType . Plugins.Var <$> idFromTHName 'baseSymbolLookup
+lookupTy = Plugins.exprType . Plugins.Var <$> findId 'baseSymbolLookup
 
 makerMapTy :: Lookup Plugins.Type
-makerMapTy = Plugins.exprType . Plugins.Var <$> idFromTHName 'baseMakerMapFun
+makerMapTy = Plugins.exprType . Plugins.Var <$> findId 'baseMakerMapFun
 
 -- | Wiring our function into a `Plugins.BuiltInRule` for the plugin system.
 categorifyRules ::
@@ -356,9 +327,9 @@ categorifyRules convert opts guts =
     --           ones. It's a bit complicated to get it to applicative with manual duoidal handling
     --           (as we do elsewhere via explicit `Parallel` handling, but GHC 9.0 should make this
     --           easy to get right with @QualifiedDo@.
-    apply <- getParallel $ idFromTHName '($)
-    throw <- getParallel $ idFromTHName 'Prelude.error
-    str <- getParallel $ idFromTHName 'GHC.CString.unpackCStringUtf8#
+    apply <- getParallel $ findId '($)
+    throw <- getParallel $ findId 'Prelude.error
+    str <- getParallel $ findId 'GHC.CString.unpackCStringUtf8#
     additionalBoxersTy' <- getParallel additionalBoxersTy
     autoInterpreterTy' <- getParallel autoInterpreterTy
     hierarchyTy' <- getParallel hierarchyTy
@@ -367,7 +338,7 @@ categorifyRules convert opts guts =
     hask <- getParallel concatOps
     let loadOptions def =
           getParallel
-            . maybe (pure <$> nameFromTHName def) (traverse nameFromText)
+            . maybe (pure <$> findTHName def) (traverse nameFromText)
             . (nonEmpty <=< flip Map.lookup opts)
         additionalBoxersOptions = loadOptions 'PrimOp.noAdditionalBoxers AdditionalBoxersOptions
         autoInterpreterOptions = loadOptions 'neverAutoInterpret AutoInterpreterOptions

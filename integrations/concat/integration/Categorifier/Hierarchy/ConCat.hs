@@ -1,6 +1,7 @@
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE TemplateHaskellQuotes #-}
 
 -- | Defines various mappings between categorical representations and the plugin, allowing us to
 --   support transformations against different type class hierarchies.
@@ -10,6 +11,8 @@ module Categorifier.Hierarchy.ConCat
   )
 where
 
+import qualified Categorifier.Category
+import qualified Categorifier.Client
 import Categorifier.Core.Types (CategoryStack, Lookup)
 import qualified Categorifier.GHC.Core as Plugins
 import Categorifier.Hierarchy
@@ -19,6 +22,9 @@ import Categorifier.Hierarchy
     mkFunctionApps,
     mkMethodApps,
   )
+import qualified ConCat.AltCat
+import qualified ConCat.Category
+import qualified Language.Haskell.TH.Syntax as TH
 
 -- | ConCat effectively provides us with two hierarchies. One is standard type classes, the other
 --   lowers all of the methods from those classes to functions. These should behave the same for our
@@ -28,10 +34,10 @@ import Categorifier.Hierarchy
 --  __NB__: This uses `mkMethodApps` even though for `functionHierarchy` they're not methods. But,
 --          this approach degrades fine -- it just means there will be no dictionaries resolved in
 --          the first attempt. If this causes performance problems, we can tighten it up later.
-hierarchy' :: Monad f => String -> Lookup (Hierarchy f)
-hierarchy' moduleName = do
+hierarchy' :: Monad f => String -> String -> Lookup (Hierarchy f)
+hierarchy' pkgName moduleName = do
   let absV = Nothing
-  abstCV <- pure <$> repOp "abstC"
+  abstCV <- pure <$> repOp 'Categorifier.Category.abstC
   let acosV = Nothing
   let acoshV = Nothing
   andV <-
@@ -54,14 +60,22 @@ hierarchy' moduleName = do
   bottomV <-
     pure <$> do
       fn <- identifier' "bottomC"
-      pure (\onDict cat a b -> mkMethodApps onDict fn [cat, a, b] [] [])
+      pure
+        ( \onDict cat a b ->
+            mkMethodApps
+              onDict
+              fn
+              [Plugins.typeKind a, Plugins.typeKind b, cat, a, b]
+              []
+              []
+        )
   coerceV <-
     pure <$> do
       -- __NB__: This uses `Categorifier.Category.unsafeCoerceK` instead of
       --        `ConCat.Category.coerceC` because the `Coercible` constraint on the latter requires
       --         imports for an unbounded number of @newtype@ constructors. See
       --         https://github.com/conal/concat/issues/34 for some further discussion.
-      fn <- identifier "Categorifier.Category" "unsafeCoerceK"
+      fn <- identifier 'Categorifier.Category.unsafeCoerceK
       pure $ \onDict cat from to ->
         mkMethodApps onDict fn [Plugins.typeKind from, Plugins.typeKind to, cat, from, to] [] []
   let compareV = Nothing
@@ -249,7 +263,7 @@ hierarchy' moduleName = do
       fn <- identifier' "recipC"
       pure (\onDict cat a -> mkMethodApps onDict fn [cat, a] [] [])
   let remV = Nothing
-  reprCV <- pure <$> repOp "reprC"
+  reprCV <- pure <$> repOp 'Categorifier.Category.reprC
   sequenceAV <-
     pure <$> do
       fn <- identifier' "sequenceAC"
@@ -293,10 +307,10 @@ hierarchy' moduleName = do
       pure (\onDict cat a b c -> mkMethodApps onDict fn [cat] [a, b, c] [])
   pure Hierarchy {..}
   where
-    identifier' = identifier moduleName
+    identifier' n = identifier $ TH.mkNameG_v pkgName moduleName n
     repOp ::
       Monad f =>
-      String ->
+      TH.Name ->
       Lookup
         ( (Plugins.CoreExpr -> f Plugins.CoreExpr) ->
           Plugins.Type ->
@@ -304,8 +318,8 @@ hierarchy' moduleName = do
           f Plugins.CoreExpr
         )
     repOp name = do
-      op <- identifier "Categorifier.Category" name
-      rep <- findTyCon "Categorifier.Client" "Rep"
+      op <- identifier name
+      rep <- findTyCon ''Categorifier.Client.Rep
       pure $ \onDict cat a -> mkMethodApps onDict op [cat, a, Plugins.mkTyConApp rep [a]] [] []
 
 -- | A hierarchy using the type classes provided by Conal Eliot's @concat@ library.
@@ -313,16 +327,18 @@ hierarchy' moduleName = do
 --  __NB__: This uses "ConCat.Category" directly, and ignores the existence of "ConCat.AltCat".
 classHierarchy :: Lookup (Hierarchy CategoryStack)
 classHierarchy = do
-  hierarchy <- hierarchy' moduleName
+  let Just pkgName = TH.namePackage ''ConCat.Category.Category
+      Just modu = TH.nameModule ''ConCat.Category.Category
+  hierarchy <- hierarchy' pkgName modu
   fromIntegerV <-
     pure <$> do
-      fn <- identifier moduleName "fromIntegralC"
-      int <- Plugins.mkTyConTy <$> findTyCon "Prelude" "Integer"
+      fn <- identifier 'ConCat.Category.fromIntegralC
+      int <- Plugins.mkTyConTy <$> findTyCon ''Prelude.Integer
       pure $ \onDict cat a ->
         mkMethodApps onDict fn [Plugins.typeKind int, Plugins.typeKind a, cat, int, a] [] []
   fromIntegralV <-
     pure <$> do
-      fn <- identifier moduleName "fromIntegralC"
+      fn <- identifier 'ConCat.Category.fromIntegralC
       pure $ \onDict cat a b ->
         mkMethodApps onDict fn [Plugins.typeKind a, Plugins.typeKind b, cat, a, b] [] []
   pure
@@ -330,27 +346,25 @@ classHierarchy = do
       { fromIntegerV = fromIntegerV,
         fromIntegralV = fromIntegralV
       }
-  where
-    moduleName = "ConCat.Category"
 
 -- | A hierarchy using the functions from Conal's ConCat library. These are the same operations used
 --   by Conal's original implementation.
 functionHierarchy :: Lookup (Hierarchy CategoryStack)
 functionHierarchy = do
-  hierarchy <- hierarchy' moduleName
+  let Just pkgName = TH.namePackage ''ConCat.AltCat.Category
+      Just modu = TH.nameModule ''ConCat.AltCat.Category
+  hierarchy <- hierarchy' pkgName modu
   fromIntegerV <-
     pure <$> do
-      fn <- identifier moduleName "fromIntegralC"
-      int <- Plugins.mkTyConTy <$> findTyCon "Prelude" "Integer"
+      fn <- identifier 'ConCat.AltCat.fromIntegralC
+      int <- Plugins.mkTyConTy <$> findTyCon ''Prelude.Integer
       pure $ \onDict cat a -> mkMethodApps onDict fn [cat, int, a] [] []
   fromIntegralV <-
     pure <$> do
-      fn <- identifier moduleName "fromIntegralC"
+      fn <- identifier 'ConCat.AltCat.fromIntegralC
       pure $ \onDict cat a b -> mkMethodApps onDict fn [cat, a, b] [] []
   pure
     hierarchy
       { fromIntegerV = fromIntegerV,
         fromIntegralV = fromIntegralV
       }
-  where
-    moduleName = "ConCat.AltCat"

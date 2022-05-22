@@ -1,6 +1,7 @@
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE TemplateHaskellQuotes #-}
 
 -- | Defines various mappings between categorical representations and the plugin, allowing us to
 --   support transformations against different type class hierarchies.
@@ -20,6 +21,12 @@ import Categorifier.Hierarchy
     identifier,
     mkMethodApps,
   )
+import qualified Control.Categorical.Functor
+import qualified Control.Category.Associative
+import qualified Control.Category.Braided
+import qualified Control.Category.Cartesian
+import qualified Control.Category.Cartesian.Closed
+import qualified Control.Category.Distributive
 
 -- | A hierarchy using the type classes available in the
 --   [@categories@](https://hackage.haskell.org/package/categories) library. This includes
@@ -46,7 +53,7 @@ hierarchy' = do
   let appendV = Nothing
   applyV <-
     pure <$> do
-      op <- identifier "Control.Category.Cartesian.Closed" "apply"
+      op <- identifier 'Control.Category.Cartesian.Closed.apply
       pure $ \onDict cat a b -> mkMethodApps onDict op [cat] [a, b] []
   let apply2V = Nothing
   let arctan2V = Nothing
@@ -66,11 +73,11 @@ hierarchy' = do
   let coshV = Nothing
   curryV <-
     pure <$> do
-      op <- identifier "Control.Category.Cartesian.Closed" "curry"
+      op <- identifier 'Control.Category.Cartesian.Closed.curry
       pure $ \onDict cat a b c -> mkMethodApps onDict op [cat] [a, b, c] []
   distlV <-
     pure <$> do
-      op <- identifier "Control.Category.Distributive" "distribute"
+      op <- identifier 'Control.Category.Distributive.distribute
       pure $ \onDict cat a b c -> mkMethodApps onDict op [cat] [a, b, c] []
   let divV = Nothing
   let divideV = Nothing
@@ -79,19 +86,19 @@ hierarchy' = do
   let evenV = Nothing
   exlV <-
     pure <$> do
-      op <- identifier "Control.Category.Cartesian" "fst"
+      op <- identifier 'Control.Category.Cartesian.fst
       pure $ \onDict cat a b -> mkMethodApps onDict op [cat] [a, b] []
   let expV = Nothing
   exrV <-
     pure <$> do
-      op <- identifier "Control.Category.Cartesian" "snd"
+      op <- identifier 'Control.Category.Cartesian.snd
       pure $ \onDict cat a b -> mkMethodApps onDict op [cat] [a, b] []
   let fixV = Nothing
   let floatToDoubleV = Nothing
   let fmodV = Nothing
   forkV <-
     pure <$> do
-      op <- identifier "Control.Category.Cartesian" "&&&"
+      op <- identifier '(Control.Category.Cartesian.&&&)
       pure (\onDict cat a b c -> mkMethodApps onDict op [cat] [a, b, c] [])
   let fpIsNegativeZeroV = Nothing
   let fpIsInfiniteV = Nothing
@@ -106,19 +113,19 @@ hierarchy' = do
   let ifV = Nothing
   inlV <-
     pure <$> do
-      op <- identifier "Control.Category.Cartesian" "inl"
+      op <- identifier 'Control.Category.Cartesian.inl
       pure $ \onDict cat a b -> mkMethodApps onDict op [cat] [a, b] []
   inrV <-
     pure <$> do
-      op <- identifier "Control.Category.Cartesian" "inr"
+      op <- identifier 'Control.Category.Cartesian.inr
       pure $ \onDict cat a b -> mkMethodApps onDict op [cat] [b, a] []
   joinV <-
     pure <$> do
-      op <- identifier "Control.Category.Cartesian" "|||"
+      op <- identifier '(Control.Category.Cartesian.|||)
       pure (\onDict cat a b c -> mkMethodApps onDict op [cat] [a, b, c] [])
   lassocV <-
     pure <$> do
-      op <- identifier "Control.Category.Associative" "disassociate"
+      op <- identifier 'Control.Category.Associative.disassociate
       pure $ \onDict cat a b c -> mkMethodApps onDict op [cat, tensor] [a, b, c] []
   let leV = Nothing
   let liftA2V = Nothing
@@ -126,7 +133,7 @@ hierarchy' = do
   let ltV = Nothing
   mapV <-
     pure <$> do
-      op <- identifier "Control.Categorical.Functor" "fmap"
+      op <- identifier 'Control.Categorical.Functor.fmap
       pure (\onDict cat cat' f a b -> mkMethodApps onDict op [f, cat, cat'] [a, b] [])
   let maxV = Nothing
   let maximumV = Nothing
@@ -150,7 +157,7 @@ hierarchy' = do
   let quotV = Nothing
   rassocV <-
     pure <$> do
-      op <- identifier "Control.Category.Associative" "associate"
+      op <- identifier 'Control.Category.Associative.associate
       pure $ \onDict cat a b c -> mkMethodApps onDict op [cat, tensor] [a, b, c] []
   let realToFracV = Nothing
   let recipV = Nothing
@@ -165,7 +172,7 @@ hierarchy' = do
   let sumV = Nothing
   swapV <-
     pure <$> do
-      op <- identifier "Control.Category.Braided" "braid"
+      op <- identifier 'Control.Category.Braided.braid
       pure $ \onDict cat a b -> mkMethodApps onDict op [cat, tensor] [a, b] []
   let tanV = Nothing
   let tanhV = Nothing
@@ -173,6 +180,6 @@ hierarchy' = do
   let traverseV = Nothing
   uncurryV <-
     pure <$> do
-      op <- identifier "Control.Category.Cartesian.Closed" "uncurry"
+      op <- identifier 'Control.Category.Cartesian.Closed.uncurry
       pure $ \onDict cat a b c -> mkMethodApps onDict op [cat] [a, b, c] []
   pure Hierarchy {..}

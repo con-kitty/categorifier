@@ -25,6 +25,7 @@ library
     , bytestring
     , categorifier-duoids
     , categorifier-plugin
+    , categorifier-unconcat-category
     , ghc
     , ghc-prim
     , transformers
