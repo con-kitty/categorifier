@@ -46,9 +46,6 @@
                   "barbies" = haskellLib.dontCheck super.barbies;
                   # yaya 0.4.2.1
                   "yaya" = self.callCabal2nix "yaya" (yaya + "/core") { };
-                  # yaya-unsafe 0.2.0.1
-                  "yaya-unsafe" =
-                    self.callCabal2nix "yaya-unsafe" (yaya + "/unsafe") { };
                 } // (prev.lib.optionalAttrs
                   (prev.haskellPackages.ghc.version == "9.2.1") {
                     # loose base bound
