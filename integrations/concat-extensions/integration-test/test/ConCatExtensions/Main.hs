@@ -30,7 +30,6 @@ import GHC.Int (Int16, Int32, Int64, Int8)
 import GHC.Word (Word16, Word32, Word64, Word8)
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
-import Linear.V2 (V2 (..))
 import System.Exit (exitFailure, exitSuccess)
 
 -- |
@@ -885,10 +884,6 @@ mkTestTerms
         ( const
             [ ( ([t|Pair|], [t|Word8|]),
                 pure ([|Pair <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|])
-              ),
-              -- Tests `$fAdditiveV2_$cfmap`.
-              ( ([t|V2|], [t|Word8|]),
-                pure ([|V2 <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|])
               )
             ]
         )
@@ -918,9 +913,8 @@ mkTestTerms
             [ ( ([t|[]|], [t|Int64|]),
                 pure ([|Gen.list (Range.linear 0 100) Gen.enumBounded|], [|show|])
               ),
-              -- Tests `$fAdditiveV2_$c<*>`.
-              ( ([t|V2|], [t|Int64|]),
-                pure ([|V2 <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|])
+              ( ([t|Pair|], [t|Int64|]),
+                pure ([|Pair <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|])
               )
             ]
         )

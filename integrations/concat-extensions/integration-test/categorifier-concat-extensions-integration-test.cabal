@@ -75,7 +75,6 @@ test-suite concat-extensions-hierarchy
     , either
     , ghc-prim
     , hedgehog
-    , linear
     , template-haskell
 
 test-suite concat-extensions-hierarchy-optimized
@@ -106,5 +105,4 @@ test-suite concat-extensions-hierarchy-optimized
     , either
     , ghc-prim
     , hedgehog
-    , linear
     , template-haskell
