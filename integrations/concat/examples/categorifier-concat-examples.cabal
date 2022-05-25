@@ -21,14 +21,14 @@ library
       Paths_categorifier_concat_examples
   ghc-options: -Wall
   build-depends:
-    , base
-    , bytestring
+    , base >=4.13.0 && <4.17
+    , bytestring >=0.10.9 && <0.12
     , categorifier-category
     , categorifier-client
     , concat-examples
-    , ghc
-    , ghc-prim
-    , transformers
+    , ghc >=8.8.1 && <9.4
+    , ghc-prim >=0.5.3 && <0.9
+    , transformers >=0.5.6 && <0.7
   default-language: Haskell2010
   default-extensions:
       InstanceSigs

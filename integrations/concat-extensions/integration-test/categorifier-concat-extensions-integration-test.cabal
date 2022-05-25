@@ -24,7 +24,7 @@ library
   exposed-modules:
       Categorifier.Test.ConCatExtensions.Instances
   build-depends:
-    , base
+    , base >=4.11.0 && <4.17
     , categorifier-concat-integration-test
     , categorifier-concat-extensions-category
     , categorifier-plugin-test
@@ -59,8 +59,8 @@ test-suite concat-extensions-hierarchy
     -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.ConCatExtensions.hierarchy
     -O0
   build-depends:
-    , adjunctions
-    , base
+    , adjunctions >=4.4 && <4.5
+    , base >=4.13.0 && <4.17
     , categorifier-category
     , categorifier-client
     , categorifier-concat-integration
@@ -72,10 +72,10 @@ test-suite concat-extensions-hierarchy
     , categorifier-plugin-test
     , concat-classes
     , concat-examples
-    , either
-    , ghc-prim
-    , hedgehog
-    , template-haskell
+    , either >=5.0.1 && <5.1
+    , ghc-prim >=0.5.3 && <0.9
+    , hedgehog >=1.0.3 && <1.2
+    , template-haskell >=2.15.0 && <2.19
 
 test-suite concat-extensions-hierarchy-optimized
   import: options
@@ -89,8 +89,8 @@ test-suite concat-extensions-hierarchy-optimized
     -O2
     -fignore-interface-pragmas
   build-depends:
-    , adjunctions
-    , base
+    , adjunctions >=4.4 && <4.5
+    , base >=4.13.0 && <4.17
     , categorifier-category
     , categorifier-client
     , categorifier-concat-integration
@@ -102,7 +102,7 @@ test-suite concat-extensions-hierarchy-optimized
     , categorifier-plugin-test
     , concat-classes
     , concat-examples
-    , either
-    , ghc-prim
-    , hedgehog
-    , template-haskell
+    , either >=5.0.1 && <5.1
+    , ghc-prim >=0.5.3 && <0.9
+    , hedgehog >=1.0.3 && <1.2
+    , template-haskell >=2.15.0 && <2.19

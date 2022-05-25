@@ -19,7 +19,7 @@ import qualified Categorifier.GHC.Types as Plugins
 import qualified Categorifier.GHC.Utils as Plugins
 import qualified Data.ByteString.Char8 as BS
 import Data.Foldable (fold, toList)
-import Data.List.NonEmpty.Extra (NonEmpty, intersperse)
+import Data.List.NonEmpty (NonEmpty, intersperse)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.Text (Text)
