@@ -1,0 +1,120 @@
+cabal-version:  2.4
+
+name:           categorifier-linear-base-integration-test
+version:        0.1
+description:    Test utilities for categorifier's linear-base integration.
+homepage:       https://github.com/con-kitty/categorifier#readme
+bug-reports:    https://github.com/con-kitty/categorifier/issues
+build-type:     Simple
+tested-with:    GHC==8.4.1, GHC==8.6.1, GHC==8.8.1, GHC==8.10.1, GHC==8.10.7, GHC==9.0.1, GHC==9.2.1, GHC==9.2.2
+
+source-repository head
+  type: git
+  location: https://github.com/con-kitty/categorifier
+
+common options
+  ghc-options:
+    -- make it possible to inline almost anything
+    -fexpose-all-unfoldings
+    -- ensure unfoldings are available
+    -fno-omit-interface-pragmas
+    -Wall
+
+library
+  exposed-modules:
+      Categorifier.Test.LinearBase
+  build-depends:
+    , base >=4.13.0 && <4.17
+    , categorifier-plugin-test
+    , linear-base >=0.2.0 && <0.3
+    , pointed >=5.0.0 && <5.1
+    , vector >=0.12.2 && <0.13
+  default-language: Haskell2010
+  default-extensions:
+      InstanceSigs
+    , ScopedTypeVariables
+    , TypeApplications
+    , FlexibleContexts
+    , FlexibleInstances
+    , FunctionalDependencies
+    , LambdaCase
+    , TypeOperators
+    , BangPatterns
+    , StandaloneDeriving
+    , DeriveGeneric
+    , DeriveDataTypeable
+    , DeriveFunctor
+    , DeriveFoldable
+    , DeriveTraversable
+    , DerivingStrategies
+
+test-suite linear-base-hierarchy
+  import: options
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is: LinearBase/Main.hs
+  ghc-options:
+    -fplugin Categorifier
+    -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.ConCat.classHierarchy
+    -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.ConCatExtensions.hierarchy
+    -fplugin-opt Categorifier:lookup:Categorifier.LinearBase.Integration.symbolLookup
+    -fplugin-opt Categorifier:lookup:Categorifier.Core.MakerMap.baseSymbolLookup
+    -fplugin-opt Categorifier:maker-map:Categorifier.LinearBase.Integration.makerMapFun
+    -fplugin-opt Categorifier:maker-map:Categorifier.Core.MakerMap.baseMakerMapFun
+    -O0
+  build-depends:
+    , base >=4.13.0 && <4.17
+    , categorifier-category
+    , categorifier-client
+    , categorifier-concat-extensions-category
+    , categorifier-concat-extensions-integration
+    , categorifier-concat-extensions-integration-test
+    , categorifier-concat-integration
+    , categorifier-concat-integration-test
+    , categorifier-hedgehog
+    , categorifier-linear-base-integration
+    , categorifier-linear-base-integration-test
+    , categorifier-plugin
+    , categorifier-plugin-test
+    , concat-classes
+    , either >=5.0.1 && <5.1
+    , ghc-prim >=0.5.3 && <0.9
+    , hedgehog >=1.0.3 && <1.2
+    , linear-base >=0.2.0 && <0.3
+    , template-haskell >=2.15.0 && <2.19
+
+test-suite linear-base-hierarchy-optimized
+  import: options
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is: LinearBase/Main.hs
+  ghc-options:
+    -fplugin Categorifier
+    -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.ConCat.classHierarchy
+    -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.ConCatExtensions.hierarchy
+    -fplugin-opt Categorifier:lookup:Categorifier.LinearBase.Integration.symbolLookup
+    -fplugin-opt Categorifier:lookup:Categorifier.Core.MakerMap.baseSymbolLookup
+    -fplugin-opt Categorifier:maker-map:Categorifier.LinearBase.Integration.makerMapFun
+    -fplugin-opt Categorifier:maker-map:Categorifier.Core.MakerMap.baseMakerMapFun
+    -O2
+    -fignore-interface-pragmas
+  build-depends:
+    , base >=4.13.0 && <4.17
+    , categorifier-category
+    , categorifier-client
+    , categorifier-concat-extensions-category
+    , categorifier-concat-extensions-integration
+    , categorifier-concat-extensions-integration-test
+    , categorifier-concat-integration
+    , categorifier-concat-integration-test
+    , categorifier-hedgehog
+    , categorifier-linear-base-integration
+    , categorifier-linear-base-integration-test
+    , categorifier-plugin
+    , categorifier-plugin-test
+    , concat-classes
+    , either >=5.0.1 && <5.1
+    , ghc-prim >=0.5.3 && <0.9
+    , hedgehog >=1.0.3 && <1.2
+    , linear-base >=0.2.0 && <0.3
+    , template-haskell >=2.15.0 && <2.19

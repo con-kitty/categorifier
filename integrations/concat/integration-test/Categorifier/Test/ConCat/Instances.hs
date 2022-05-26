@@ -251,10 +251,8 @@ instance ConCat.RepresentableCat (->) f => ConCat.RepresentableCat Hask f where
 instance (Foldable m, Num a) => ConCat.AddCat Hask m a where
   sumAC = Hask sum
 
--- | This doesn't use @`ConCat.PointedCat` (->)@ because it brings in an unwanted dependency on the
---   pointed library.
-instance Applicative m => ConCat.PointedCat Hask m a where
-  pointC = Hask pure
+instance ConCat.PointedCat (->) m a => ConCat.PointedCat Hask m a where
+  pointC = Hask ConCat.pointC
 
 instance ConCat.BottomCat Hask a b where
   bottomC = Hask ConCat.bottomC

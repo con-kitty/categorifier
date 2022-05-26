@@ -35,6 +35,9 @@ import qualified GHC.Real
 
 -- Term
 
+instance Ord a => OrdCat' Term a where
+  compareK = ZeroId
+
 instance PowICat Term a where
   powIK _ = ZeroId
 

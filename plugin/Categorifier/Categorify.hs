@@ -1,4 +1,8 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE ExistentialQuantification #-}
+#if MIN_VERSION_GLASGOW_HASKELL(9, 0, 0, 0)
+{-# LANGUAGE LinearTypes #-}
+#endif
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -55,13 +59,21 @@ pluginModule =
 --          @curry . uncurry@). It's the responsibility of the hierarchy-providing library to
 --          provide @rules@ that will reduce that to @id@, and the responsibility of the user to
 --          compile with flags that enable those rules.
+#if MIN_VERSION_GLASGOW_HASKELL(9, 0, 0, 0)
+expression :: forall q c a b. HasCallStack => (a %q -> b) -> a `c` b
+#else
 expression :: forall c a b. HasCallStack => (a -> b) -> a `c` b
+#endif
 expression f = Exception.impureThrow $ UnconvertedCall f callStack
 {-# NOINLINE expression #-}
 
 -- | An exception thrown at runtime if `Categorifier.plugin` either isn't available, or couldn't
 --   compile away a call to `expression`.
+#if MIN_VERSION_GLASGOW_HASKELL(9, 0, 0, 0)
+data UnconvertedCall = forall q a b. UnconvertedCall (a %q -> b) CallStack
+#else
 data UnconvertedCall = forall a b. UnconvertedCall (a -> b) CallStack
+#endif
 
 -- | Defined because it's required by the `Exception` instance, this is not a standard `Show`.
 instance Show UnconvertedCall where
@@ -129,7 +141,7 @@ functionAs' ::
 functionAs' newName oldName _vs ctx k input output =
   sequenceA
     [ TH.sigD newName $ TH.forallT [] (pure ctx) [t|$k $(pure input) $(pure output)|],
-      TH.funD newName [TH.clause [] (TH.normalB [|expression $(TH.varE oldName)|]) []]
+      TH.funD newName [TH.clause [] (TH.normalB [e|expression $(TH.varE oldName)|]) []]
     ]
 
 -- | Generates a `NativeCat` instance that allows us to categorify this function separately from a
@@ -167,6 +179,7 @@ separatelyAs newName oldName k tys = do
   -- __TODO__: Fail if there's no module, because the name isn't global.
   let (modu, base) = (fromMaybe "" . TH.nameModule &&& TH.nameBase) oldName
       newName' = TH.mkName newName
+      originalName = [fmt|{modu}.{base}|]
   liftA2
     (<>)
     (functionAs' newName' oldName vs ctx k input output)
@@ -176,7 +189,7 @@ separatelyAs newName oldName k tys = do
           [t|
             NativeCat
               $k
-              $(TH.litT $ TH.strTyLit [fmt|{modu}.{base}|])
+              $(TH.litT $ TH.strTyLit originalName)
               $(pure input)
               $(pure output)
             |]
