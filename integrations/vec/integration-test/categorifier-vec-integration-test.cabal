@@ -25,11 +25,11 @@ library
       Categorifier.Test.Vec
       Categorifier.Test.Vec.Instances
   build-depends:
-    , base
+    , base >=4.11.0 && <4.17
     , categorifier-plugin-test
-    , fin
-    , pointed
-    , vec
+    , fin >=0.1.1 && <0.3
+    , pointed >=5.0.0 && <5.1
+    , vec >=0.3 && <0.5
   default-language: Haskell2010
   default-extensions:
       InstanceSigs
@@ -65,7 +65,7 @@ test-suite vec-hierarchy
     -fplugin-opt Categorifier:maker-map:Categorifier.Core.MakerMap.baseMakerMapFun
     -O0
   build-depends:
-    , base
+    , base >=4.11.0 && <4.17
     , categorifier-concat-integration
     , categorifier-concat-extensions-category
     , categorifier-concat-extensions-integration
@@ -78,11 +78,11 @@ test-suite vec-hierarchy
     , categorifier-vec-integration
     , categorifier-vec-integration-test
     , concat-classes
-    , fin
-    , ghc-prim
-    , hedgehog
-    , template-haskell
-    , vec
+    , fin >=0.1.1 && <0.3
+    , ghc-prim >=0.5.3 && <0.9
+    , hedgehog >=1.0.3 && <1.2
+    , template-haskell >=2.15.0 && <2.19
+    , vec >=0.3 && <0.5
 
 test-suite vec-hierarchy-optimized
   import: options
@@ -101,7 +101,7 @@ test-suite vec-hierarchy-optimized
     -O2
     -fignore-interface-pragmas
   build-depends:
-    , base
+    , base >=4.11.0 && <4.17
     , categorifier-concat-integration
     , categorifier-concat-extensions-category
     , categorifier-concat-extensions-integration
@@ -114,8 +114,8 @@ test-suite vec-hierarchy-optimized
     , categorifier-vec-integration
     , categorifier-vec-integration-test
     , concat-classes
-    , fin
-    , ghc-prim
-    , hedgehog
-    , template-haskell
-    , vec
+    , fin >=0.1.1 && <0.3
+    , ghc-prim >=0.5.3 && <0.9
+    , hedgehog >=1.0.3 && <1.2
+    , template-haskell >=2.15.0 && <2.19
+    , vec >=0.3 && <0.5

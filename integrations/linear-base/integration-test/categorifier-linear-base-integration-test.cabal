@@ -24,11 +24,11 @@ library
   exposed-modules:
       Categorifier.Test.LinearBase
   build-depends:
-    , base
+    , base >=4.13.0 && <4.17
     , categorifier-plugin-test
-    , linear-base
-    , pointed
-    , vector
+    , linear-base >=0.2.0 && <0.3
+    , pointed >=5.0.0 && <5.1
+    , vector >=0.12.2 && <0.13
   default-language: Haskell2010
   default-extensions:
       InstanceSigs
@@ -63,7 +63,7 @@ test-suite linear-base-hierarchy
     -fplugin-opt Categorifier:maker-map:Categorifier.Core.MakerMap.baseMakerMapFun
     -O0
   build-depends:
-    , base
+    , base >=4.13.0 && <4.17
     , categorifier-category
     , categorifier-client
     , categorifier-concat-extensions-category
@@ -77,11 +77,11 @@ test-suite linear-base-hierarchy
     , categorifier-plugin
     , categorifier-plugin-test
     , concat-classes
-    , either
-    , ghc-prim
-    , hedgehog
-    , linear-base
-    , template-haskell
+    , either >=5.0.1 && <5.1
+    , ghc-prim >=0.5.3 && <0.9
+    , hedgehog >=1.0.3 && <1.2
+    , linear-base >=0.2.0 && <0.3
+    , template-haskell >=2.15.0 && <2.19
 
 test-suite linear-base-hierarchy-optimized
   import: options
@@ -99,7 +99,7 @@ test-suite linear-base-hierarchy-optimized
     -O2
     -fignore-interface-pragmas
   build-depends:
-    , base
+    , base >=4.13.0 && <4.17
     , categorifier-category
     , categorifier-client
     , categorifier-concat-extensions-category
@@ -113,8 +113,8 @@ test-suite linear-base-hierarchy-optimized
     , categorifier-plugin
     , categorifier-plugin-test
     , concat-classes
-    , either
-    , ghc-prim
-    , hedgehog
-    , linear-base
-    , template-haskell
+    , either >=5.0.1 && <5.1
+    , ghc-prim >=0.5.3 && <0.9
+    , hedgehog >=1.0.3 && <1.2
+    , linear-base >=0.2.0 && <0.3
+    , template-haskell >=2.15.0 && <2.19

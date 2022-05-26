@@ -24,8 +24,8 @@ library
   exposed-modules:
       Categorifier.Test.Categories.Instances
   build-depends:
-    , base
-    , categories
+    , base >=4.13.0 && <4.17
+    , categories >=1.0.7 && <1.1
     , categorifier-plugin-test
   default-language: Haskell2010
   default-extensions:
@@ -57,9 +57,9 @@ test-suite categories-hierarchy
     -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.Categories.hierarchy
     -O0
   build-depends:
-    , adjunctions
-    , base
-    , categories
+    , adjunctions >=4.4 && <4.5
+    , base >=4.13.0 && <4.17
+    , categories >=1.0.7 && <1.1
     , categorifier-categories-integration
     , categorifier-categories-integration-test
     , categorifier-category
@@ -67,10 +67,10 @@ test-suite categories-hierarchy
     , categorifier-hedgehog
     , categorifier-plugin
     , categorifier-plugin-test
-    , either
-    , ghc-prim
-    , hedgehog
-    , template-haskell
+    , either >=5.0.1 && <5.1
+    , ghc-prim >=0.5.3 && <0.9
+    , hedgehog >=1.0.3 && <1.2
+    , template-haskell >=2.15.0 && <2.19
 
 test-suite categories-hierarchy-optimized
   import: options
@@ -84,9 +84,9 @@ test-suite categories-hierarchy-optimized
     -O2
     -fignore-interface-pragmas
   build-depends:
-    , adjunctions
-    , base
-    , categories
+    , adjunctions >=4.4 && <4.5
+    , base >=4.13.0 && <4.17
+    , categories >=1.0.7 && <1.1
     , categorifier-categories-integration
     , categorifier-categories-integration-test
     , categorifier-category
@@ -94,7 +94,7 @@ test-suite categories-hierarchy-optimized
     , categorifier-hedgehog
     , categorifier-plugin
     , categorifier-plugin-test
-    , either
-    , ghc-prim
-    , hedgehog
-    , template-haskell
+    , either >=5.0.1 && <5.1
+    , ghc-prim >=0.5.3 && <0.9
+    , hedgehog >=1.0.3 && <1.2
+    , template-haskell >=2.15.0 && <2.19

@@ -52,9 +52,6 @@
                   "linear-base" =  self.callCabal2nix "linear-base" linear-base { };
                   # yaya 0.4.2.1
                   "yaya" = self.callCabal2nix "yaya" (yaya + "/core") { };
-                  # yaya-unsafe 0.2.0.1
-                  "yaya-unsafe" =
-                    self.callCabal2nix "yaya-unsafe" (yaya + "/unsafe") { };
                 } // (prev.lib.optionalAttrs
                   (prev.haskellPackages.ghc.version == "9.2.1") {
                     # loose base bound
@@ -63,16 +60,12 @@
                     "fin" = haskellLib.doJailbreak super.fin;
                     # ghc-lib-parser-ex-9.2.0.3
                     "ghc-lib-parser-ex" =
-                      self.callCabal2nix "ghc-lib-parser-ex" ghc-lib-parser-ex
-                      { };
+                      self.callCabal2nix "ghc-lib-parser-ex" ghc-lib-parser-ex { };
                     # loosen ghc-bignum bound on GHC-9.2.1
                     "ghc-typelits-natnormalise" =
-                      self.callCabal2nix "ghc-typelits-natnormalise"
-                      ghc-typelits-natnormalise { };
+                      self.callCabal2nix "ghc-typelits-natnormalise" ghc-typelits-natnormalise { };
                     # hlint-3.4
                     "hlint" = self.callCabal2nix "hlint" hlint { };
-                    # due to random, hashable on GHC-9.2.1
-                    "linear" = haskellLib.doJailbreak super.linear_1_21_7;
                     # loosen base bound on GHC-9.2.1
                     "some" = haskellLib.doJailbreak super.some;
                     # loosen base bound on GHC-9.2.1

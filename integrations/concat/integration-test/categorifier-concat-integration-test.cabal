@@ -26,13 +26,13 @@ library
       Categorifier.Test.ConCat.Instances
       Categorifier.Test.TotOrd
   build-depends:
-    , base
+    , base >=4.13.0 && <4.17
     , categorifier-category
     , categorifier-client
     , categorifier-plugin-test
     , concat-classes
     , concat-examples
-    , constraints
+    , constraints >=0.12 && <0.14
   default-language: Haskell2010
   default-extensions:
       InstanceSigs
@@ -66,8 +66,8 @@ test-suite concat-class-hierarchy
     -fplugin-opt Categorifier:maker-map:Categorifier.Adjunctions.Integration.makerMapFun
     -O0
   build-depends:
-    , adjunctions
-    , base
+    , adjunctions >=4.4 && <4.5
+    , base >=4.13.0 && <4.17
     , categorifier-adjunctions-integration
     , categorifier-adjunctions-integration-test
     , categorifier-category
@@ -79,10 +79,10 @@ test-suite concat-class-hierarchy
     , categorifier-plugin-test
     , concat-classes
     , concat-examples
-    , either
-    , ghc-prim
-    , hedgehog
-    , template-haskell
+    , either >=5.0.1 && <5.1
+    , ghc-prim >=0.5.3 && <0.9
+    , hedgehog >=1.0.3 && <1.2
+    , template-haskell >=2.15.0 && <2.19
 
 test-suite concat-class-hierarchy-optimized
   import: options
@@ -99,7 +99,7 @@ test-suite concat-class-hierarchy-optimized
     -O2
     -fignore-interface-pragmas
   build-depends:
-    , base
+    , base >=4.13.0 && <4.17
     , categorifier-adjunctions-integration
     , categorifier-adjunctions-integration-test
     , categorifier-category
@@ -111,10 +111,10 @@ test-suite concat-class-hierarchy-optimized
     , categorifier-plugin-test
     , concat-classes
     , concat-examples
-    , either
-    , ghc-prim
-    , hedgehog
-    , template-haskell
+    , either >=5.0.1 && <5.1
+    , ghc-prim >=0.5.3 && <0.9
+    , hedgehog >=1.0.3 && <1.2
+    , template-haskell >=2.15.0 && <2.19
 
 test-suite concat-function-hierarchy
   import: options
@@ -130,7 +130,7 @@ test-suite concat-function-hierarchy
     -fplugin-opt Categorifier:maker-map:Categorifier.Adjunctions.Integration.makerMapFun
     -O0
   build-depends:
-    , base
+    , base >=4.13.0 && <4.17
     , categorifier-adjunctions-integration
     , categorifier-adjunctions-integration-test
     , categorifier-category
@@ -142,10 +142,10 @@ test-suite concat-function-hierarchy
     , categorifier-plugin-test
     , concat-classes
     , concat-examples
-    , either
-    , ghc-prim
-    , hedgehog
-    , template-haskell
+    , either >=5.0.1 && <5.1
+    , ghc-prim >=0.5.3 && <0.9
+    , hedgehog >=1.0.3 && <1.2
+    , template-haskell >=2.15.0 && <2.19
 
 test-suite concat-function-hierarchy-optimized
   import: options
@@ -162,8 +162,8 @@ test-suite concat-function-hierarchy-optimized
     -O2
     -fignore-interface-pragmas
   build-depends:
-    , adjunctions
-    , base
+    , adjunctions >=4.4 && <4.5
+    , base >=4.13.0 && <4.17
     , categorifier-adjunctions-integration
     , categorifier-adjunctions-integration-test
     , categorifier-category
@@ -175,7 +175,7 @@ test-suite concat-function-hierarchy-optimized
     , categorifier-plugin-test
     , concat-classes
     , concat-examples
-    , either
-    , ghc-prim
-    , hedgehog
-    , template-haskell
+    , either >=5.0.1 && <5.1
+    , ghc-prim >=0.5.3 && <0.9
+    , hedgehog >=1.0.3 && <1.2
+    , template-haskell >=2.15.0 && <2.19
