@@ -7,7 +7,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 -- | These are the operations to use with the "Categorifier" plugin, which trigger conversion from
---  `(->)` to some target category.
+--   @->@ to some target category.
 --
 --  __NB__: This module is expected to be imported qualified.
 module Categorifier.Categorify
@@ -15,8 +15,8 @@ module Categorifier.Categorify
     expression,
     function,
     functionAs,
-    separately,
-    separatelyAs,
+    functionOnly,
+    functionOnlyAs,
   )
 where
 
@@ -103,8 +103,51 @@ generateResultName ::
   TH.Q String
 generateResultName name _k _tys = pure [fmt|wrap_{TH.nameBase name}|]
 
--- | Shorthand for `expression` when you're applying it to a named function. Makes it more robust
---   against types changing.
+-- | Like `function`, but doesn't introduce a `NativeCat` instance. The tradeoffs are that this
+--   doesn't produce orphan instances or require @DataKinds@, however it means that categorified
+--   functions which contain calls to functions categorified with `functionOnly` won't be able to
+--   take advantage of this categorification and will instead re-categorify the function.
+functionOnly ::
+  -- | The name of the function being categorified
+  TH.Name ->
+  -- | The target category type
+  TH.TypeQ ->
+  -- | A list of types for specializing the type of the provided `TH.Name`
+  [Maybe TH.TypeQ] ->
+  TH.DecsQ
+functionOnly name k tys = do
+  newName <- generateResultName name k tys
+  functionOnlyAs newName name k tys
+
+-- | Like `functionAs`, but with the same tradeoffs as `functionOnly` relative to `function`.
+functionOnlyAs ::
+  -- | The name to use for the categorified result
+  String ->
+  -- | The name of the function being categorified
+  TH.Name ->
+  -- | The target category type
+  TH.TypeQ ->
+  -- | A list of types for specializing the type of the provided `TH.Name`
+  [Maybe TH.TypeQ] ->
+  TH.DecsQ
+functionOnlyAs newName oldName k tys = do
+  ((vs, ctx), (input, output)) <- TH.splitTy =<< TH.specializeT (TH.reifyType oldName) tys
+  functionOnlyAs' (TH.mkName newName) oldName vs ctx k input output
+
+functionOnlyAs' ::
+  TH.Name -> TH.Name -> [TH.TyVarBndr flag] -> TH.Cxt -> TH.TypeQ -> TH.Type -> TH.Type -> TH.DecsQ
+functionOnlyAs' newName oldName _vs ctx k input output =
+  sequenceA
+    [ TH.sigD newName $ TH.forallT [] (pure ctx) [t|$k $(pure input) $(pure output)|],
+      TH.funD newName [TH.clause [] (TH.normalB [e|expression $(TH.varE oldName)|]) []]
+    ]
+
+-- | Use instead of `expression` when you're applying it to a named function. Makes it more robust
+--   against types changing and generates a `NativeCat` instance that allows us to categorify this
+--   function separately from a larger expression that calls it, which allows us to re-use the
+--   categorified result rather than re-categorfying at each call-site.
+--
+--  __NB__: This currently requires the type to specialize any constrained vars.
 function ::
   -- | The name of the function being categorified
   TH.Name ->
@@ -134,55 +177,13 @@ functionAs ::
   TH.DecsQ
 functionAs newName oldName k tys = do
   ((vs, ctx), (input, output)) <- TH.splitTy =<< TH.specializeT (TH.reifyType oldName) tys
-  functionAs' (TH.mkName newName) oldName vs ctx k input output
-
-functionAs' ::
-  TH.Name -> TH.Name -> [TH.TyVarBndr flag] -> TH.Cxt -> TH.TypeQ -> TH.Type -> TH.Type -> TH.DecsQ
-functionAs' newName oldName _vs ctx k input output =
-  sequenceA
-    [ TH.sigD newName $ TH.forallT [] (pure ctx) [t|$k $(pure input) $(pure output)|],
-      TH.funD newName [TH.clause [] (TH.normalB [e|expression $(TH.varE oldName)|]) []]
-    ]
-
--- | Generates a `NativeCat` instance that allows us to categorify this function separately from a
---   larger expression that calls it.
---
---   This also exposes the same name that `function` does, to avoid categorifying the same
---   definition multiple times.
---
---  __NB__: THis currently requires the type to specialize any constrained vars.
-separately ::
-  -- | The name of the function being categorified
-  TH.Name ->
-  -- | The target category type
-  TH.TypeQ ->
-  -- | A list of types for specializing the type of the provided `TH.Name`
-  [Maybe TH.TypeQ] ->
-  TH.DecsQ
-separately name k tys = do
-  newName <- generateResultName name k tys
-  separatelyAs newName name k tys
-
--- | Like `separately`, but allows you to choose an explict name for the categorified result.
-separatelyAs ::
-  -- | The name to use for the categorified result
-  String ->
-  -- | The name of the function being categorified
-  TH.Name ->
-  -- | The target category type
-  TH.TypeQ ->
-  -- | A list of types for specializing the type of the provided `TH.Name`
-  [Maybe TH.TypeQ] ->
-  TH.DecsQ
-separatelyAs newName oldName k tys = do
-  ((vs, ctx), (input, output)) <- TH.splitTy =<< TH.specializeT (TH.reifyType oldName) tys
   -- __TODO__: Fail if there's no module, because the name isn't global.
   let (modu, base) = (fromMaybe "" . TH.nameModule &&& TH.nameBase) oldName
       newName' = TH.mkName newName
       originalName = [fmt|{modu}.{base}|]
   liftA2
     (<>)
-    (functionAs' newName' oldName vs ctx k input output)
+    (functionOnlyAs' newName' oldName vs ctx k input output)
     ( pure
         <$> TH.instanceD
           (pure ctx)
