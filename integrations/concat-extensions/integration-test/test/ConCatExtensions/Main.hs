@@ -820,7 +820,15 @@ mkTestTerms
             ]
         )
     )
-  . HInsert1 (Proxy @"Pure") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
+  . HInsert1
+    (Proxy @"Pure")
+    ( TestCases
+        ( const
+            [ ([t|Double|], pure ([|genFloating|], [|show|])),
+              ([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))
+            ]
+        )
+    )
   . HInsert1 (Proxy @"Return") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Error") (TestCases (const [])) -- `String` is not an object in these categories
   . HInsert1
@@ -910,7 +918,6 @@ mkTestTerms
             [([t|Word8|], pure ([|Gen.list (Range.exponential 1 1024) Gen.enumBounded|], [|show|]))]
         )
     )
-  . HInsert1 (Proxy @"Point") (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))
   . HInsert1
     (Proxy @"Ap")
     ( TestCases

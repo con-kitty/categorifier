@@ -48,6 +48,7 @@ constraints:
   , ghc-prim >=0.5.2 && <0.9
   , hedgehog >=1.0.3 && <1.2
   , linear >=1.21.3 && <1.22
+  , linear-base >=0.2.0 && <0.3
   , semialign >=1.1.0 && <1.3
   , semigroupoids >=5.3.4 && <5.4
   , syb >=0.7.1 && <0.8
@@ -88,3 +89,8 @@ packages:
   ./plugin/categorifier-plugin.cabal
   ./plugin-test/categorifier-plugin-test.cabal
   ./th/categorifier-th.cabal
+-- __TODO__: Uncomment below once Cabal 3.8 is released.
+-- if impl(ghc >= 9.0.0)
+--   packages:
+--     ./integrations/linear-base/integration/categorifier-linear-base-integration.cabal
+--     ./integrations/linear-base/integration-test/categorifier-linear-base-integration-test.cabal

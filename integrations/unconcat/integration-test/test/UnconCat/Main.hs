@@ -658,7 +658,15 @@ mkTestTerms
   . HInsert1 (Proxy @"Append") (TestCases (const [])) -- no support for `<>` in ConCat
   . HInsert1 (Proxy @"Mappend") (TestCases (const [])) -- no support for `mappend` in ConCat
   . HInsert1 (Proxy @"ListAppend") (TestCases (const [])) -- no support for `++` in ConCat
-  . HInsert1 (Proxy @"Pure") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
+  . HInsert1
+    (Proxy @"Pure")
+    ( TestCases
+        ( const
+            [ ([t|Double|], pure ([|genFloating|], [|show|])),
+              ([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))
+            ]
+        )
+    )
   . HInsert1 (Proxy @"Return") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1
     (Proxy @"Error")
@@ -771,7 +779,6 @@ mkTestTerms
             ]
         )
     )
-  . HInsert1 (Proxy @"Point") (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))
   . HInsert1 (Proxy @"Ap") (TestCases (const [])) -- no support for `<*>` in ConCat
   . HInsert1 (Proxy @"LiftA2") (TestCases (const [])) -- no support for `liftA2` in ConCat
   . HInsert1 (Proxy @"Bind") (TestCases (const [])) -- no support for `>>=` in ConCat
