@@ -48,6 +48,9 @@
                   "PyF" = haskellLib.dontCheck super.PyF;
                   # test is broken.
                   "barbies" = haskellLib.dontCheck super.barbies;
+                  # found the test is flaky.
+                  "hls-pragmas-plugin" =
+                    haskellLib.dontCheck super.hls-pragmas-plugin;
                   # linear-base 0.2.0
                   "linear-base" =
                     self.callCabal2nix "linear-base" linear-base { };
@@ -166,10 +169,12 @@
             in newPkgs.haskellPackages.shellFor {
               packages = ps:
                 builtins.map (name: ps.${name}) categorifierPackageNames;
-              buildInputs = [
-                newPkgs.haskellPackages.cabal-install
-                newPkgs.haskellPackages.hlint
-              ] ++
+              buildInputs =
+                # For these CLI tools, we use nixpkgs default
+                [
+                  newPkgs.haskell.packages.ghc8107.cabal-install
+                  newPkgs.haskell.packages.ghc8107.hlint
+                ] ++
                 # haskell-language-server on GHC 9.2.1 is broken yet.
                 newPkgs.lib.optional (ghcVer != "ghc921")
                 [ newPkgs.haskell-language-server ];
