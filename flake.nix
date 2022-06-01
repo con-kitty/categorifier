@@ -157,6 +157,7 @@
                 overlays = [ overlayGHC concat.overlay.${system} ]
                   ++ fullOverlays;
                 inherit system;
+                config.allowBroken = true;
               };
 
             in newPkgs.haskellPackages.shellFor {
