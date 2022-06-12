@@ -29,11 +29,12 @@ import Debug.Trace (trace, traceM)
 import PyF (fmt)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Time.Extra (Seconds, offsetTime)
+import Control.Monad (when)
 
 -- | Like 'Plugins.showSDoc', but qualifies some ambiguous names, and also shortens
 -- large output.
 renderSDoc :: Plugins.DynFlags -> Plugins.SDoc -> String
-renderSDoc dflags sdoc = takeLines 20 20 $ Plugins.renderWithStyle dflags qual sdoc
+renderSDoc dflags sdoc = takeLines 20 (-1) $ Plugins.renderWithStyle dflags qual sdoc
   where
     qual =
       Plugins.neverQualify
@@ -73,6 +74,7 @@ maybeTraceWithStack doTrace render act a =
   if doTrace
     then do
       (stepId, stack) <- liftIO $ readIORef stepInfoRef
+      when (stepId > 10000) undefined
       liftIO $ modifyIORef' stepInfoRef (bimap (+ 1) (stepId :))
       let parentId = fromMaybe (-1) (listToMaybe stack)
       elapsed <- liftIO getElapsed

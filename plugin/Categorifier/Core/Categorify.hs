@@ -101,7 +101,7 @@ categorify ::
   --   the target category).
   CategoryStack Plugins.CoreExpr
 categorify
-  debug
+  debug0
   bench
   dflags
   logger
@@ -136,6 +136,7 @@ categorify
     when bench Bench.displayTimes
     pure res
     where
+      debug = True
       floatLetsOut :: Plugins.CoreExpr -> CategoryStack (Plugins.CoreExpr, [Plugins.CoreBind])
       floatLetsOut = go []
         where
