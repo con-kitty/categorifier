@@ -3,9 +3,9 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
 
--- | This is separate from "Categorifier.Client" because we can't define Template Haskell and use it in
---   the same module. This module provides `deriveHasRep`, but it's private because importing it
---   would mean you miss the instances.
+-- | This is separate from "Categorifier.Client" because we can't define Template Haskell and use it
+--   in the same module. This module provides `deriveHasRep`, but the module is private because
+--   importing it directly would mean you miss the instances.
 module Categorifier.Client.Internal
   ( HasRep (..),
     Rep,
@@ -28,20 +28,22 @@ import Data.Tuple.Extra (fst3, snd3, thd3)
 import Data.Void (Void)
 import PyF (fmt)
 
--- | The "standard representation" that forms an isomorphism with the underlying type. This type
---   should only modify the current type (not the types contained within this one), and should
---   consist only of `Either`, `Void`, `()`, `(,)` (strictly 2-tuples), and `Dict`.
+-- | The "standard representation" that forms an isomorphism with the underlying type, @a@.
+--   @`Rep` a@ should roughly replace all the constructors of the underlying type with a combination
+--   of `Either`, `Void`, `()`, `(,)` (strictly 2-tuples), and `Dict`; leaving the types of the
+--   fields untouched.
 --
 --   E.g., the type
 -- > data Foo a = Num a => Bar a Int String | Baz (a -> a)
 --   would have an instance like the following
 -- > type instance Rep (Foo a) = Either (Dict (Num a), ((a, Int), String)) (a -> a)
---  (the specific tuple groupings and orderings are not important, so long as the isomorphism holds,
---   but making the structure as shallow as possible helps with performance).
+--   The specific tuple groupings and orderings are not important, so long as the isomorphism holds.
+--   However, making more balanced shallow structures, like @((a, b), (c, d))@, rather than biased
+--   deep structures, like @(a, (b, (c, d)))@, helps with performance.
 --
---   Existentials are not supported (as they're not supported by type families in general), but some
---   GADTs can be handled by creating multiple `HasRep` instances, one for each "return type" so
---   long as all the return types are disjoint (again, as type families don't allow overlapping).
+--   Existentials are not supported (as they're not supported by type families in general), but many
+--   GADTs can be handled by creating multiple `Rep` instances, at least one for each "return type".
+--   If the return types overlap, there may need to be additional `Rep` instances defined.
 --
 --  __NB__: The actual type here is considered an implementation detail, and should not be relied on
 --         (beyond the expectations provided above). Minor changes will not be considered breaking.
