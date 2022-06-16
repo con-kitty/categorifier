@@ -12,7 +12,9 @@ module Categorifier.TH
     pattern PlainTV,
     pattern KindedTV,
     alphaEquiv,
+    compareTypes,
     alphaRename,
+    rewriteType,
     conP,
     nameQualified,
     reifyType,
@@ -25,7 +27,7 @@ where
 import qualified Categorifier.Common.IO.Exception as Exception
 import Categorifier.Duoidal (Parallel (..), traverseD, (<*\>))
 import Categorifier.Duoidal.Either (noteAccum)
-import Control.Monad ((<=<))
+import Control.Monad (join, (<=<))
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Trans.State.Lazy (StateT (..), evalStateT, get, modify)
@@ -145,6 +147,74 @@ alphaEquiv' ty = case ty of
   (TH.WildCardT, TH.WildCardT) -> pure []
   (_, _) -> Nothing -- any structural mismatch is not equivalent
 
+-- | A partial order on `TH.Type`, if there is an ordering of the types, it returns a mapping
+--   between the variable names, usable in `alphaRename`.
+compareTypes :: TH.Type -> TH.Type -> Maybe (Ordering, [(TH.Name, TH.Type)])
+compareTypes = curry compareTypes'
+
+(<<>) :: (Ordering, [a]) -> (Ordering, [a]) -> Maybe (Ordering, [a])
+(xOrd, xSubst) <<> (yOrd, ySubst) =
+  (\ord -> (ord, xSubst <> ySubst))
+    <$> case (xOrd, yOrd) of
+      (EQ, _) -> pure yOrd
+      (_, EQ) -> pure xOrd
+      (GT, GT) -> pure GT
+      (LT, LT) -> pure LT
+      (_, _) -> Nothing
+
+compareTypes' :: (TH.Type, TH.Type) -> Maybe (Ordering, [(TH.Name, TH.Type)])
+#if MIN_VERSION_template_haskell(2, 17, 0)
+compareTypes' (TH.MulArrowT, TH.MulArrowT) = pure (EQ, [])
+#endif
+#if MIN_VERSION_template_haskell(2, 16, 0)
+compareTypes' (TH.ForallVisT b t, TH.ForallVisT b' t') =
+  -- __TODO__: Ensure that the kinds of @b@ match, and that those names are added to the map
+  --          (order of @b@ matters)
+  bool Nothing (compareTypes t t') $ length b == length b'
+#endif
+#if MIN_VERSION_template_haskell(2, 15, 0)
+compareTypes' (TH.AppKindT t k, TH.AppKindT t' k') =
+  join $ (<<>) <$> compareTypes t t' <*> compareTypes k k'
+compareTypes' (TH.ImplicitParamT s t, TH.ImplicitParamT s' t') =
+  bool Nothing (compareTypes t t') $ s == s'
+#endif
+compareTypes' ty = case ty of
+  (TH.ForallT b c t, TH.ForallT b' c' t') ->
+    -- __TODO__: Ensure that the kinds of @b@ match, and that those names are added to the map
+    --          (order of @b@ matters)
+    bool Nothing (compareTypes t t') $ length b == length b' && c == c'
+  (TH.AppT c e, TH.AppT c' e') -> join $ (<<>) <$> compareTypes c c' <*> compareTypes e e'
+  (TH.SigT t k, TH.SigT t' k') -> join $ (<<>) <$> compareTypes t t' <*> compareTypes k k'
+  (TH.VarT n, n') ->
+    -- __TODO__: If neither has been seen before, add them both with the same index, otherwise they
+    --           must already have the same index to be the same
+    pure (EQ, [(n, n')])
+  (_, TH.VarT _) ->
+    -- __TODO__: We need to track these matches to ensure that every occurence of the variable
+    --           matches the same type.
+    pure (LT, [])
+  (TH.ConT n, TH.ConT n') -> bool Nothing (pure (EQ, [])) $ n == n'
+  (TH.PromotedT n, TH.PromotedT n') -> bool Nothing (pure (EQ, [])) $ n == n'
+  (TH.InfixT t n u, TH.InfixT t' n' u') ->
+    bool Nothing (join $ (<<>) <$> compareTypes t t' <*> compareTypes u u') $ n == n'
+  (TH.UInfixT t n u, TH.UInfixT t' n' u') ->
+    bool Nothing (join $ (<<>) <$> compareTypes t t' <*> compareTypes u u') $ n == n'
+  (TH.ParensT t, TH.ParensT t') -> compareTypes t t'
+  (TH.TupleT i, TH.TupleT i') -> bool Nothing (pure (EQ, [])) $ i == i'
+  (TH.UnboxedTupleT i, TH.UnboxedTupleT i') -> bool Nothing (pure (EQ, [])) $ i == i'
+  (TH.UnboxedSumT i, TH.UnboxedSumT i') -> bool Nothing (pure (EQ, [])) $ i == i'
+  (TH.ArrowT, TH.ArrowT) -> pure (EQ, [])
+  (TH.EqualityT, TH.EqualityT) -> pure (EQ, [])
+  (TH.ListT, TH.ListT) -> pure (EQ, [])
+  (TH.PromotedTupleT i, TH.PromotedTupleT i') -> bool Nothing (pure (EQ, [])) $ i == i'
+  (TH.PromotedNilT, TH.PromotedNilT) -> pure (EQ, [])
+  (TH.PromotedConsT, TH.PromotedConsT) -> pure (EQ, [])
+  (TH.StarT, TH.StarT) -> pure (EQ, [])
+  (TH.ConstraintT, TH.ConstraintT) -> pure (EQ, [])
+  (TH.LitT t, TH.LitT t') -> bool Nothing (pure (EQ, [])) $ t == t'
+  (TH.WildCardT, TH.WildCardT) -> pure (EQ, [])
+  (_, _) -> Nothing -- any other structural mismatch is not equivalent
+
 -- | Renames the varibles in a type according to some equivalence mapping.
 alphaRename :: [(TH.Name, TH.Name)] -> TH.Type -> Either (NonEmpty TH.Name) TH.Type
 alphaRename mapping = first NE.nub . alphaRename' mapping
@@ -183,6 +253,46 @@ alphaRename' _ TH.StarT = pure TH.StarT
 alphaRename' _ TH.ConstraintT = pure TH.ConstraintT
 alphaRename' _ (TH.LitT l) = pure $ TH.LitT l
 alphaRename' _ TH.WildCardT = pure TH.WildCardT
+
+rewriteType :: [(TH.Name, TH.Type)] -> TH.Type -> Either (NonEmpty TH.Name) TH.Type
+rewriteType mapping = first NE.nub . rewriteType' mapping
+
+rewriteType' :: [(TH.Name, TH.Type)] -> TH.Type -> Either (NonEmpty TH.Name) TH.Type
+#if MIN_VERSION_template_haskell(2, 17, 0)
+rewriteType' _ TH.MulArrowT = pure TH.MulArrowT
+#endif
+#if MIN_VERSION_template_haskell(2, 16, 0)
+rewriteType' m (TH.ForallVisT b t) = TH.ForallVisT b <$> rewriteType' m t
+#endif
+#if MIN_VERSION_template_haskell(2, 15, 0)
+rewriteType' m (TH.AppKindT t k) = TH.AppKindT <$> rewriteType' m t <*\> rewriteType' m k
+rewriteType' m (TH.ImplicitParamT s t) = TH.ImplicitParamT s <$> rewriteType' m t
+#endif
+rewriteType' m (TH.ForallT b c t) =
+  TH.ForallT b <$> traverseD (rewriteType' m) c <*\> rewriteType' m t
+rewriteType' m (TH.AppT c e) = TH.AppT <$> rewriteType' m c <*\> rewriteType' m e
+rewriteType' m (TH.SigT t k) = TH.SigT <$> rewriteType' m t <*\> rewriteType' m k
+rewriteType' m (TH.VarT n) = getParallel $ noteAccum (flip lookup m) n
+rewriteType' _ (TH.ConT n) = pure $ TH.ConT n
+rewriteType' _ (TH.PromotedT n) = pure $ TH.PromotedT n
+rewriteType' m (TH.InfixT t n t') =
+  TH.InfixT <$> rewriteType' m t <*\> pure n <*\> rewriteType' m t'
+rewriteType' m (TH.UInfixT t n t') =
+  TH.UInfixT <$> rewriteType' m t <*\> pure n <*\> rewriteType' m t'
+rewriteType' m (TH.ParensT t) = TH.ParensT <$> rewriteType' m t
+rewriteType' _ (TH.TupleT i) = pure $ TH.TupleT i
+rewriteType' _ (TH.UnboxedTupleT i) = pure $ TH.UnboxedTupleT i
+rewriteType' _ (TH.UnboxedSumT i) = pure $ TH.UnboxedSumT i
+rewriteType' _ TH.ArrowT = pure TH.ArrowT
+rewriteType' _ TH.EqualityT = pure TH.EqualityT
+rewriteType' _ TH.ListT = pure TH.ListT
+rewriteType' _ (TH.PromotedTupleT i) = pure $ TH.PromotedTupleT i
+rewriteType' _ TH.PromotedNilT = pure TH.PromotedNilT
+rewriteType' _ TH.PromotedConsT = pure TH.PromotedConsT
+rewriteType' _ TH.StarT = pure TH.StarT
+rewriteType' _ TH.ConstraintT = pure TH.ConstraintT
+rewriteType' _ (TH.LitT l) = pure $ TH.LitT l
+rewriteType' _ TH.WildCardT = pure TH.WildCardT
 
 data SpecializationFailure
   = NotAParameterizedType
