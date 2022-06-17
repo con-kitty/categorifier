@@ -77,6 +77,13 @@ import System.IO.Unsafe (unsafePerformIO)
 conversionFunction :: TH.Name
 conversionFunction = 'Categorifier.Categorify.expression
 
+conversionFunctionArity :: Int
+#if MIN_VERSION_GLASGOW_HASKELL(9, 0, 0, 0)
+conversionFunctionArity = 6
+#else
+conversionFunctionArity = 5
+#endif
+
 -- | Our Core plugin does three things,
 --
 -- 1. add the rules that rewrite `Categorifier.Categorify.expression` (this doesn't do any rewriting
@@ -404,7 +411,7 @@ categorifyRules convert opts guts =
     logger <- lift Plugins.getLogger
     hierarchyOptions' <- hierarchyOptions
     pure $
-      partialAppRules apply (Plugins.varName convert) 5 $
+      partialAppRules apply (Plugins.varName convert) conversionFunctionArity $
         \_ inScope ident exprs ->
           let baseArrowMakers = haskMakers inScope guts hscEnv hask bh Plugins.properFunTy
            in if ident == convert
@@ -494,6 +501,50 @@ applyCategorify ::
   (Plugins.Type -> Plugins.CoreExpr -> CategoryStack Plugins.CoreExpr) ->
   [Plugins.CoreExpr] ->
   IO (Maybe Plugins.CoreExpr)
+#if MIN_VERSION_GLASGOW_HASKELL(9, 0, 0, 0)
+applyCategorify convert hierarchyOptions defer dflags uniqS f = \case
+  (Plugins.Type _mult : Plugins.Type cat : Plugins.Type a : Plugins.Type b : calls : function : extraArgs) ->
+    if null extraArgs
+      then
+        pure
+          <$> runStack
+            hierarchyOptions
+            ((\fn -> fn cat a b calls) <$> defer)
+            dflags
+            uniqS
+            calls
+            function
+            (f cat)
+      else
+        throwIOAsException
+          ( \args ->
+              [fmt|
+Categorifier: GHC somehow called `{Plugins.getOccString convert}` with too many
+           arguments. This shouldn't have gotten past the typechecker:
+           {Plugins.showPpr dflags args}
+|]
+          )
+          extraArgs
+  -- The next few cases are partial applications of `categorify` that we ignore and hope finish
+  -- application later (see `applyApply`).
+  [Plugins.Type _mult, Plugins.Type _cat, Plugins.Type _a, Plugins.Type _b, _callStack] -> pure Nothing
+  [Plugins.Type _mult, Plugins.Type _cat, Plugins.Type _a, Plugins.Type _b] -> pure Nothing
+  [Plugins.Type _mult, Plugins.Type _cat, Plugins.Type _a] -> pure Nothing
+  [Plugins.Type _mult, Plugins.Type _cat] -> pure Nothing
+  [Plugins.Type _mult] -> pure Nothing
+  [] -> pure Nothing
+  -- And ... if we can't identify this as a valid call to `categorify`, we error.
+  args ->
+    throwIOAsException
+      ( \as ->
+          [fmt|
+Categorifier: GHC failed to invoke the categorify rule correctly. It was called with
+           the following arguments:
+           {Plugins.showPpr dflags as}
+|]
+      )
+      args
+#else
 applyCategorify convert hierarchyOptions defer dflags uniqS f = \case
   (Plugins.Type cat : Plugins.Type a : Plugins.Type b : calls : function : extraArgs) ->
     if null extraArgs
@@ -535,6 +586,7 @@ Categorifier: GHC failed to invoke the categorify rule correctly. It was called 
 |]
       )
       args
+#endif
 
 -- | Expands repeated `Plugins.App` nodes, returning a "primary" expression and all the arguments
 --   it's applied to. If the expression isn't an application, it still succeeds, returning the

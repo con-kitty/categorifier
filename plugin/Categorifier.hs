@@ -37,7 +37,7 @@ plugin =
             . GhcPlugins.liftIO
             . liftA2 Categorifier.Core.install (partitionOptions' opts)
             . pure,
-      GhcPlugins.pluginRecompile = GhcPlugins.purePlugin
+      GhcPlugins.pluginRecompile = GhcPlugins.flagRecompile
     }
 
 partitionOptions' :: [GhcPlugins.CommandLineOption] -> IO (Map OptionGroup [Text])

@@ -23,6 +23,10 @@
       url = "github:ndmitchell/hlint/v3.4";
       flake = false;
     };
+    linear-base = {
+      url = "github:tweag/linear-base/v0.2.0";
+      flake = false;
+    };
     # this library git repo has an inconsistency in version bound increasing.
     ghc-lib-parser-ex = {
       url =
@@ -30,7 +34,7 @@
       flake = false;
     };
   };
-  outputs = { self, nixpkgs, flake-utils, concat, yaya
+  outputs = { self, nixpkgs, flake-utils, concat, linear-base, yaya
     , ghc-typelits-natnormalise, hlint, ghc-lib-parser-ex }:
     flake-utils.lib.eachSystem flake-utils.lib.allSystems (system:
       let
@@ -44,11 +48,10 @@
                   "PyF" = haskellLib.dontCheck super.PyF;
                   # test is broken.
                   "barbies" = haskellLib.dontCheck super.barbies;
+                  # linear-base 0.2.0
+                  "linear-base" =  self.callCabal2nix "linear-base" linear-base { };
                   # yaya 0.4.2.1
                   "yaya" = self.callCabal2nix "yaya" (yaya + "/core") { };
-                  # yaya-unsafe 0.2.0.1
-                  "yaya-unsafe" =
-                    self.callCabal2nix "yaya-unsafe" (yaya + "/unsafe") { };
                 } // (prev.lib.optionalAttrs
                   (prev.haskellPackages.ghc.version == "9.2.1") {
                     # loose base bound
@@ -57,16 +60,12 @@
                     "fin" = haskellLib.doJailbreak super.fin;
                     # ghc-lib-parser-ex-9.2.0.3
                     "ghc-lib-parser-ex" =
-                      self.callCabal2nix "ghc-lib-parser-ex" ghc-lib-parser-ex
-                      { };
+                      self.callCabal2nix "ghc-lib-parser-ex" ghc-lib-parser-ex { };
                     # loosen ghc-bignum bound on GHC-9.2.1
                     "ghc-typelits-natnormalise" =
-                      self.callCabal2nix "ghc-typelits-natnormalise"
-                      ghc-typelits-natnormalise { };
+                      self.callCabal2nix "ghc-typelits-natnormalise" ghc-typelits-natnormalise { };
                     # hlint-3.4
                     "hlint" = self.callCabal2nix "hlint" hlint { };
-                    # due to random, hashable on GHC-9.2.1
-                    "linear" = haskellLib.doJailbreak super.linear_1_21_7;
                     # loosen base bound on GHC-9.2.1
                     "some" = haskellLib.doJailbreak super.some;
                     # loosen base bound on GHC-9.2.1
@@ -175,8 +174,9 @@
               withHoogle = false;
             };
         in {
-          "default" = mkDevShell "ghc921";
+          "default" = mkDevShell "ghc901";
           "ghc8107" = mkDevShell "ghc8107";
+          "ghc901" = mkDevShell "ghc901";
           "ghc921" = mkDevShell "ghc921";
         };
       });

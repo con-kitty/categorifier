@@ -39,11 +39,11 @@
     },
     "flake-utils_2": {
       "locked": {
-        "lastModified": 1649676176,
-        "narHash": "sha256-OWKJratjt2RW151VUlJPRALb7OU2S5s+f0vLj4o1bHM=",
+        "lastModified": 1652776076,
+        "narHash": "sha256-gzTw/v1vj4dOVbpBSJX4J0DwUR6LIyXo7/SuuTJp1kM=",
         "owner": "numtide",
         "repo": "flake-utils",
-        "rev": "a4b154ebbdc88c8498a5c7b01589addc9e9cb678",
+        "rev": "04c1b180862888302ddfb2e3ad9eaa63afc60cf8",
         "type": "github"
       },
       "original": {
@@ -98,13 +98,30 @@
         "type": "github"
       }
     },
+    "linear-base": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1648538481,
+        "narHash": "sha256-QceHuD9zA8fOoZ0AjIfUNGv5mQvj0sq0PAG3eXk1WuY=",
+        "owner": "tweag",
+        "repo": "linear-base",
+        "rev": "a3cb079b2425207620dc3bf899f74d052a66dde0",
+        "type": "github"
+      },
+      "original": {
+        "owner": "tweag",
+        "ref": "v0.2.0",
+        "repo": "linear-base",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1652182392,
-        "narHash": "sha256-H9Bmor+kfogrE0X7Fi5sh0gCUWDG4pnmYxedJyIT41A=",
+        "lastModified": 1653087707,
+        "narHash": "sha256-zfno3snrzZTWQ2B7K53QHrGZwrjnJLTRPalymrSsziU=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "aa2f845096f72dde4ad0c168eeec387cbd2eae04",
+        "rev": "cbd40c72b2603ab54e7208f99f9b35fc158bc009",
         "type": "github"
       },
       "original": {
@@ -121,6 +138,7 @@
         "ghc-lib-parser-ex": "ghc-lib-parser-ex",
         "ghc-typelits-natnormalise": "ghc-typelits-natnormalise",
         "hlint": "hlint",
+        "linear-base": "linear-base",
         "nixpkgs": "nixpkgs",
         "yaya": "yaya"
       }

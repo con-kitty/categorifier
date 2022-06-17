@@ -5,11 +5,12 @@
 
 module Categorifier.Fin.Client
   ( HasRep (..),
+    Rep,
     deriveHasRep,
   )
 where
 
-import Categorifier.Client (HasRep (..), deriveHasRep)
+import Categorifier.Client (HasRep (..), Rep, deriveHasRep)
 import Data.Fin (Fin)
 import Data.Type.Nat (Nat (..), SNat (..))
 

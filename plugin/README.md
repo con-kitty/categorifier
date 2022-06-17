@@ -69,6 +69,9 @@ are some features that aren't supported (or, not supported fully).
 - **`IO`** - The plugin can not categorify anything that operates on the `RealWorld` state. If you
   only use `Monad` operations (etc.) on `IO`, then it should categorify fine. But then you should
   also generalize the function to an arbitrary `Monad`.
+- **`LinearTypes`** - We can categorify plugins with arbitrary multiplicities (e.g., linear
+  functions), but we don't yet take advantage of [Evaluating Linear Functions to Symmetric Monoidal
+  Categories](https://arxiv.org/abs/2103.06195v1) to produce simpler categorical models.
 - **mutual recursion** - The plugin will not work with any mutually-recursive definitions. Mutually-
   recursive _types_ are fine, but operations on them can't be mutually-recursive. In some cases
   (mutually-recursive `let` or `where` bindings), the plugin can identify it and will provide a

@@ -11,6 +11,7 @@
 --   @import qualified "Categorifier.Categorify" as Categorify@.
 module Categorifier.Client
   ( HasRep (..),
+    Rep,
     deriveHasRep,
 
     -- * testing
@@ -19,7 +20,7 @@ module Categorifier.Client
   )
 where
 
-import Categorifier.Client.Internal (HasRep (..), deriveHasRep)
+import Categorifier.Client.Internal (HasRep (..), Rep, deriveHasRep)
 import Data.Complex (Complex)
 import Data.Functor.Compose (Compose)
 import Data.Functor.Identity (Identity)

@@ -129,8 +129,10 @@ prop_altVecSIso =
   let a = genFloating @Double
    in iso (genAltVec @(Nat.FromGHC 10) a) (genRepAltVecS a)
 
--- | It's currently not supported to derive a working `Client.HasRep` for this type, so we test this
---   with manual instances.
+-- | This type has overlapping instances, but can be fully supported with `Client.deriveHasRep`,
+--   since @a@ can only be `Double` or `Int`, because those are the only base cases. So we let
+--  `Client.deriveHasRep` create all three instances, even though the @overlappable@ one (for
+--   @`HasRep` (`SomeExpr` a)@) can never be referenced.
 data SomeExpr a where
   DubLit :: Double -> SomeExpr Double
   IntLit :: Int -> SomeExpr Int
@@ -140,16 +142,7 @@ deriving instance Eq a => Eq (SomeExpr a)
 
 deriving instance Show a => Show (SomeExpr a)
 
-instance Client.HasRep (SomeExpr Double) where
-  type Rep (SomeExpr Double) = Either Double (SomeExpr Double, SomeExpr Double)
-  abst = \case
-    Left d -> DubLit d
-    Right (x, y) -> Add x y
-  {-# INLINE abst #-}
-  repr = \case
-    DubLit d -> Left d
-    Add x y -> Right (x, y)
-  {-# INLINE repr #-}
+Client.deriveHasRep ''SomeExpr
 
 genSomeExprDouble :: Hedgehog.Gen (SomeExpr Double)
 genSomeExprDouble =
@@ -166,17 +159,6 @@ genRepSomeExprDouble =
 prop_someExprDoubleIso :: Hedgehog.Property
 prop_someExprDoubleIso = iso genSomeExprDouble genRepSomeExprDouble
 
-instance Client.HasRep (SomeExpr Int) where
-  type Rep (SomeExpr Int) = Either Int (SomeExpr Int, SomeExpr Int)
-  abst = \case
-    Left i -> IntLit i
-    Right (x, y) -> Add x y
-  {-# INLINE abst #-}
-  repr = \case
-    IntLit i -> Left i
-    Add x y -> Right (x, y)
-  {-# INLINE repr #-}
-
 genSomeExprInt :: Hedgehog.Gen (SomeExpr Int)
 genSomeExprInt =
   Hedgehog.Gen.recursive
@@ -191,6 +173,98 @@ genRepSomeExprInt =
 
 prop_someExprIntIso :: Hedgehog.Property
 prop_someExprIntIso = iso genSomeExprInt genRepSomeExprInt
+
+-- | A slightly more complicated type than `SomeExpr`, allowing @a@ to be something other than one
+--   of the concrete types used in the other constructor result types (`Double` and `Int`).
+--
+--  `Client.deriveHasRep` can provide all the `Client.HasRep` instances as well as the `Client.Rep`
+--   instances for the base cases (`Double` and `Int`). However, any other types used for @a@ must
+--   have `Client.Rep` instances defined manually. Also, if you don't know all the types that are
+--   needed, downstream users can add their own @type instance `Client.Rep` (`WeirdExpr` _)@ as
+--   necessary.
+data WeirdExpr a where
+  WeirdDub :: Double -> WeirdExpr Double
+  WeirdInt :: Int -> WeirdExpr Int
+  Empty :: WeirdExpr a
+  Combine :: WeirdExpr a -> WeirdExpr a -> WeirdExpr a
+
+deriving instance Eq a => Eq (WeirdExpr a)
+
+deriving instance Show a => Show (WeirdExpr a)
+
+Client.deriveHasRep ''WeirdExpr
+
+-- | A simple helper synonym that you can export to insulate users from changes to the type.
+--   Ideally, this would be produced by `Client.deriveHasRep` for any @overlappable@ case.
+type WeirdExprRepPattern a = Either () (WeirdExpr a, WeirdExpr a)
+
+type instance Client.Rep (WeirdExpr Bool) = WeirdExprRepPattern Bool
+
+type instance Client.Rep (WeirdExpr Char) = WeirdExprRepPattern Char
+
+genWeirdExprDouble :: Hedgehog.Gen (WeirdExpr Double)
+genWeirdExprDouble =
+  Hedgehog.Gen.recursive
+    Hedgehog.Gen.choice
+    [WeirdDub <$> genFloating, pure Empty]
+    [Combine <$> genWeirdExprDouble <*> genWeirdExprDouble]
+
+genRepWeirdExprDouble :: Hedgehog.Gen (Client.Rep (WeirdExpr Double))
+genRepWeirdExprDouble =
+  Hedgehog.Gen.choice
+    [ Left <$> genFloating,
+      pure . Right $ Left (),
+      Right . Right <$> ((,) <$> genWeirdExprDouble <*> genWeirdExprDouble)
+    ]
+
+prop_weirdExprDoubleIso :: Hedgehog.Property
+prop_weirdExprDoubleIso = iso genWeirdExprDouble genRepWeirdExprDouble
+
+genWeirdExprInt :: Hedgehog.Gen (WeirdExpr Int)
+genWeirdExprInt =
+  Hedgehog.Gen.recursive
+    Hedgehog.Gen.choice
+    [WeirdInt <$> Hedgehog.Gen.enumBounded, pure Empty]
+    [Combine <$> genWeirdExprInt <*> genWeirdExprInt]
+
+genRepWeirdExprInt :: Hedgehog.Gen (Client.Rep (WeirdExpr Int))
+genRepWeirdExprInt =
+  Hedgehog.Gen.choice
+    [ Left <$> Hedgehog.Gen.enumBounded,
+      pure . Right $ Left (),
+      Right . Right <$> ((,) <$> genWeirdExprInt <*> genWeirdExprInt)
+    ]
+
+prop_weirdExprIntIso :: Hedgehog.Property
+prop_weirdExprIntIso = iso genWeirdExprInt genRepWeirdExprInt
+
+genWeirdExprBool :: Hedgehog.Gen (WeirdExpr Bool)
+genWeirdExprBool =
+  Hedgehog.Gen.recursive
+    Hedgehog.Gen.choice
+    [pure Empty]
+    [Combine <$> genWeirdExprBool <*> genWeirdExprBool]
+
+genRepWeirdExprBool :: Hedgehog.Gen (Client.Rep (WeirdExpr Bool))
+genRepWeirdExprBool =
+  Hedgehog.Gen.choice [pure $ Left (), Right <$> ((,) <$> genWeirdExprBool <*> genWeirdExprBool)]
+
+prop_weirdExprBoolIso :: Hedgehog.Property
+prop_weirdExprBoolIso = iso genWeirdExprBool genRepWeirdExprBool
+
+genWeirdExprChar :: Hedgehog.Gen (WeirdExpr Char)
+genWeirdExprChar =
+  Hedgehog.Gen.recursive
+    Hedgehog.Gen.choice
+    [pure Empty]
+    [Combine <$> genWeirdExprChar <*> genWeirdExprChar]
+
+genRepWeirdExprChar :: Hedgehog.Gen (Client.Rep (WeirdExpr Char))
+genRepWeirdExprChar =
+  Hedgehog.Gen.choice [pure $ Left (), Right <$> ((,) <$> genWeirdExprChar <*> genWeirdExprChar)]
+
+prop_weirdExprCharIso :: Hedgehog.Property
+prop_weirdExprCharIso = iso genWeirdExprChar genRepWeirdExprChar
 
 main :: IO ()
 main = Hedgehog.defaultMain [Hedgehog.checkParallel $$(Hedgehog.discover)]
