@@ -31,6 +31,10 @@ source-repository-package
   tag: 99ee4981c096180abe99c24b12ff79e85d1817df
   subdir: satisfy
 
+-- TODO: Uncomment with Cabal 3.8
+-- program-options
+--   ghc-options: -Werror
+
 tests: True
 
 packages:

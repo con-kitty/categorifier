@@ -13,7 +13,8 @@ where
 
 import qualified Categorifier.Category
 import qualified Categorifier.Client
-import Categorifier.Core.Types (CategoryStack, Lookup)
+import Categorifier.Core.Types (CategoryStack, Lookup, MissingSymbol (..))
+import Categorifier.Duoidal (Parallel (..), (=<\<))
 import qualified Categorifier.GHC.Core as Plugins
 import Categorifier.Hierarchy
   ( Hierarchy (..),
@@ -24,6 +25,7 @@ import Categorifier.Hierarchy
   )
 import qualified ConCat.AltCat
 import qualified ConCat.Category
+import Control.Monad.Trans.Except (except)
 import qualified Language.Haskell.TH.Syntax as TH
 
 -- | ConCat effectively provides us with two hierarchies. One is standard type classes, the other
@@ -322,14 +324,20 @@ hierarchy' pkgName moduleName = do
       rep <- findTyCon ''Categorifier.Client.Rep
       pure $ \onDict cat a -> mkMethodApps onDict op [cat, a, Plugins.mkTyConApp rep [a]] [] []
 
+globalNameComponents :: TH.Name -> Lookup (String, String)
+globalNameComponents name@(TH.Name _ flavour) = case flavour of
+  TH.NameG _ (TH.PkgName pkg) (TH.ModName modu) -> pure (pkg, modu)
+  _ -> Parallel . except . Left . pure $ NotAGlobalName name
+
 -- | A hierarchy using the type classes provided by Conal Eliot's @concat@ library.
 --
 --  __NB__: This uses "ConCat.Category" directly, and ignores the existence of "ConCat.AltCat".
 classHierarchy :: Lookup (Hierarchy CategoryStack)
 classHierarchy = do
-  let Just pkgName = TH.namePackage ''ConCat.Category.Category
-      Just modu = TH.nameModule ''ConCat.Category.Category
-  hierarchy <- hierarchy' pkgName modu
+  hierarchy <-
+    Parallel $
+      getParallel . uncurry hierarchy'
+        =<\< getParallel (globalNameComponents ''ConCat.Category.Category)
   fromIntegerV <-
     pure <$> do
       fn <- identifier 'ConCat.Category.fromIntegralC
@@ -351,9 +359,10 @@ classHierarchy = do
 --   by Conal's original implementation.
 functionHierarchy :: Lookup (Hierarchy CategoryStack)
 functionHierarchy = do
-  let Just pkgName = TH.namePackage ''ConCat.AltCat.Category
-      Just modu = TH.nameModule ''ConCat.AltCat.Category
-  hierarchy <- hierarchy' pkgName modu
+  hierarchy <-
+    Parallel $
+      getParallel . uncurry hierarchy'
+        =<\< getParallel (globalNameComponents ''ConCat.AltCat.Category)
   fromIntegerV <-
     pure <$> do
       fn <- identifier 'ConCat.AltCat.fromIntegralC

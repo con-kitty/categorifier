@@ -31,11 +31,9 @@ module Categorifier.GHC.Types
 where
 
 import qualified Categorifier.GHC.Data as Data
-import qualified Categorifier.GHC.Driver as Driver
 import qualified Categorifier.GHC.Unit as Unit
 import Categorifier.GHC.Utils ((<+>))
 import qualified Categorifier.GHC.Utils as Utils
-import Data.ByteString (ByteString)
 #if MIN_VERSION_ghc(9, 0, 0)
 -- needed to avoid an import cycle
 import qualified GHC.Core.TyCo.Rep as Core
@@ -46,7 +44,11 @@ import qualified GHC.Types.ForeignCall as ForeignCall
 import GHC.Types.Error as ErrUtils
 import GHC.Types.TyThing as HscTypes
 #else
-import GHC.Driver.Types as HscTypes
+import GHC.Driver.Types as HscTypes hiding
+  ( InteractiveContext (..),
+    InteractiveImport (..),
+    ModGuts (..),
+  )
 import GHC.Utils.Error as ErrUtils
 #endif
 import GHC.Types.Id as Id hiding (mkSysLocal)
@@ -66,8 +68,9 @@ import GHC.Types.Var.Env as VarEnv
 import GHC.Types.Var.Set as VarSet
 #else
 import BasicTypes hiding (Inline)
+import qualified Categorifier.GHC.Driver as Driver
 import ErrUtils
-import HscTypes
+import HscTypes hiding (InteractiveContext (..), InteractiveImport (..), ModGuts (..))
 import ForeignCall hiding (CCallSpec (..))
 import qualified ForeignCall
 import Id hiding (mkSysLocal)

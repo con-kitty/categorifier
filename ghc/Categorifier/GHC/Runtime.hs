@@ -6,9 +6,6 @@ module Categorifier.GHC.Runtime
   )
 where
 
-import qualified Categorifier.GHC.Driver as Driver
-import qualified Categorifier.GHC.Types as Types
-import qualified Categorifier.GHC.Unit as Unit
 #if MIN_VERSION_ghc(9, 0, 0)
 #if MIN_VERSION_ghc(9, 2, 0)
 import GHC.Runtime.Context as HscTypes
@@ -18,5 +15,5 @@ import GHC.Driver.Types as HscTypes
 import GHC.Runtime.Loader as DynamicLoading
 #else
 import DynamicLoading
-import HscTypes
+import HscTypes hiding (ModGuts (..))
 #endif

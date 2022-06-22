@@ -200,6 +200,8 @@ prettyMissingSymbols dflags =
       ( \case
           IncorrectType name ty ->
             [fmt|\n  - `{Plugins.showPpr dflags name}` was found, but didn't have type `{Plugins.showPpr dflags ty}`|]
+          NotAGlobalName name ->
+            [fmt|\n  - `{show name}` isn't a global name, but a global name is required|]
           MissingDataCon name ->
             [fmt|\n  - data constructor {show name}|]
           MissingId name ->

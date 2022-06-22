@@ -22,7 +22,6 @@ where
 import Categorifier.Duoidal (Parallel)
 import qualified Categorifier.GHC.Core as Plugins
 import qualified Categorifier.GHC.Types as Plugins
-import qualified Categorifier.GHC.Unit as Plugins
 import qualified Categorifier.GHC.Utils as Plugins
 import Control.Monad.Trans.Except (ExceptT (..), mapExceptT)
 import Control.Monad.Trans.RWS.Strict (RWST (..), withRWST)
@@ -54,6 +53,7 @@ data CategoryState = CategoryState
 
 data MissingSymbol
   = IncorrectType Plugins.Name Plugins.Type
+  | NotAGlobalName TH.Name
   | MissingDataCon TH.Name
   | MissingId TH.Name
   | MissingName TH.Name

@@ -45,10 +45,10 @@ import qualified Categorifier.GHC.Types as Types
 import Categorifier.GHC.Utils ((<+>))
 import qualified Categorifier.GHC.Utils as Utils
 import Control.Monad ((<=<))
-import Data.Bifunctor (first)
 import Data.Set (Set)
 import qualified Data.Set as Set
 #if MIN_VERSION_ghc(9, 0, 0)
+import Data.Bifunctor (first)
 #if MIN_VERSION_ghc(9, 2, 0)
 import GHC.Core as CoreSyn hiding (Alt)
 import qualified GHC.Core as CoreSyn
@@ -106,14 +106,9 @@ import MkCore
 import OccurAnal
 #if MIN_VERSION_ghc(8, 10, 0)
 import Predicate
+import TyCoRep
 #else
 import Id as Predicate hiding (mkSysLocal)
-#endif
-import SimplCore hiding (simplifyExpr)
-import qualified SimplCore
-import SimplEnv
-import SimplMonad
-import Simplify
 import TyCoRep hiding
   ( extendCvSubst,
     extendTvSubst,
@@ -124,6 +119,12 @@ import TyCoRep hiding
     substTy,
     substTyVarBndr,
   )
+#endif
+import SimplCore hiding (simplifyExpr)
+import qualified SimplCore
+import SimplEnv
+import SimplMonad
+import Simplify
 import TyCon
 import Type hiding
   ( extendCvSubst,
@@ -135,14 +136,7 @@ import Type hiding
     substTy,
     substTyVarBndr,
   )
-import qualified Type hiding
-  ( extendCvSubst,
-    extendTvSubst,
-    extendTvSubstList,
-    isInScope,
-    substTy,
-    substTyVarBndr,
-  )
+import qualified Type
 #endif
 
 #if MIN_VERSION_ghc(9, 2, 0)
