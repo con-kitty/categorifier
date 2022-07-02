@@ -74,10 +74,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: rwe/actions-hlint-setup@v1
+      - uses: haskell/actions/hlint-setup@v2
         with:
-          version: '3.3.6'
-      - uses: rwe/actions-hlint-run@v2
+          version: '3.4'
+      - uses: haskell/actions/hlint-run@v2
         with:
           path: '["category/", "client/", "common/", "duoids/", "hedgehog/", "plugin/"]'
           fail-on: status
