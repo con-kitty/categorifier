@@ -48,8 +48,12 @@
                   "PyF" = haskellLib.dontCheck super.PyF;
                   # test is broken.
                   "barbies" = haskellLib.dontCheck super.barbies;
+                  # found the test is flaky.
+                  "hls-pragmas-plugin" =
+                    haskellLib.dontCheck super.hls-pragmas-plugin;
                   # linear-base 0.2.0
-                  "linear-base" =  self.callCabal2nix "linear-base" linear-base { };
+                  "linear-base" =
+                    self.callCabal2nix "linear-base" linear-base { };
                   # yaya 0.4.2.1
                   "yaya" = self.callCabal2nix "yaya" (yaya + "/core") { };
                 } // (prev.lib.optionalAttrs
@@ -60,10 +64,12 @@
                     "fin" = haskellLib.doJailbreak super.fin;
                     # ghc-lib-parser-ex-9.2.0.3
                     "ghc-lib-parser-ex" =
-                      self.callCabal2nix "ghc-lib-parser-ex" ghc-lib-parser-ex { };
+                      self.callCabal2nix "ghc-lib-parser-ex" ghc-lib-parser-ex
+                      { };
                     # loosen ghc-bignum bound on GHC-9.2.1
                     "ghc-typelits-natnormalise" =
-                      self.callCabal2nix "ghc-typelits-natnormalise" ghc-typelits-natnormalise { };
+                      self.callCabal2nix "ghc-typelits-natnormalise"
+                      ghc-typelits-natnormalise { };
                     # hlint-3.4
                     "hlint" = self.callCabal2nix "hlint" hlint { };
                     # loosen base bound on GHC-9.2.1
@@ -159,15 +165,19 @@
                 overlays = [ overlayGHC concat.overlay.${system} ]
                   ++ fullOverlays;
                 inherit system;
+                # linear-generics is broken upstream
+                config.allowBroken = true;
               };
 
             in newPkgs.haskellPackages.shellFor {
               packages = ps:
                 builtins.map (name: ps.${name}) categorifierPackageNames;
-              buildInputs = [
-                newPkgs.haskellPackages.cabal-install
-                newPkgs.haskellPackages.hlint
-              ] ++
+              buildInputs =
+                # For these CLI tools, we use nixpkgs default
+                [
+                  newPkgs.haskell.packages.ghc8107.cabal-install
+                  newPkgs.haskell.packages.ghc8107.hlint
+                ] ++
                 # haskell-language-server on GHC 9.2.1 is broken yet.
                 newPkgs.lib.optional (ghcVer != "ghc921")
                 [ newPkgs.haskell-language-server ];
