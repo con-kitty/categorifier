@@ -163,6 +163,7 @@
                 overlays = [ overlayGHC concat.overlay.${system} ]
                   ++ fullOverlays;
                 inherit system;
+                # linear-generics is broken upstream
                 config.allowBroken = true;
               };
 
