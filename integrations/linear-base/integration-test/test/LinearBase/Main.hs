@@ -7,6 +7,7 @@
 {-# LANGUAGE TypeApplications #-}
 -- To avoid turning @if then else@ into `ifThenElse`.
 {-# LANGUAGE NoRebindableSyntax #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 -- | See @Test/Cat/ConCat/Main.hs@ for copious notes on the testing situation here.
 module Main
@@ -38,6 +39,7 @@ import Data.Proxy (Proxy (..))
 import qualified Data.Replicator.Linear
 import qualified Data.V.Linear
 import GHC.Int (Int64)
+import GHC.TypeLits (KnownNat)
 import GHC.Word (Word8)
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range

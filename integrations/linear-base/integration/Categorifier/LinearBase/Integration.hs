@@ -53,74 +53,13 @@ import qualified Prelude.Linear
 import qualified Streaming.Prelude.Linear
 import qualified Unsafe.Linear
 
--- These instances are pushed upstream in https://github.com/tweag/linear-base/pull/416 and should
--- be in any release of linear-base >0.2.0
-
--- | @linear-base@ doesn't export `MovableOrd`, so we redefine it and its instances here to use in
---   @newtype@-derived instances.
-newtype MovableOrd a = MovableOrd a
-
-instance (Eq a, Prelude.Linear.Movable a) => Data.Ord.Linear.Eq (MovableOrd a) where
-  MovableOrd ar == MovableOrd br =
-    Prelude.Linear.move (ar, br) Prelude.Linear.& \(Prelude.Linear.Ur (a, b)) -> a == b
-  MovableOrd ar /= MovableOrd br =
-    Prelude.Linear.move (ar, br) Prelude.Linear.& \(Prelude.Linear.Ur (a, b)) -> a /= b
-
-instance (Prelude.Ord a, Prelude.Linear.Movable a) => Data.Ord.Linear.Ord (MovableOrd a) where
-  MovableOrd ar `compare` MovableOrd br =
-    Prelude.Linear.move (ar, br)
-      Prelude.Linear.& \(Prelude.Linear.Ur (a, b)) -> a `Prelude.compare` b
-
-deriving via MovableOrd Int16 instance Data.Ord.Linear.Eq Int16
-
-deriving via MovableOrd Int32 instance Data.Ord.Linear.Eq Int32
-
-deriving via MovableOrd Int64 instance Data.Ord.Linear.Eq Int64
-
-deriving via MovableOrd Int8 instance Data.Ord.Linear.Eq Int8
-
-deriving via MovableOrd Word16 instance Data.Ord.Linear.Eq Word16
-
-deriving via MovableOrd Word32 instance Data.Ord.Linear.Eq Word32
-
-deriving via MovableOrd Word64 instance Data.Ord.Linear.Eq Word64
-
-deriving via MovableOrd Word8 instance Data.Ord.Linear.Eq Word8
-
-deriving via MovableOrd Int16 instance Data.Ord.Linear.Ord Int16
-
-deriving via MovableOrd Int32 instance Data.Ord.Linear.Ord Int32
-
-deriving via MovableOrd Int64 instance Data.Ord.Linear.Ord Int64
-
-deriving via MovableOrd Int8 instance Data.Ord.Linear.Ord Int8
-
-deriving via MovableOrd Word16 instance Data.Ord.Linear.Ord Word16
-
-deriving via MovableOrd Word32 instance Data.Ord.Linear.Ord Word32
-
-deriving via MovableOrd Word64 instance Data.Ord.Linear.Ord Word64
-
-deriving via MovableOrd Word8 instance Data.Ord.Linear.Ord Word8
-
-deriving instance Show (Data.V.Linear.V n a)
-
-deriving instance Foldable (Data.V.Linear.V n)
-
-deriving instance KnownNat n => Traversable (Data.V.Linear.V n)
-
-instance KnownNat n => Applicative (Data.V.Linear.V n) where
-  pure = Data.Functor.Linear.pure
-  Data.V.Linear.Internal.V fs <*> Data.V.Linear.Internal.V xs =
-    Data.V.Linear.Internal.V $ Vector.zipWith (\f x -> f $ x) fs xs
-
 symbolLookup :: Lookup SymbolLookup
 symbolLookup = do
-  array <- findTyCon "Data.Array.Mutable.Linear" "Array"
-  arrayUnlifted <- findTyCon "Data.Array.Mutable.Unlifted.Linear" "Array#"
-  replicator <- findTyCon "Data.Replicator.Linear" "Replicator"
-  v <- findTyCon "Data.V.Linear" "V"
-  stream <- findTyCon "Streaming.Prelude.Linear" "Stream"
+  array <- findTyCon ''Data.Array.Mutable.Linear.Array
+  arrayUnlifted <- findTyCon ''Data.Array.Mutable.Unlifted.Linear.Array#
+  replicator <- findTyCon ''Data.Replicator.Linear.Replicator
+  v <- findTyCon ''Data.V.Linear.V
+  stream <- findTyCon ''Streaming.Prelude.Linear.Stream
   pure $
     SymbolLookup
       ( Map.fromList

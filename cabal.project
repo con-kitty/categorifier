@@ -31,9 +31,8 @@ source-repository-package
   tag: 99ee4981c096180abe99c24b12ff79e85d1817df
   subdir: satisfy
 
--- TODO: Uncomment with Cabal 3.8
--- program-options
---   ghc-options: -Werror
+program-options
+  ghc-options: -Werror
 
 tests: True
 
@@ -63,8 +62,7 @@ packages:
   ./plugin/categorifier-plugin.cabal
   ./plugin-test/categorifier-plugin-test.cabal
   ./th/categorifier-th.cabal
--- __TODO__: Uncomment below once Cabal 3.8 is released.
--- if impl(ghc >= 9.0.0)
---   packages:
---     ./integrations/linear-base/integration/categorifier-linear-base-integration.cabal
---     ./integrations/linear-base/integration-test/categorifier-linear-base-integration-test.cabal
+if impl(ghc >= 9.0.0)
+  packages:
+    ./integrations/linear-base/integration/categorifier-linear-base-integration.cabal
+    ./integrations/linear-base/integration-test/categorifier-linear-base-integration-test.cabal

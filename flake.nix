@@ -9,7 +9,7 @@
       inputs.flake-utils.follows = "flake-utils";
     };
     linear-base = {
-      url = "github:tweag/linear-base/v0.2.0";
+      url = "github:tweag/linear-base/v0.3.0";
       flake = false;
     };
   };
@@ -29,9 +29,11 @@
                   # found the test is flaky.
                   "hls-pragmas-plugin" =
                     haskellLib.dontCheck super.hls-pragmas-plugin;
-                  # linear-base 0.2.0
+                  # linear-base 0.3.0
                   "linear-base" =
-                    self.callCabal2nix "linear-base" linear-base { };
+                    # requires tasty-hedgehog >=1.2 – try again with 22.11
+                    haskellLib.dontCheck
+                      (self.callCabal2nix "linear-base" linear-base { });
                 });
           });
         };
@@ -40,6 +42,11 @@
         categorifierPackages = parseCabalProject ./cabal.project;
         categorifierPackageNames =
           builtins.map ({ name, ... }: name) categorifierPackages;
+        # These packages aren’t supported in all versions of GHC.
+        linearPackageNames = [
+          "categorifier-linear-base-integration"
+          "categorifier-linear-base-integration-test"
+        ];
         haskellOverlay = self: super:
           builtins.listToAttrs (builtins.map ({ name, path }: {
             inherit name;
@@ -68,8 +75,12 @@
         # This package set is only useful for CI build test.
         # In practice, users will create a development environment composed by overlays.
         packages = let
-          packagesOnGHC = ghcVer:
+          packagesOnGHC = ghcVer: exclude:
             let
+              filteredCategorifierPackageNames =
+                builtins.filter (name: builtins.all (n: n != name) exclude)
+                  categorifierPackageNames;
+
               overlayGHC = final: prev: {
                 haskellPackages = prev.haskell.packages.${ghcVer};
               };
@@ -82,16 +93,16 @@
               };
 
               individualPackages = builtins.listToAttrs (builtins.map
-                ({ name, ... }: {
+                (name: {
                   name = ghcVer + "_" + name;
                   value = builtins.getAttr name newPkgs.haskellPackages;
-                }) categorifierPackages);
+                }) filteredCategorifierPackageNames);
 
               allEnv = let
                 hsenv = newPkgs.haskellPackages.ghcWithPackages (p:
                   let
-                    deps = builtins.map ({ name, ... }: p.${name})
-                      categorifierPackages;
+                    deps = builtins.map (name: p.${name})
+                      filteredCategorifierPackageNames;
                   in deps);
               in newPkgs.buildEnv {
                 name = "all-packages";
@@ -100,17 +111,21 @@
             in individualPackages // { "${ghcVer}_all" = allEnv; };
 
         in { default = self.packages.${system}.ghc902_all; }
-           // packagesOnGHC "ghc884"
-           // packagesOnGHC "ghc8107"
-           // packagesOnGHC "ghc902"
-           // packagesOnGHC "ghc922"
-           // packagesOnGHC "ghcHEAD";
+           // packagesOnGHC "ghc884" linearPackageNames
+           // packagesOnGHC "ghc8107" linearPackageNames
+           // packagesOnGHC "ghc902" []
+           // packagesOnGHC "ghc922" []
+           // packagesOnGHC "ghcHEAD" [];
 
         overlays = fullOverlays;
 
         devShells = let
-          mkDevShell = ghcVer:
+          mkDevShell = ghcVer: exclude:
             let
+              filteredCategorifierPackageNames =
+                builtins.filter (name: builtins.all (n: n != name) exclude)
+                  categorifierPackageNames;
+
               overlayGHC = final: prev: {
                 haskellPackages = prev.haskell.packages.${ghcVer};
               };
@@ -128,25 +143,22 @@
 
             in newPkgs.haskellPackages.shellFor {
               packages = ps:
-                builtins.map (name: ps.${name}) categorifierPackageNames;
-              buildInputs =
-                # For these CLI tools, we use nixpkgs default
-                [
-                  newPkgs.haskell.packages.ghc8107.cabal-install
-                  newPkgs.haskell.packages.ghc8107.hlint
-                ] ++
-                # haskell-language-server on GHC 9.2.1 is broken yet.
-                newPkgs.lib.optional (ghcVer != "ghc921")
-                [ newPkgs.haskell-language-server ];
+                builtins.map (name: ps.${name})
+                  filteredCategorifierPackageNames;
+              buildInputs = [
+                newPkgs.haskell-language-server
+                newPkgs.haskell.packages.ghc8107.cabal-install
+                newPkgs.haskell.packages.ghc8107.hlint
+              ];
               withHoogle = false;
             };
         in {
           default = self.devShells.${system}.ghc902;
-          ghc884 = mkDevShell "ghc884";
-          ghc8107 = mkDevShell "ghc8107";
-          ghc902 = mkDevShell "ghc902";
-          ghc922 = mkDevShell "ghc922";
-          ghcHEAD = mkDevShell "ghcHEAD";
+          ghc884 = mkDevShell "ghc884" linearPackageNames;
+          ghc8107 = mkDevShell "ghc8107" linearPackageNames;
+          ghc902 = mkDevShell "ghc902" [];
+          ghc922 = mkDevShell "ghc922" [];
+          ghcHEAD = mkDevShell "ghcHEAD" [];
         };
       });
 }
