@@ -15,12 +15,12 @@ jobs:
         ghc:
           - "ghc884"
           - "ghc8107"
-          - "ghc901"
-          - "ghc921"
+          - "ghc902"
+          - "ghc922"
         os: [ubuntu-latest]
         experimental: [false]
         include:
-          - ghc: "ghc921"
+          - ghc: "ghc922"
             os: macos-latest
             experimental: false
           - ghc: "ghcHEAD"
@@ -46,7 +46,7 @@ jobs:
       matrix:
         ghc:
           - "8.10.1" # need an earlier revision than in Nix, because there's an API breakage that only affects 8.10.7
-          - "9.2.2" # there's an API breakage introduced here
+          - "9.2.1" # need an earlier revision than in Nix, because there's an API breakage introduced in 9.2.2
     env:
       CONFIG: "--enable-tests --enable-benchmarks"
     steps:

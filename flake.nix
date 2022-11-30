@@ -1,41 +1,19 @@
 {
   description = "categorifier";
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-21.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/release-22.05";
     flake-utils.url = "github:numtide/flake-utils";
     concat = {
       url = "github:con-kitty/concat/wavewave-flake";
       inputs.nixpkgs.follows = "nixpkgs";
-      inputs.flake-utlis.follows = "flake-utils";
-    };
-    yaya = {
-      # 0.4.2.1
-      url = "github:sellout/yaya/c96718e6de9787284ace3602451f194ac7711ace";
-      flake = false;
-    };
-    ghc-typelits-natnormalise = {
-      # 0.7.7
-      url =
-        "github:clash-lang/ghc-typelits-natnormalise/a68b722a6b10a932621dbf578f1408745a37a5ca";
-      flake = false;
-    };
-    hlint = {
-      url = "github:ndmitchell/hlint/v3.4";
-      flake = false;
+      inputs.flake-utils.follows = "flake-utils";
     };
     linear-base = {
       url = "github:tweag/linear-base/v0.2.0";
       flake = false;
     };
-    # this library git repo has an inconsistency in version bound increasing.
-    ghc-lib-parser-ex = {
-      url =
-        "https://hackage.haskell.org/package/ghc-lib-parser-ex-9.2.0.3/ghc-lib-parser-ex-9.2.0.3.tar.gz";
-      flake = false;
-    };
   };
-  outputs = { self, nixpkgs, flake-utils, concat, linear-base, yaya
-    , ghc-typelits-natnormalise, hlint, ghc-lib-parser-ex }:
+  outputs = { self, nixpkgs, flake-utils, concat, linear-base }:
     flake-utils.lib.eachSystem flake-utils.lib.allSystems (system:
       let
         haskellLib = (import nixpkgs { inherit system; }).haskell.lib;
@@ -54,31 +32,7 @@
                   # linear-base 0.2.0
                   "linear-base" =
                     self.callCabal2nix "linear-base" linear-base { };
-                  # yaya 0.4.2.1
-                  "yaya" = self.callCabal2nix "yaya" (yaya + "/core") { };
-                } // (prev.lib.optionalAttrs
-                  (prev.haskellPackages.ghc.version == "9.2.1") {
-                    # loose base bound
-                    "boring" = haskellLib.doJailbreak super.boring;
-                    # fin-0.2.1
-                    "fin" = haskellLib.doJailbreak super.fin;
-                    # ghc-lib-parser-ex-9.2.0.3
-                    "ghc-lib-parser-ex" =
-                      self.callCabal2nix "ghc-lib-parser-ex" ghc-lib-parser-ex
-                      { };
-                    # loosen ghc-bignum bound on GHC-9.2.1
-                    "ghc-typelits-natnormalise" =
-                      self.callCabal2nix "ghc-typelits-natnormalise"
-                      ghc-typelits-natnormalise { };
-                    # hlint-3.4
-                    "hlint" = self.callCabal2nix "hlint" hlint { };
-                    # loosen base bound on GHC-9.2.1
-                    "some" = haskellLib.doJailbreak super.some;
-                    # loosen base bound on GHC-9.2.1
-                    "universe-base" = super.universe-base_1_1_3;
-                    # loosen base bound on GHC-9.2.1
-                    "vec" = haskellLib.doJailbreak super.vec;
-                  }));
+                });
           });
         };
 
@@ -145,9 +99,12 @@
               };
             in individualPackages // { "${ghcVer}_all" = allEnv; };
 
-        in packagesOnGHC "ghc8107" // packagesOnGHC "ghc884"
-        // packagesOnGHC "ghc901" // packagesOnGHC "ghc921"
-        // packagesOnGHC "ghcHEAD";
+        in { default = self.packages.${system}.ghc902_all; }
+           // packagesOnGHC "ghc884"
+           // packagesOnGHC "ghc8107"
+           // packagesOnGHC "ghc902"
+           // packagesOnGHC "ghc922"
+           // packagesOnGHC "ghcHEAD";
 
         overlays = fullOverlays;
 
@@ -184,10 +141,12 @@
               withHoogle = false;
             };
         in {
-          "default" = mkDevShell "ghc901";
-          "ghc8107" = mkDevShell "ghc8107";
-          "ghc901" = mkDevShell "ghc901";
-          "ghc921" = mkDevShell "ghc921";
+          default = self.devShells.${system}.ghc902;
+          ghc884 = mkDevShell "ghc884";
+          ghc8107 = mkDevShell "ghc8107";
+          ghc902 = mkDevShell "ghc902";
+          ghc922 = mkDevShell "ghc922";
+          ghcHEAD = mkDevShell "ghcHEAD";
         };
       });
 }
