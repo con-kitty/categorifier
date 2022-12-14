@@ -1,18 +1,6 @@
 {
   description = "categorifier";
-  inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/release-22.11";
-    flake-utils.url = "github:numtide/flake-utils";
-    concat = {
-      url = "github:con-kitty/concat/wavewave-flake";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.flake-utils.follows = "flake-utils";
-    };
-    linear-base = {
-      url = "github:tweag/linear-base/v0.2.0";
-      flake = false;
-    };
-  };
+
   outputs = { self, nixpkgs, flake-utils, concat, linear-base }:
     flake-utils.lib.eachSystem flake-utils.lib.allSystems (system:
       let
@@ -147,4 +135,23 @@
           ghcHEAD = mkDevShell "ghcHEAD";
         };
       });
+
+  inputs = {
+    concat = {
+      inputs = {
+        flake-utils.follows = "flake-utils";
+        nixpkgs.follows = "nixpkgs";
+      };
+      url = "github:con-kitty/concat/wavewave-flake";
+    };
+
+    flake-utils.url = github:numtide/flake-utils;
+
+    linear-base = {
+      flake = false;
+      url = github:tweag/linear-base/v0.2.0;
+    };
+
+    nixpkgs.url = github:NixOS/nixpkgs/release-22.11;
+  };
 }
