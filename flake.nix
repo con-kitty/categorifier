@@ -64,6 +64,18 @@
       formatter = pkgs.alejandra;
     });
 
+  nixConfig = {
+    extra-trusted-public-keys = [
+      "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g="
+    ];
+    extra-trusted-substituters = ["https://cache.garnix.io"];
+    # Prevent the Nix GC from removing current dependencies from the store.
+    keep-failed = true;
+    keep-outputs = true;
+    # Isolate the build.
+    sandbox = true;
+  };
+
   inputs = {
     concat = {
       inputs = {
