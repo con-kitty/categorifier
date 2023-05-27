@@ -1,0 +1,24 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - master
+      - zliu41/ci
+
+permissions:
+  # Deployments permission to deploy GitHub pages website
+  deployments: write
+  # Contents permission to update benchmark contents in gh-pages branch
+  contents: write
+
+jobs:
+  longitudinal-benchmarks:
+    name: Performance regression check
+    runs-on: [self-hosted]
+    steps:
+      - name: Echo home
+        run: echo $HOME
+
+      - name: Default user
+        run: whoami
