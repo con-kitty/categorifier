@@ -63,6 +63,7 @@ packages:
   ./plugin/categorifier-plugin.cabal
   ./plugin-test/categorifier-plugin-test.cabal
   ./th/categorifier-th.cabal
+  ./examples/examples.cabal
 -- __TODO__: Uncomment below once Cabal 3.8 is released.
 -- if impl(ghc >= 9.0.0)
 --   packages:

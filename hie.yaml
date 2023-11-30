@@ -1,0 +1,133 @@
+cradle:
+  cabal:
+    - path: "./category/./"
+      component: "lib:categorifier-category"
+
+    - path: "./client/./"
+      component: "lib:categorifier-client"
+
+    - path: "./client/test"
+      component: "categorifier-client:test:client-instances"
+
+    - path: "./common/./"
+      component: "lib:categorifier-common"
+
+    - path: "./duoids/./"
+      component: "lib:categorifier-duoids"
+
+    - path: "./examples/simple/Main.hs"
+      component: "examples:exe:simple"
+
+    - path: "./ghc/./"
+      component: "lib:categorifier-ghc"
+
+    - path: "./hedgehog/./"
+      component: "lib:categorifier-hedgehog"
+
+    - path: "./integrations/adjunctions/integration/./"
+      component: "lib:categorifier-adjunctions-integration"
+
+    - path: "./integrations/adjunctions/integration-test/./"
+      component: "lib:categorifier-adjunctions-integration-test"
+
+    - path: "./integrations/adjunctions/integration-test/test"
+      component: "categorifier-adjunctions-integration-test:test:adjunctions-hierarchy"
+
+    - path: "./integrations/adjunctions/integration-test/test"
+      component: "categorifier-adjunctions-integration-test:test:adjunctions-hierarchy-optimized"
+
+    - path: "./integrations/categories/integration/./"
+      component: "lib:categorifier-categories-integration"
+
+    - path: "./integrations/categories/integration-test/./"
+      component: "lib:categorifier-categories-integration-test"
+
+    - path: "./integrations/categories/integration-test/test"
+      component: "categorifier-categories-integration-test:test:categories-hierarchy"
+
+    - path: "./integrations/categories/integration-test/test"
+      component: "categorifier-categories-integration-test:test:categories-hierarchy-optimized"
+
+    - path: "./integrations/concat/examples/./"
+      component: "lib:categorifier-concat-examples"
+
+    - path: "./integrations/concat/integration/./"
+      component: "lib:categorifier-concat-integration"
+
+    - path: "./integrations/concat/integration-test/./"
+      component: "lib:categorifier-concat-integration-test"
+
+    - path: "./integrations/concat/integration-test/test"
+      component: "categorifier-concat-integration-test:test:concat-class-hierarchy"
+
+    - path: "./integrations/concat/integration-test/test"
+      component: "categorifier-concat-integration-test:test:concat-class-hierarchy-optimized"
+
+    - path: "./integrations/concat/integration-test/test"
+      component: "categorifier-concat-integration-test:test:concat-function-hierarchy"
+
+    - path: "./integrations/concat/integration-test/test"
+      component: "categorifier-concat-integration-test:test:concat-function-hierarchy-optimized"
+
+    - path: "./integrations/concat-extensions/category/./"
+      component: "lib:categorifier-concat-extensions-category"
+
+    - path: "./integrations/concat-extensions/integration/./"
+      component: "lib:categorifier-concat-extensions-integration"
+
+    - path: "./integrations/concat-extensions/integration-test/./"
+      component: "lib:categorifier-concat-extensions-integration-test"
+
+    - path: "./integrations/concat-extensions/integration-test/test"
+      component: "categorifier-concat-extensions-integration-test:test:concat-extensions-hierarchy"
+
+    - path: "./integrations/concat-extensions/integration-test/test"
+      component: "categorifier-concat-extensions-integration-test:test:concat-extensions-hierarchy-optimized"
+
+    - path: "./integrations/fin/integration/./"
+      component: "lib:categorifier-fin-integration"
+
+    - path: "./integrations/unconcat/category/./"
+      component: "lib:categorifier-unconcat-category"
+
+    - path: "./integrations/unconcat/integration/./"
+      component: "lib:categorifier-unconcat-integration"
+
+    - path: "./integrations/unconcat/integration-test/./"
+      component: "lib:categorifier-unconcat-integration-test"
+
+    - path: "./integrations/unconcat/integration-test/test"
+      component: "categorifier-unconcat-integration-test:test:unconcat-hierarchy"
+
+    - path: "./integrations/unconcat/integration-test/test"
+      component: "categorifier-unconcat-integration-test:test:unconcat-hierarchy-optimized"
+
+    - path: "./integrations/vec/integration/./"
+      component: "lib:categorifier-vec-integration"
+
+    - path: "./integrations/vec/integration-test/./"
+      component: "lib:categorifier-vec-integration-test"
+
+    - path: "./integrations/vec/integration-test/test"
+      component: "categorifier-vec-integration-test:test:vec-hierarchy"
+
+    - path: "./integrations/vec/integration-test/test"
+      component: "categorifier-vec-integration-test:test:vec-hierarchy-optimized"
+
+    - path: "./plugin/./"
+      component: "lib:categorifier-plugin"
+
+    - path: "./plugin-test/./"
+      component: "lib:categorifier-plugin-test"
+
+    - path: "./plugin-test/test"
+      component: "categorifier-plugin-test:test:default-plugin"
+
+    - path: "./plugin-test/test"
+      component: "categorifier-plugin-test:test:base-hierarchy"
+
+    - path: "./plugin-test/test"
+      component: "categorifier-plugin-test:test:base-hierarchy-optimized"
+
+    - path: "./th/./"
+      component: "lib:categorifier-th"
