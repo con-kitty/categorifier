@@ -22,11 +22,14 @@ executable simple
       -fno-omit-interface-pragmas
       -Wall
       -fplugin Categorifier
+      -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.Categories.hierarchy
+
   build-depends:
       base
     , categorifier-plugin
     , categorifier-category
     , categorifier-client
+    , categorifier-categories-integration
     , categories
     , constraints
     , ghc-prim
