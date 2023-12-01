@@ -22,19 +22,13 @@ executable simple
       -fno-omit-interface-pragmas
       -Wall
       -fplugin Categorifier
-      -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.UnconCat.hierarchy
-      -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.ConCat.functionHierarchy
-      -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.ConCatExtensions.hierarchy
   build-depends:
       base
-    , ghc-prim
-    , concat-classes
+    , categorifier-plugin
     , categorifier-category
     , categorifier-client
-    , categorifier-concat-extensions-category
-    , categorifier-concat-extensions-integration
-    , categorifier-concat-integration
-    , categorifier-plugin
-    , categorifier-unconcat-category
-    , categorifier-unconcat-integration
+    , concat-classes
+    , constraints
+    , ghc-prim
+    , mtl
   default-language: Haskell2010
