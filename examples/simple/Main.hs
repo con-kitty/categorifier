@@ -14,12 +14,21 @@ module Main where
 
 import qualified Categorifier.Categorify as Categorify
 import Categorifier.Client (deriveHasRep)
-import qualified ConCat.Category as ConCat
 import qualified Control.Arrow as Base
+import Control.Categorical.Bifunctor
+  ( Bifunctor (..),
+    PFunctor (..),
+    QFunctor (..),
+  )
+import Control.Category (Category (..))
+import Control.Category.Associative (Associative (..))
+import Control.Category.Braided (Braided (..), Symmetric)
+import Control.Category.Cartesian (Cartesian (..))
+import Control.Category.Cartesian.Closed (CCC (..))
+import Control.Category.Monoidal (Monoidal (..))
 import Control.Monad ((<=<))
 import Control.Monad.State (State, runState)
 import Control.Monad.State.Class (get, modify, put)
-import Data.Constraint
 import Data.Kind (Type)
 
 type Port = Int
@@ -52,12 +61,6 @@ instance GenPorts Int where
 instance (GenPorts a, GenPorts b) => GenPorts (a, b) where
   genPorts = PairP <$> genPorts <*> genPorts
 
---instance (GenPorts a, GenPorts b) => GenPorts (a -> b) where
---  genPorts = do
---    a <- genPorts
---    b <- genPorts
---    pure $ FunP (Graph (Kleisli $ \x -> pure (runGraph a x, runGraph b x)))
-
 data Comp where
   Comp :: forall a b. String -> (Ports a) -> (Ports b) -> Comp
 
@@ -74,24 +77,54 @@ data Graph a b = Graph {runGraph :: Ports a -> GraphM (Ports b)}
 
 deriveHasRep ''Graph
 
-instance ConCat.Category Graph where
-  --  type Ok Graph = GenPorts
+instance Category Graph where
   id = Graph pure
   Graph f . Graph g = Graph (f <=< g)
 
-instance ConCat.ProductCat Graph where
-  exl = Graph $ \(PairP a _) -> pure a
-  exr = Graph $ \(PairP _ b) -> pure b
-  dup = Graph $ \a -> pure (PairP a a)
+instance PFunctor (,) Graph Graph where
+  first (Graph f) = Graph $ \(PairP a c) -> do
+    b <- f a
+    pure (PairP b c)
 
-instance ConCat.TerminalCat Graph where
-  it = Graph $ \UnitP -> pure UnitP
+instance QFunctor (,) Graph Graph where
+  second (Graph f) = Graph $ \(PairP c a) -> do
+    b <- f a
+    pure (PairP c b)
 
-instance ConCat.OpCon (ConCat.Prod Graph) (ConCat.Sat GenPorts) where inOp = ConCat.Entail (Sub Dict)
+instance Bifunctor (,) Graph Graph Graph where
+  bimap (Graph f) (Graph g) = Graph $ \(PairP a b) -> do
+    c <- f a
+    d <- g b
+    pure (PairP c d)
 
---instance ConCat.OpCon (ConCat.Exp Graph) (ConCat.Sat GenPorts) where inOp = ConCat.Entail (Sub Dict)
+instance Associative Graph (,) where
+  associate = Graph $ \(PairP (PairP a b) c) -> pure (PairP a (PairP b c))
+  disassociate = Graph $ \(PairP a (PairP b c)) -> pure (PairP (PairP a b) c)
 
-instance ConCat.ClosedCat Graph where
+instance Monoidal Graph (,) where
+  type Id Graph (,) = ()
+  idl = Graph $ \(PairP UnitP a) -> pure a
+  idr = Graph $ \(PairP a UnitP) -> pure a
+  coidl = Graph $ \a -> pure (PairP UnitP a)
+  coidr = Graph $ \a -> pure (PairP a UnitP)
+
+instance Braided Graph (,) where
+  braid = Graph $ \(PairP a b) -> pure (PairP b a)
+
+instance Symmetric Graph (,)
+
+instance Cartesian Graph where
+  type Product Graph = (,)
+  fst = Graph $ \(PairP a _) -> pure a
+  snd = Graph $ \(PairP _ b) -> pure b
+  diag = Graph $ \a -> pure (PairP a a)
+  Graph f &&& Graph g = Graph $ \a -> do
+    b <- f a
+    c <- g a
+    pure (PairP b c)
+
+instance CCC Graph where
+  type Exp Graph = (->)
   curry :: Graph (a, b) c -> Graph a (b -> c)
   curry (Graph f) = Graph $ \a ->
     pure $
@@ -107,12 +140,15 @@ instance ConCat.ClosedCat Graph where
       case x of
         FunP (Graph g) -> g b
 
-instance (Num a, GenPorts a) => ConCat.NumCat Graph a where
-  negateC = genComp "negate"
-  addC = genComp "+"
-  subC = genComp "-"
-  mulC = genComp "×"
-  powIC = genComp "^"
+  apply :: Graph (a -> b, a) b
+  apply = Graph $ \(PairP (FunP (Graph f)) a) -> f a
+
+--instance (Num a, GenPorts a) => ConCat.NumCat Graph a where
+--  negateC = genComp "negate"
+--  addC = genComp "+"
+--  subC = genComp "-"
+--  mulC = genComp "×"
+--  powIC = genComp "^"
 
 square :: Int -> Int
 square a = a * a

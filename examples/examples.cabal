@@ -27,7 +27,7 @@ executable simple
     , categorifier-plugin
     , categorifier-category
     , categorifier-client
-    , concat-classes
+    , categories
     , constraints
     , ghc-prim
     , mtl
