@@ -110,6 +110,7 @@
           individualPackages // {"${ghcVer}_all" = allEnv;};
       in
         {default = self.packages.${system}.ghc928_all;}
+        # need 8.10.7 specifically, because there's an API breakage that affects only it
         // packagesOnGHC "ghc8107"
         // packagesOnGHC "ghc902"
         // packagesOnGHC "ghc928"
