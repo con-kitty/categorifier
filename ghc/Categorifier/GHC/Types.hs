@@ -123,11 +123,9 @@ mkSysLocal = Id.mkSysLocal
 
 setLiteralType :: Core.Type -> Literal -> Literal
 #if MIN_VERSION_ghc(9, 0, 0)
-#elif MIN_VERSION_ghc(8, 6, 0)
+#else
 setLiteralType toType (Literal.LitNumber litNumTy litNumVal _oldType) =
   Literal.LitNumber litNumTy litNumVal toType
-#else
-setLiteralType toType (LitInteger litNumVal _oldType) = LitInteger litNumVal toType
 #endif
 setLiteralType _ x = x
 

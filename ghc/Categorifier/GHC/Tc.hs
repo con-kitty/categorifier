@@ -34,13 +34,8 @@ import GHC.Tc.Types.Origin as TcType
 import GHC.Tc.Utils.Monad as TcRnMonad
 import GHC.Tc.Utils.Zonk as TcHsSyn
 #else
-#if MIN_VERSION_ghc(8, 10, 0)
 import Constraint as TcRnTypes
 import TcOrigin as TcType
-#else
-import TcRnTypes
-import TcType
-#endif
 import TcErrors
 import TcEvidence
 import TcHsSyn

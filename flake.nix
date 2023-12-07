@@ -30,7 +30,7 @@
       # here until it actually breaks something we depend on.
       missingConcatOverlay =
         concat.lib.overlayHaskellPackages
-        ["ghc884" "ghc8107" "ghcHEAD"]
+        ["ghc8107" "ghcHEAD"]
         concat.overlays.haskell;
 
       parseCabalProject = import ./parse-cabal-project.nix;
@@ -57,7 +57,7 @@
       # - https://discourse.nixos.org/t/nix-haskell-development-2020/6170
       fullOverlays =
         concat.lib.overlayHaskellPackages
-        ["ghc884" "ghc8107" "ghc902" "ghc928" "ghcHEAD"]
+        ["ghc8107" "ghc902" "ghc928" "ghcHEAD"]
         (final: prev: nixpkgs.lib.composeExtensions overlay_deps haskellOverlay);
 
       newPkgs = import nixpkgs {
@@ -97,12 +97,7 @@
         packagesOnGHC "ghc8107"
         // packagesOnGHC "ghc902"
         // packagesOnGHC "ghc928"
-        // packagesOnGHC "ghcHEAD"
-        // (
-          if system == "aarch64-darwin"
-          then {}
-          else packagesOnGHC "ghc884"
-        );
+        // packagesOnGHC "ghcHEAD";
 
       overlays.default = fullOverlays;
 
@@ -124,8 +119,6 @@
           };
       in {
         "default" = mkDevShell "ghc928";
-        "ghc884" =
-          nixpkgs.lib.mkIf (system != "aarch64-darwin") (mkDevShell "ghc884");
         "ghc8107" = mkDevShell "ghc8107";
         "ghc902" = mkDevShell "ghc902";
         "ghc928" = mkDevShell "ghc928";
