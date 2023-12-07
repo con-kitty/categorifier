@@ -132,6 +132,7 @@ instance ConCat.FloatingCat Term a where
   logC = ZeroId
   sinC = ZeroId
   sqrtC = ZeroId
+  tanhC = ZeroId
 
 instance ConCat.AddCat Term m a where
   sumAC = ZeroId
@@ -239,6 +240,7 @@ instance Floating a => ConCat.FloatingCat Hask a where
   logC = Hask ConCat.logC
   sinC = Hask ConCat.sinC
   sqrtC = Hask ConCat.sqrtC
+  tanhC = Hask ConCat.tanhC
 
 instance Fractional a => ConCat.FractionalCat Hask a where
   divideC = Hask ConCat.divideC

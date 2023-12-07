@@ -21,7 +21,7 @@ library
       Paths_categorifier_common
   ghc-options: -Wall
   build-depends:
-    , PyF >=0.9.0 && <0.10
+    , PyF >=0.9.0 && <0.12
     , base >=4.13.0 && <4.17
     , unliftio >=0.2.13 && <0.3
   default-language: Haskell2010

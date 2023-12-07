@@ -84,6 +84,7 @@ instance (Floating a, Ord a) => ConCat.FloatingCat TotOrd a where
   logC = TotOrd ConCat.logC
   sinC = TotOrd ConCat.sinC
   sqrtC = TotOrd ConCat.sqrtC
+  tanhC = TotOrd ConCat.tanhC
 
 instance (Applicative m, Ord a) => ConCat.PointedCat TotOrd m a where
   pointC = TotOrd ConCat.pointC
