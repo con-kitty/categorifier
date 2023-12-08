@@ -1,7 +1,10 @@
 builds:
   exclude:
+    # See garnix-io/issues#16
     - '*.x86_64-darwin'
     - '*.x86_64-darwin.*'
+    # See garnix-io/issues#17
+    - 'devShells.aarch64-darwin.ghc928'
   include:
     - '*.*'
     - '*.*.*'

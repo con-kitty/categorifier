@@ -19,30 +19,53 @@
     flake-utils,
     concat,
   }: let
-    parseCabalProject = import ./parse-cabal-project.nix;
-    categorifierPackages = parseCabalProject ./cabal.project;
-    categorifierPackageNames =
-      builtins.map ({name, ...}: name) categorifierPackages;
+    cabalPackages = pkgs: hpkgs:
+      concat.lib.cabalProject2nix
+      ./cabal.project
+      pkgs
+      hpkgs
+      (old: {
+        configureFlags = old.configureFlags ++ ["--ghc-options=-Werror"];
+      });
   in
     {
       overlays = {
         default =
           concat.lib.overlayHaskellPackages
-          ["ghc8107" "ghc902" "ghc928" "ghcHEAD"]
+          self.lib.supportedGhcVersions
           self.overlays.haskell;
 
-        haskell = final: prev: self: super:
-          builtins.listToAttrs (builtins.map ({
-              name,
-              path,
-            }: {
-              inherit name;
-              value = let
-                p = self.callCabal2nix name (./. + "/${path}") {};
-              in
-                final.haskell.lib.appendConfigureFlag p "--ghc-options=-Werror";
-            })
-            categorifierPackages);
+        haskell = concat.lib.haskellOverlay cabalPackages;
+      };
+
+      lib = {
+        ## TODO: Extract this automatically from `pkgs.haskellPackages`.
+        defaultCompiler = "ghc928";
+
+        ## Test the oldest revision possible for each minor release. If it’s not
+        ## available in nixpkgs, test the oldest available, then try an older
+        ## one via GitHub workflow. Additionally, check any revisions that have
+        ## explicit conditionalization. And check whatever version `pkgs.ghc`
+        ## maps to in the nixpkgs we depend on.
+        testedGhcVersions = [
+          self.lib.defaultCompiler
+          # NB: need 8.10.7 specifically, because there's an API breakage that
+          #     affects only it
+          "ghc8107"
+          "ghc902"
+          "ghc924"
+          # "ghcHEAD" # Not yet covered by dependency ranges
+        ];
+
+        ## However, provide packages in the default overlay for _every_
+        ## supported version.
+        supportedGhcVersions =
+          self.lib.testedGhcVersions
+          ++ [
+            "ghc925"
+            "ghc926"
+            "ghc927"
+          ];
       };
     }
     // flake-utils.lib.eachSystem flake-utils.lib.allSystems (system: let
@@ -58,14 +81,19 @@
 
         dependencies =
           concat.lib.overlayHaskellPackages
-          ["ghc8107" "ghc902" "ghc928" "ghcHEAD"]
+          self.lib.supportedGhcVersions
           overlay.haskellDependencies;
 
         # Concat has stopped supporting GHC 8, but we can re-add the overlays
-        # here until it actually breaks something we depend on.
+        # here until it actually breaks something we depend on. We also add the
+        # overlays for other supported versions that Concat doesn't yet provide
+        # overlays for.
         missingConcat =
           concat.lib.overlayHaskellPackages
-          ["ghc8107" "ghcHEAD"]
+          # TODO: Use `nixpkgs.lib.subtractLists concat.lib.supportedGhcVersions
+          #       self.lib.supportedGhcVersions` once Concat provides
+          #       `supportedGhcVersions`.
+          ["ghc8107" "ghc924" "ghc925" "ghc926" "ghc927"]
           concat.overlays.haskell;
       };
 
@@ -84,61 +112,26 @@
         inherit system;
       };
     in {
-      # This package set is only useful for CI build test.
-      # In practice, users will create a development environment composed by overlays.
-      packages = let
-        packagesOnGHC = ghcVer: let
-          hpkgs = pkgs.haskell.packages.${ghcVer};
+      packages =
+        {default = self.packages.${system}."${self.lib.defaultCompiler}_all";}
+        // concat.lib.mkPackages pkgs self.lib.testedGhcVersions cabalPackages;
 
-          individualPackages = builtins.listToAttrs (builtins.map
-            ({name, ...}: {
-              name = ghcVer + "_" + name;
-              value = builtins.getAttr name hpkgs;
-            })
-            categorifierPackages);
-
-          allEnv = let
-            hsenv =
-              hpkgs.ghcWithPackages (p:
-                map (name: p.${name}) categorifierPackageNames);
-          in
-            pkgs.buildEnv {
-              name = "all-packages";
-              paths = [hsenv];
-            };
-        in
-          individualPackages // {"${ghcVer}_all" = allEnv;};
-      in
-        {default = self.packages.${system}.ghc928_all;}
-        # need 8.10.7 specifically, because there's an API breakage that affects only it
-        // packagesOnGHC "ghc8107"
-        // packagesOnGHC "ghc902"
-        // packagesOnGHC "ghc928"
-        // packagesOnGHC "ghcHEAD";
-
-      devShells = let
-        mkDevShell = ghcVer: let
-          hpkgs = pkgs.haskell.packages.${ghcVer};
-        in
-          hpkgs.shellFor {
-            packages = ps:
-              builtins.map (name: ps.${name}) categorifierPackageNames;
-            buildInputs = [
-              # For these CLI tools, we use nixpkgs default
-              pkgs.haskellPackages.cabal-install
-              pkgs.haskellPackages.hlint
-              # But this one has to match our GHC
-              hpkgs.haskell-language-server
-            ];
-            withHoogle = false;
-          };
-      in {
-        "default" = mkDevShell "ghc928";
-        "ghc8107" = mkDevShell "ghc8107";
-        "ghc902" = mkDevShell "ghc902";
-        "ghc928" = mkDevShell "ghc928";
-        "ghcHEAD" = mkDevShell "ghcHEAD";
-      };
+      devShells =
+        {default = self.devShells.${system}.${self.lib.defaultCompiler};}
+        // concat.lib.mkDevShells
+        pkgs
+        self.lib.testedGhcVersions
+        cabalPackages
+        (hpkgs:
+          [
+            # For these CLI tools, we use nixpkgs default
+            pkgs.haskellPackages.cabal-install
+            pkgs.haskellPackages.hlint
+          ]
+          ## NB: Haskell Language Server no longer supports GHC <9.
+          ++ nixpkgs.lib.optional
+          (nixpkgs.lib.versionAtLeast hpkgs.ghc.version "9")
+          hpkgs.haskell-language-server);
 
       formatter = pkgs.alejandra;
     });
