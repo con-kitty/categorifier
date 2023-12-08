@@ -40,16 +40,16 @@ iso genA genRep = Hedgehog.property $ do
 
 -- | Exercises `Client.deriveHasRep` handling of products, sums, type parameters, and constraints.
 data Foo a
-  = Num a => Bar a Int String
+  = (Num a) => Bar a Int String
   | Baz Double
 
-deriving instance Eq a => Eq (Foo a)
+deriving instance (Eq a) => Eq (Foo a)
 
-deriving instance Show a => Show (Foo a)
+deriving instance (Show a) => Show (Foo a)
 
 Client.deriveHasRep ''Foo
 
-genFoo :: Num a => Hedgehog.Gen a -> Hedgehog.Gen (Foo a)
+genFoo :: (Num a) => Hedgehog.Gen a -> Hedgehog.Gen (Foo a)
 genFoo a =
   Hedgehog.Gen.choice
     [ Bar
@@ -59,7 +59,7 @@ genFoo a =
       Baz <$> genFloating
     ]
 
-genRepFoo :: Num a => Hedgehog.Gen a -> Hedgehog.Gen (Client.Rep (Foo a))
+genRepFoo :: (Num a) => Hedgehog.Gen a -> Hedgehog.Gen (Client.Rep (Foo a))
 genRepFoo a =
   Hedgehog.Gen.either
     ( (,)
@@ -82,9 +82,9 @@ data AltVec n a where
   ACons :: a -> AltVec n a -> AltVec ('S n) a
   BCons :: a -> AltVec n a -> AltVec ('S n) a
 
-deriving instance Eq a => Eq (AltVec n a)
+deriving instance (Eq a) => Eq (AltVec n a)
 
-deriving instance Show a => Show (AltVec n a)
+deriving instance (Show a) => Show (AltVec n a)
 
 -- | This should create two instances, one for `'Z` and one for @`'S` n@, which need to be tested
 --   separately.
@@ -107,20 +107,20 @@ newtype Flipped f a (b :: Nat) = Flip {unflip :: f b a}
 induction1M ::
   (Monad t, Nat.SNatI n) =>
   t (f 'Z a) ->
-  (forall m. Nat.SNatI m => f m a -> t (f ('S m) a)) ->
+  (forall m. (Nat.SNatI m) => f m a -> t (f ('S m) a)) ->
   t (f n a)
 induction1M z f =
   fmap unflip . getCompose $
     Nat.induction (Compose $ fmap Flip z) (\(Compose x) -> Compose $ fmap Flip (f . unflip =<< x))
 {-# INLINE induction1M #-}
 
-genAltVec :: Nat.SNatI n => Hedgehog.Gen a -> Hedgehog.Gen (AltVec n a)
+genAltVec :: (Nat.SNatI n) => Hedgehog.Gen a -> Hedgehog.Gen (AltVec n a)
 genAltVec a =
   induction1M
     (pure AVNil)
     (\prev -> Hedgehog.Gen.choice [ACons <$> a <*> pure prev, BCons <$> a <*> pure prev])
 
-genRepAltVecS :: Nat.SNatI n => Hedgehog.Gen a -> Hedgehog.Gen (Client.Rep (AltVec ('S n) a))
+genRepAltVecS :: (Nat.SNatI n) => Hedgehog.Gen a -> Hedgehog.Gen (Client.Rep (AltVec ('S n) a))
 genRepAltVecS a =
   Hedgehog.Gen.choice [Left <$> ((,) <$> a <*> genAltVec a), Right <$> ((,) <$> a <*> genAltVec a)]
 
@@ -138,9 +138,9 @@ data SomeExpr a where
   IntLit :: Int -> SomeExpr Int
   Add :: SomeExpr a -> SomeExpr a -> SomeExpr a
 
-deriving instance Eq a => Eq (SomeExpr a)
+deriving instance (Eq a) => Eq (SomeExpr a)
 
-deriving instance Show a => Show (SomeExpr a)
+deriving instance (Show a) => Show (SomeExpr a)
 
 Client.deriveHasRep ''SomeExpr
 
@@ -188,9 +188,9 @@ data WeirdExpr a where
   Empty :: WeirdExpr a
   Combine :: WeirdExpr a -> WeirdExpr a -> WeirdExpr a
 
-deriving instance Eq a => Eq (WeirdExpr a)
+deriving instance (Eq a) => Eq (WeirdExpr a)
 
-deriving instance Show a => Show (WeirdExpr a)
+deriving instance (Show a) => Show (WeirdExpr a)
 
 Client.deriveHasRep ''WeirdExpr
 
@@ -266,5 +266,7 @@ genRepWeirdExprChar =
 prop_weirdExprCharIso :: Hedgehog.Property
 prop_weirdExprCharIso = iso genWeirdExprChar genRepWeirdExprChar
 
+-- NB: The parens are needed by GHC 8.
+{-# ANN main "HLint: ignore Redundant bracket" #-}
 main :: IO ()
 main = Hedgehog.defaultMain [Hedgehog.checkParallel $$(Hedgehog.discover)]

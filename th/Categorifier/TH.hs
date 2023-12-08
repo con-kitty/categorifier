@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TupleSections #-}
 
 -- | Functions that should be part of @template-haskell@, but aren't.
 --
@@ -157,7 +158,7 @@ compareTypes = curry compareTypes'
 
 (<<>) :: (Ordering, [a]) -> (Ordering, [a]) -> Maybe (Ordering, [a])
 (xOrd, xSubst) <<> (yOrd, ySubst) =
-  (\ord -> (ord, xSubst <> ySubst))
+  (,xSubst <> ySubst)
     <$> case (xOrd, yOrd) of
       (EQ, _) -> pure yOrd
       (_, EQ) -> pure xOrd

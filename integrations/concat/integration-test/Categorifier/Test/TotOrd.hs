@@ -38,23 +38,23 @@ instance (RepCat k a r, con a, con r) => RepCat (ConCat.Constrained con k) a r w
   abstC = ConCat.Constrained abstC
   reprC = ConCat.Constrained reprC
 
-instance UnsafeCoerceCat k a b => UnsafeCoerceCat (ConCat.Constrained con k) a b where
+instance (UnsafeCoerceCat k a b) => UnsafeCoerceCat (ConCat.Constrained con k) a b where
   unsafeCoerceK = ConCat.Constrained unsafeCoerceK
 
-instance Ord b => ConCat.ConstCat TotOrd b where
+instance (Ord b) => ConCat.ConstCat TotOrd b where
   const = TotOrd . ConCat.const
 
 instance ConCat.OkFunctor TotOrd f where
   okFunctor = ConCat.okFunctor @TotOrd
 
-instance Functor f => ConCat.FunctorCat TotOrd f where
+instance (Functor f) => ConCat.FunctorCat TotOrd f where
   fmapC (TotOrd fn) = TotOrd $ ConCat.fmapC fn
   unzipC = TotOrd ConCat.unzipC
 
-instance Ord a => ConCat.EqCat TotOrd a where
+instance (Ord a) => ConCat.EqCat TotOrd a where
   equal = TotOrd ConCat.equal
 
-instance Ord a => ConCat.OrdCat TotOrd a where
+instance (Ord a) => ConCat.OrdCat TotOrd a where
   lessThan = TotOrd ConCat.lessThan
 
 instance (Num a, Ord a) => ConCat.NumCat TotOrd a where
@@ -89,7 +89,7 @@ instance (Floating a, Ord a) => ConCat.FloatingCat TotOrd a where
 instance (Applicative m, Ord a) => ConCat.PointedCat TotOrd m a where
   pointC = TotOrd ConCat.pointC
 
-instance Ord a => ConCat.IfCat TotOrd a where
+instance (Ord a) => ConCat.IfCat TotOrd a where
   ifC = TotOrd ConCat.ifC
 
 instance (Ord a, Ord b) => ConCat.BottomCat TotOrd a b where

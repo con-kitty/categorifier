@@ -37,23 +37,23 @@ class Category (k :: Type -> Type -> Type) where
   infixr 9 .
   (.) :: forall b c a. (b `k` c) -> (a `k` b) -> (a `k` c)
 
-class Category k => AssociativePCat k where
+class (Category k) => AssociativePCat k where
   lassocP :: forall a b c. Prod k a (Prod k b c) `k` Prod k (Prod k a b) c
   default lassocP ::
     forall a b c.
-    MProductCat k =>
+    (MProductCat k) =>
     Prod k a (Prod k b c) `k` Prod k (Prod k a b) c
   lassocP = second exl &&& (exr . exr)
   {-# INLINE lassocP #-}
   rassocP :: forall a b c. Prod k (Prod k a b) c `k` Prod k a (Prod k b c)
   default rassocP ::
     forall a b c.
-    MProductCat k =>
+    (MProductCat k) =>
     Prod k (Prod k a b) c `k` Prod k a (Prod k b c)
   rassocP = (exl . exl) &&& first exr
   {-# INLINE rassocP #-}
 
-class ProductCat k => ClosedCat k where
+class (ProductCat k) => ClosedCat k where
   apply :: forall a b. Prod k (Exp k a b) a `k` b
   apply = uncurry id
   {-# INLINE apply #-}
@@ -63,19 +63,19 @@ class ProductCat k => ClosedCat k where
   uncurry :: forall a b c. (a `k` Exp k b c) -> (Prod k a b `k` c)
   default uncurry ::
     forall a b c.
-    MonoidalPCat k =>
+    (MonoidalPCat k) =>
     (a `k` Exp k b c) ->
     (Prod k a b `k` c)
   uncurry g = apply . first g
   {-# INLINE uncurry #-}
   {-# MINIMAL curry, (apply | uncurry) #-}
 
-class Category k => CoproductCat k where
+class (Category k) => CoproductCat k where
   inl :: forall a b. a `k` Coprod k a b
   inr :: forall a b. b `k` Coprod k a b
   jam :: forall a. Coprod k a a `k` a
 
-class Category k => MonoidalPCat k where
+class (Category k) => MonoidalPCat k where
   (***) :: forall a b c d. (a `k` c) -> (b `k` d) -> (Prod k a b `k` Prod k c d)
   first :: forall a a' b. (a `k` a') -> (Prod k a b `k` Prod k a' b)
   first = (*** id)
@@ -86,14 +86,14 @@ class Category k => MonoidalPCat k where
 
 type MProductCat k = (ProductCat k, MonoidalPCat k)
 
-class Category k => ProductCat k where
+class (Category k) => ProductCat k where
   exl :: forall a b. Prod k a b `k` a
   exr :: forall a b. Prod k a b `k` b
   dup :: a `k` Prod k a a
 
 (&&&) ::
   forall k a c d.
-  MProductCat k =>
+  (MProductCat k) =>
   (a `k` c) ->
   (a `k` d) ->
   (a `k` Prod k c d)
@@ -125,8 +125,8 @@ instance Category (->) where
   (.) = (P..)
 
 instance AssociativePCat (->) where
-  lassocP = \(a, (b, c)) -> ((a, b), c)
-  rassocP = \((a, b), c) -> (a, (b, c))
+  lassocP (a, (b, c)) = ((a, b), c)
+  rassocP ((a, b), c) = (a, (b, c))
 
 instance ClosedCat (->) where
   apply = P.uncurry (P.$)
@@ -146,4 +146,4 @@ instance MonoidalPCat (->) where
 instance ProductCat (->) where
   exl = P.fst
   exr = P.snd
-  dup = \a -> (a, a)
+  dup a = (a, a)

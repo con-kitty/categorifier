@@ -359,7 +359,8 @@ mkTestTerms
                   ( [t|Word64|],
                     pure
                       ( [|
-                          (,,) <$> genLargeIntegral
+                          (,,)
+                            <$> genLargeIntegral
                             <*> genLargeIntegral
                             <*> Gen.bool
                           |],

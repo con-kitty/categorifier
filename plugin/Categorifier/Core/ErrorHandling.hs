@@ -308,7 +308,7 @@ result type: {showP boxedType}|]
   where
     showE :: Plugins.CoreExpr -> Text
     showE = showP
-    showP :: Plugins.Outputable a => a -> Text
+    showP :: (Plugins.Outputable a) => a -> Text
     showP = Text.pack . Plugins.showPpr dflags
     showW :: Plugins.Expr Plugins.WithIdInfo -> Text
     showW = showP

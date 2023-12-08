@@ -49,7 +49,7 @@ mkTestTerms
     ( TestCases
         ( const
             [ ( [t|Double|],
-                pure ([|fmap (\x -> (x, pure)) . sequenceA $ pure genFloating|], [|show . fst|])
+                pure ([|fmap (,pure) . sequenceA $ pure genFloating|], [|show . fst|])
               )
             ]
         )

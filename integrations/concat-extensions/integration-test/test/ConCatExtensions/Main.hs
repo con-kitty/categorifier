@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 
 module Main
@@ -222,7 +223,8 @@ mkTestTerms
               ( [t|Word64|],
                 pure
                   ( [|
-                      (,,) <$> genLargeIntegral
+                      (,,)
+                        <$> genLargeIntegral
                         <*> genLargeIntegral
                         <*> Gen.bool
                       |],
@@ -932,7 +934,7 @@ mkTestTerms
     ( TestCases
         ( const
             [ ( [t|Word8|],
-                pure ([|(\x -> (x, pure)) . Identity <$> Gen.enumBounded|], [|show . fst|])
+                pure ([|(,pure) . Identity <$> Gen.enumBounded|], [|show . fst|])
               )
             ]
         )

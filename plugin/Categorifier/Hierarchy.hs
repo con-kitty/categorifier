@@ -136,7 +136,7 @@ data HaskOps f = HaskOps
     curryH :: Type -> Type -> Type -> CoreExpr -> CoreExpr
   }
 
-concatOps :: Monad f => Lookup (HaskOps f)
+concatOps :: (Monad f) => Lookup (HaskOps f)
 concatOps = do
   abstH <- repOp 'Categorifier.Core.Functions.abst
   eitherH <- do
@@ -708,7 +708,7 @@ identifier = fmap Plugins.Var . findId
 -- | Very much like `mkMethodApps`, but as a function is not a member of a type class, there are no
 --   class parameters to apply (or class dictionary to resolve).
 mkFunctionApps ::
-  Functor f =>
+  (Functor f) =>
   -- | The dictionary applicator
   (CoreExpr -> f CoreExpr) ->
   -- | The function
@@ -746,7 +746,7 @@ mkFunctionApps onDict fn tys terms =
 --          @forall t. Foldable t => forall m a. `Monoid` m => (a -> m) -> t a -> m@ would be more
 --          honest, but not what we currently get.
 mkMethodApps ::
-  Monad f =>
+  (Monad f) =>
   -- | The dictionary applicator
   (CoreExpr -> f CoreExpr) ->
   -- | The type class method
@@ -763,7 +763,7 @@ mkMethodApps onDict = mkMethodApps' onDict onDict
 -- | Like `mkMethodApps`, but takes separate dictionary applicators for class constraints
 -- and method constraints.
 mkMethodApps' ::
-  Monad f =>
+  (Monad f) =>
   -- | The dictionary applicator for class constraints
   (CoreExpr -> f CoreExpr) ->
   -- | The dictionary applicator for method constraints

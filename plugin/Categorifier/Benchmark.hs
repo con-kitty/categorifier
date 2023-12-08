@@ -22,22 +22,23 @@ import PyF (fmt)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Time.Extra (Seconds, offsetTime)
 
+-- TODO: The field comments should be Haddock once we no longer support GHC 8.
 data Benchmark a
   = Benchmark
+      -- The (interruptible) account currently being billed
       (Maybe (a, Seconds))
-      -- ^ The (interruptible) account currently being billed
+      -- Meters
       (Map a Seconds)
-      -- ^ Meters
 
 getElapsed :: IO Seconds
 getElapsed = unsafePerformIO offsetTime
 {-# NOINLINE getElapsed #-}
 
-addTime :: forall a. Ord a => Seconds -> a -> Map a Seconds -> Map a Seconds
+addTime :: forall a. (Ord a) => Seconds -> a -> Map a Seconds -> Map a Seconds
 addTime time = Map.alter (maybe (Just time) (Just . (+ time)))
 
 -- | Switch to the given account, and return the old account
-switchAccount :: forall a. Ord a => IORef (Benchmark a) -> Maybe a -> IO (Maybe a)
+switchAccount :: forall a. (Ord a) => IORef (Benchmark a) -> Maybe a -> IO (Maybe a)
 switchAccount ref mbNewAccount = do
   currentTime <- getElapsed
   Benchmark mbOldAccount oldMeters <- readIORef ref
@@ -77,8 +78,8 @@ billToUninterruptible enableDebugging ref newAccount act
       res <- act >>= liftIO . evaluate
       -- TODO: this should ideally be in `finally`, but `CategoryStack` is not `MonadUnliftIO`.
       endTime <- liftIO getElapsed
-      liftIO $
-        modifyIORef' ref $ \(Benchmark account meters) ->
+      liftIO . modifyIORef' ref $
+        \(Benchmark account meters) ->
           Benchmark account $ addTime (endTime - startTime) newAccount meters
       liftIO (switchAccount ref oldAccount) $> res
 

@@ -77,7 +77,7 @@ makerMapFun
               pure . joinD $
                 applyEnriched' [u] rest
                   <$> mkMap f (Plugins.mkBoxedTupleTy [Plugins.varType n, a]) b
-                  <*\> mkStrength f (Plugins.varType n) a
+                    <*\> mkStrength f (Plugins.varType n) a
             _ -> Nothing
         ),
         ( 'Data.Vec.Lazy.sum,
@@ -105,7 +105,7 @@ makerMapFun
                 pure . joinD $
                   applyEnriched' [u] rest
                     <$> mkTraverse t f (Plugins.mkBoxedTupleTy [Plugins.varType n, a]) b
-                    <*\> mkStrength t (Plugins.varType n) a
+                      <*\> mkStrength t (Plugins.varType n) a
             _ -> Nothing
         )
       ]

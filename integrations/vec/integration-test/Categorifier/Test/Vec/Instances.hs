@@ -12,5 +12,5 @@ import Data.Pointed (Pointed (..))
 import qualified Data.Type.Nat as Nat
 import Data.Vec.Lazy (Vec)
 
-instance Nat.SNatI n => Pointed (Vec n) where
+instance (Nat.SNatI n) => Pointed (Vec n) where
   point = pure

@@ -355,7 +355,7 @@ pprCoercion (TyCoRep.KindCo co) = "KindCo" <+> nestedCo co
 pprCoercion (TyCoRep.SubCo coN) = "SubCo" <+> nestedCo coN
 pprCoercion (TyCoRep.HoleCo coH) = "HoleCo" <+> Utils.ppr coH
 
-nestedCo :: Utils.Outputable (Unpretty a) => a -> Utils.SDoc
+nestedCo :: (Utils.Outputable (Unpretty a)) => a -> Utils.SDoc
 nestedCo = Utils.parens . Utils.ppr . Unpretty
 
 instance Utils.Outputable (Unpretty MCoercion) where

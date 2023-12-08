@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 -- To avoid turning @if then else@ into `ifThenElse`.
 {-# LANGUAGE NoRebindableSyntax #-}
@@ -993,7 +994,7 @@ mkTestTerms
     ( TestCases
         ( const
             [ ( [t|Word8|],
-                pure ([|(\x -> (x, pure)) . Identity <$> Gen.enumBounded|], [|show . fst|])
+                pure ([|(,pure) . Identity <$> Gen.enumBounded|], [|show . fst|])
               )
             ]
         )

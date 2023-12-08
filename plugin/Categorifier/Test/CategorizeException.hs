@@ -14,8 +14,8 @@ import P
 
 hprop_correctException :: Hedgehog.Property
 hprop_correctException =
-  Hedgehog.property $
-    either
+  Hedgehog.property
+    . either
       -- __NB__: Ensures we get a `CallStack` that is useful to a user.
       ( \(Categorify.UnconvertedCall _ calls) ->
           -- __NB__: The `srcLocPackage` varies depending on the build target, so we effectively
@@ -37,5 +37,7 @@ hprop_correctException =
                          ]
       )
       (const Hedgehog.failure)
-      <=< Hedgehog.evalIO . try . evaluate
-      $ Categorify.expression id
+    <=< Hedgehog.evalIO
+    . try
+    . evaluate
+    $ Categorify.expression id

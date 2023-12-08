@@ -47,10 +47,13 @@ import System.Exit (exitFailure, exitSuccess)
 -- For @NoRebindableSyntax@
 {-# ANN module ("HLint: ignore Avoid restricted integration" :: String) #-}
 
+-- TODO: Remove after this module is re-enabled
+{-# ANN module "HLint: ignore" #-}
+
 instance Pointed Data.Replicator.Linear.Replicator where
   point = Data.Functor.Linear.pure
 
-instance KnownNat n => Pointed (Data.V.Linear.V n) where
+instance (KnownNat n) => Pointed (Data.V.Linear.V n) where
   point = Data.Functor.Linear.pure
 
 mkTestTerms

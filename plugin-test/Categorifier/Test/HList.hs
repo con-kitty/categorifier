@@ -70,7 +70,7 @@ data HMap1 (f :: v -> Type) (l :: [(k, v)]) where
 
 zipMapLowerWith :: (forall a. f a -> g a -> c) -> HMap1 f l -> HMap1 g l -> Vec (Length l) c
 zipMapLowerWith _ HEmpty1 HEmpty1 = VNil
-zipMapLowerWith f (HInsert1 Proxy fe t) (HInsert1 Proxy ge u) = (f fe ge) ::: zipMapLowerWith f t u
+zipMapLowerWith f (HInsert1 Proxy fe t) (HInsert1 Proxy ge u) = f fe ge ::: zipMapLowerWith f t u
 
 appendMap :: HMap1 f l -> HMap1 f m -> HMap1 f (Append l m)
 appendMap HEmpty1 = id

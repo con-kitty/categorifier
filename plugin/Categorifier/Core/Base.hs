@@ -20,10 +20,10 @@ import Control.Category (Category (..))
 import Data.Bifunctor (Bifunctor (bimap))
 import Prelude hiding ((.))
 
-distlB :: Bifunctor f => (a, f b c) -> f (a, b) (a, c)
+distlB :: (Bifunctor f) => (a, f b c) -> f (a, b) (a, c)
 distlB (a, fbc) = bimap (a,) (a,) fbc
 
-fixB :: ArrowLoop k => k (a, x) x -> k a x
+fixB :: (ArrowLoop k) => k (a, x) x -> k a x
 fixB f = loop (arr (\x -> (x, x)) . f)
 
 ifThenElseB :: (Bool, (a, a)) -> a
@@ -35,8 +35,8 @@ lassocB (a, (b, c)) = ((a, b), c)
 rassocB :: ((a, b), c) -> (a, (b, c))
 rassocB ((a, b), c) = (a, (b, c))
 
-strengthB :: Functor f => (a, f b) -> f (a, b)
+strengthB :: (Functor f) => (a, f b) -> f (a, b)
 strengthB (a, fb) = (a,) <$> fb
 
-uncurryB :: Arrow k => k a (b -> c) -> k (a, b) c
+uncurryB :: (Arrow k) => k a (b -> c) -> k (a, b) c
 uncurryB f = arr (uncurry ($)) . first f

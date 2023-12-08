@@ -124,7 +124,7 @@ constructDeleteOpMap =
 
 -- `Plugins.TyCon`s don't have an `Ord` instance, so we have to use `List.nub`.
 {-# ANN ensureUnique ("HLint: ignore Avoid restricted function" :: String) #-}
-ensureUnique :: Eq a => [a] -> Maybe a
+ensureUnique :: (Eq a) => [a] -> Maybe a
 ensureUnique elems = case List.nub elems of
   [x] -> pure x
   _ -> empty
@@ -243,7 +243,7 @@ lookupNoInlinePrimitiveTyCons dflags debug opMap (var, argTyCons, resTyCon) =
   lookupOpTyCons dflags debug (pure . Plugins.varName) opMap (var, argTyCons, resTyCon)
 
 lookupOpTyCons ::
-  Ord opType =>
+  (Ord opType) =>
   Plugins.DynFlags ->
   Bool ->
   (Plugins.Var -> Maybe opType) ->
@@ -264,7 +264,7 @@ not found.|]
     go =
       List.lookup (argCons, resCon) =<< flip Map.lookup opMap =<< convVar var
 
-    dbg :: Plugins.Outputable a => a -> String
+    dbg :: (Plugins.Outputable a) => a -> String
     dbg = renderSDoc dflags . Plugins.ppr
 
 isNoInlinePrimitive :: NoInlinePrimFunctionMap -> Plugins.Var -> Bool
@@ -339,7 +339,7 @@ checkForUnboxedVars rhs =
 --   It gets computed once in `replace` and reused across recursive calls in @replacePrimOps@.
 data ReplacePrimOpsContext = ReplacePrimOpsContext
   { rpoCtxDynFlags :: Plugins.DynFlags,
-    rpoCtxDebugPrint :: forall a. Plugins.Outputable a => a -> String,
+    rpoCtxDebugPrint :: forall a. (Plugins.Outputable a) => a -> String,
     rpoCtxMakers :: Makers,
     rpoCtxShouldTrace :: Bool,
     rpoCtxIntConstructors :: [IntConstructor],
@@ -481,8 +481,8 @@ replacePrimOps resultType replaceExpr = do
       rpoLabel which before =
         maybeTraceWith debug (\x -> [fmt|replacePrimOps {which}> {dbg before} ---> {dbg x}|])
   whenJust resultType $ \ty ->
-    when (containsPrimitiveType ty) $
-      lift . throwE . pure $ UnexpectedUnboxedType "replacePrimOps" ty replaceExpr
+    when (containsPrimitiveType ty) . lift . throwE . pure $
+      UnexpectedUnboxedType "replacePrimOps" ty replaceExpr
   maybeTraceWith debug (\x -> [fmt|replacePrimOps> {dbg x}|]) <$> case replaceExpr of
     -- Case 14. Enum comparisons
     --
@@ -529,8 +529,9 @@ replacePrimOps resultType replaceExpr = do
             let argType = Plugins.exprType arg
             op <-
               lift $
-                if any (`Plugins.eqType` argType) $
-                  fmap (Plugins.mkTyConTy . intConstructorTyCon) intCons
+                if any
+                  ((`Plugins.eqType` argType) . Plugins.mkTyConTy . intConstructorTyCon)
+                  intCons
                   then -- We are dealing with a `fromIntegral` conversion
                     mkFromIntegral makers argType boxedConvertedType
                   else -- We are probably dealing with an integer literal of type `Integer` -- use
@@ -545,7 +546,7 @@ replacePrimOps resultType replaceExpr = do
           rpoLabel [fmt|"7c ({dbg args})|] appCase
             <$> ( Plugins.App
                     <$> lift (mkFromIntegral makers fromType toType)
-                    <*\> replacePrimOps (pure fromType) arg
+                      <*\> replacePrimOps (pure fromType) arg
                 )
     -- We're inside the case that unboxed this variable, so we can simply replace it with the
     -- original boxed variable.
@@ -722,15 +723,17 @@ replacePrimOps resultType replaceExpr = do
               fmap
                 (rpoLabel "3" caseExpr)
                 $ do
-                  when (length arguments /= length ccallArgTypes + 1) $
-                    lift . throwE . pure
-                      . UnsupportedPrimOpApplication f arguments
-                      $ pure ccallResultType
+                  when (length arguments /= length ccallArgTypes + 1)
+                    . lift
+                    . throwE
+                    . pure
+                    . UnsupportedPrimOpApplication f arguments
+                    $ pure ccallResultType
                   conBind' <- mkBoxedVarFrom "ccc_boxed_ccall" ccallResultType conBind
                   withNewBinding conBind conBind' $
                     newApp conBind'
                       <$> applyPrimOpFun boxedFun (List.zip ccallArgTypes $ List.init arguments)
-                      <*\> replacePrimOps resultType e
+                        <*\> replacePrimOps resultType e
           -- Case 2. Primitive op applied inside the scrutinee of a case expression.
           | Plugins.isPrimitiveType (Plugins.exprType sc) ->
               rpoLabel "2" caseExpr
@@ -823,13 +826,13 @@ replacePrimOps resultType replaceExpr = do
               fmap (rpoLabel "8" caseExpr) $
                 Plugins.Case
                   <$> replacePrimOps (pure $ Plugins.varType bndr) sc
-                  <*\> pure bndr
-                  <*\> pure ty
-                  <*\> traverseD
-                    ( \(Plugins.Alt con bind expr) ->
-                        Plugins.Alt con bind <$> replacePrimOps (pure ty) expr
-                    )
-                    alts
+                    <*\> pure bndr
+                    <*\> pure ty
+                    <*\> traverseD
+                      ( \(Plugins.Alt con bind expr) ->
+                          Plugins.Alt con bind <$> replacePrimOps (pure ty) expr
+                      )
+                      alts
           -- TODO(MP): what error conditions should be caught here?
           | otherwise -> lift . throwE . pure $ UnsupportedPrimOpExpression "case" caseExpr
     -- Remove the application of a boxing constructor.
@@ -973,7 +976,7 @@ replacePrimOps resultType replaceExpr = do
               <$> ( Plugins.NonRec binder
                       <$> replacePrimOps (pure $ Plugins.varType binder) definition
                   )
-              <*\> replacePrimOps resultType expression
+                <*\> replacePrimOps resultType expression
     -- Nothing to do.
     e -> lift . throwE . pure $ UnsupportedPrimOpExpression "replacePrimOps" e
 
@@ -1676,7 +1679,7 @@ reboxEnumCmp ::
 reboxEnumCmp primOpVar argType enumA enumB = do
   opMaker <- maybe errorMsg pure $ getEnumCmpPrimOp primOpVar
   baseMakers <- rpoCtxMakers . fst <$> Reader.ask
-  applyPrimOpFun (opMaker baseMakers argType) $ List.zip (repeat argType) [enumA, enumB]
+  applyPrimOpFun (opMaker baseMakers argType) $ fmap (argType,) [enumA, enumB]
   where
     getEnumCmpPrimOp = flip Map.lookup enumCmpMap <=< Plugins.isPrimOpId_maybe
     errorMsg =

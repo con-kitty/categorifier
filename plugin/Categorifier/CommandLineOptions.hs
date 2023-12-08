@@ -66,7 +66,7 @@ partitionOptions =
     . reverse
   where
     separator = ':'
-    splitAroundElem :: Eq a => a -> [a] -> Maybe ([a], [a])
+    splitAroundElem :: (Eq a) => a -> [a] -> Maybe ([a], [a])
     splitAroundElem e as = fmap (drop 1) . flip splitAt as <$> elemIndex e as
     findKey :: Text -> Validation (NonEmpty Text) OptionGroup
     findKey k = maybe (Failure $ pure k) pure $ groupFromText k

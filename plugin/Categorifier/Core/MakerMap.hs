@@ -202,7 +202,7 @@ baseMakerMapFun
                         pure . joinD $
                           applyEnriched' [u, v] rest
                             <$> mkFork (nameTuple a) b1 b2
-                            <*\> mkId (nameTuple a)
+                              <*\> mkId (nameTuple a)
                 _ -> Nothing
             ),
             ( '(Control.Arrow.|||),
@@ -237,15 +237,15 @@ baseMakerMapFun
                   pure . joinD $
                     composeCat m
                       <$> mkIf a
-                      <*\> joinD
-                        ( forkCat m
-                            <$> categorifyLambda test
-                            <*\> joinD
-                              ( forkCat m
-                                  <$> categorifyLambda true
-                                  <*\> categorifyLambda false
-                              )
-                        )
+                        <*\> joinD
+                          ( forkCat m
+                              <$> categorifyLambda test
+                                <*\> joinD
+                                  ( forkCat m
+                                      <$> categorifyLambda true
+                                        <*\> categorifyLambda false
+                                  )
+                          )
                 _ -> Nothing
             ),
             ( 'Data.Coerce.coerce,
@@ -262,7 +262,7 @@ baseMakerMapFun
                   pure . joinD $
                     applyEnriched' [u, v] rest
                       <$> mkJoin (nameTuple a1) (nameTuple a2) b
-                      <*\> mkDistl (Plugins.varType n) a1 a2
+                        <*\> mkDistl (Plugins.varType n) a1 a2
                 _ -> Nothing
             ),
             ( 'Data.Foldable.maximum,
@@ -292,7 +292,7 @@ baseMakerMapFun
                     handleExtraArgs rest
                       =<\< ( Plugins.App
                                <$> mkFix (Plugins.varType n) a
-                               <*\> (uncurryCat m =<\< categorifyLambda u)
+                                 <*\> (uncurryCat m =<\< categorifyLambda u)
                            )
                 _ -> Nothing
             ),
@@ -322,7 +322,7 @@ baseMakerMapFun
                     pure . joinD $
                       applyEnriched' [u] rest
                         <$> mkTraverse t f (nameTuple a) b
-                        <*\> mkStrength t (Plugins.varType n) a
+                          <*\> mkStrength t (Plugins.varType n) a
                 _ -> Nothing
             ),
             ( 'Data.Tuple.curry,
@@ -334,13 +334,13 @@ baseMakerMapFun
                   pure . joinD $
                     applyEnriched rest
                       <$> mkCurry (nameTuple a1) a2 b
-                      <*\> mkId (nameTuple a1)
-                      <*\> sequenceA
-                        [ joinD $
-                            composeCat m
-                              <$> (uncurryCat m =<\< categorifyLambda u)
-                              <*\> mkRAssoc (Plugins.varType n) a1 a2
-                        ]
+                        <*\> mkId (nameTuple a1)
+                        <*\> sequenceA
+                          [ joinD $
+                              composeCat m
+                                <$> (uncurryCat m =<\< categorifyLambda u)
+                                  <*\> mkRAssoc (Plugins.varType n) a1 a2
+                          ]
                 _ -> Nothing
             ),
             ( 'Data.Tuple.fst,
@@ -369,7 +369,7 @@ baseMakerMapFun
                   pure . joinD $
                     applyEnriched' [u] rest
                       <$> mkUncurry (nameTuple a1) a2 b
-                      <*\> mkLAssoc (Plugins.varType n) a1 a2
+                        <*\> mkLAssoc (Plugins.varType n) a1 a2
                 _ -> Nothing
             ),
             ( '(GHC.Base.$),
@@ -392,19 +392,20 @@ baseMakerMapFun
                       joinD $
                         applyEnriched rest
                           <$> mkCompose (nameTuple a) (nameTuple b) c
-                          <*\> mkId (nameTuple a)
-                          <*\> sequenceA
-                            [ uncurryCat m =<\< categorifyLambda f,
-                              joinD $
-                                forkCat m
-                                  <$> mkExl (Plugins.varType n) a
-                                  <*\> (uncurryCat m =<\< categorifyLambda g)
-                            ]
+                            <*\> mkId (nameTuple a)
+                            <*\> sequenceA
+                              [ uncurryCat m =<\< categorifyLambda f,
+                                joinD $
+                                  forkCat m
+                                    <$> mkExl (Plugins.varType n) a
+                                      <*\> (uncurryCat m =<\< categorifyLambda g)
+                              ]
                     Just fn ->
                       handleExtraArgs rest
                         =<\< joinD
-                          ( fn (Plugins.varType n) b c a <$> categorifyLambda f
-                              <*\> categorifyLambda g
+                          ( fn (Plugins.varType n) b c a
+                              <$> categorifyLambda f
+                                <*\> categorifyLambda g
                           )
                 _ -> Nothing
             ),
@@ -428,7 +429,7 @@ baseMakerMapFun
             ( '(GHC.Base.++),
               \case
                 Plugins.Type a : rest ->
-                  pure $ maker2 rest <=\< mkAppend $ Plugins.mkTyConApp Plugins.listTyCon [a]
+                  pure . (maker2 rest <=\< mkAppend) $ Plugins.mkTyConApp Plugins.listTyCon [a]
                 _ -> Nothing
             ),
             ('GHC.Base.ap, fromMaybe (const Nothing) $ Map.lookup '(GHC.Base.<*>) makerMap),
@@ -439,9 +440,8 @@ baseMakerMapFun
                   --
                   -- from: (\n -> const {{u}}) :: n -> a -> b
                   -- to:   curry (categorify n {{u}} . exl) :: n `k` (a -> b)
-                  pure $
-                    handleExtraArgs rest <=\< curryCat m <=\< joinD $
-                      composeCat m <$> categorifyLambda u <*\> mkExl (Plugins.varType n) a
+                  pure . (handleExtraArgs rest <=\< curryCat m <=\< joinD) $
+                    composeCat m <$> categorifyLambda u <*\> mkExl (Plugins.varType n) a
                 _ -> Nothing
             ),
             ( 'GHC.Base.fmap,
@@ -1214,13 +1214,13 @@ baseMakerMapFun
                 <$> ( curryCat m
                         =<\< ( Plugins.App
                                  <$> mkLiftA2 f (nameTuple a) b c
-                                 <*\> ( uncurryCat m
-                                          =<\< uncurryCat m
-                                          =<\< categorifyLambda u
-                                      )
+                                   <*\> ( uncurryCat m
+                                            =<\< uncurryCat m
+                                            =<\< categorifyLambda u
+                                        )
                              )
                     )
-                <*\> mkStrength f (Plugins.varType n) a
+                  <*\> mkStrength f (Plugins.varType n) a
             )
       -- from: (\n -> fmap {{u}}) :: n -> f a -> f b
       -- to:   curry (fmap (uncurry (categorifyLambda n {{u}})) . strength) ::
@@ -1229,7 +1229,7 @@ baseMakerMapFun
         joinD $
           applyEnriched' [u] rest
             <$> mkMap f (nameTuple a) b
-            <*\> mkStrength f (Plugins.varType n) a
+              <*\> mkStrength f (Plugins.varType n) a
       applyEnriched = applyEnrichedCat m categorifyLambda
       applyEnriched' = applyEnrichedCat' m categorifyLambda
       nameTuple = makeTupleTyWithVar n

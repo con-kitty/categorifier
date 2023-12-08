@@ -21,11 +21,11 @@ ref :: IORef (Benchmark.Benchmark Account)
 ref = unsafePerformIO . newIORef $ Benchmark.Benchmark Nothing Map.empty
 {-# NOINLINE ref #-}
 
-billTo :: MonadIO m => Bool -> Account -> m r -> m r
+billTo :: (MonadIO m) => Bool -> Account -> m r -> m r
 billTo enableDebugging = Benchmark.billTo enableDebugging ref
 
-billToUninterruptible :: MonadIO m => Bool -> Account -> m r -> m r
+billToUninterruptible :: (MonadIO m) => Bool -> Account -> m r -> m r
 billToUninterruptible enableDebugging = Benchmark.billToUninterruptible enableDebugging ref
 
-displayTimes :: MonadIO m => m ()
+displayTimes :: (MonadIO m) => m ()
 displayTimes = Benchmark.displayTimes ref

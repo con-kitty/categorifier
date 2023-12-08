@@ -102,7 +102,7 @@ builtinTestCategories = [TestCategory ''(->) [t|(->)|] "plainArrow" $ ComputeFro
 
 -- | A helper to avoid duplicating the key when inserting a new test.
 insertTest ::
-  KnownSymbol k =>
+  (KnownSymbol k) =>
   Proxy k ->
   (String -> TestCategory -> TestConfig) ->
   (a -> (Q Type, Q Type)) ->
@@ -184,10 +184,12 @@ pluginTestTerms =
 
 {-# ANN baseTestTerms "HLint: ignore Avoid lambda" #-}
 {-# ANN baseTestTerms "HLint: ignore Redundant uncurry" #-}
+{-# ANN baseTestTerms "HLint: ignore Traversable law" #-}
 {-# ANN baseTestTerms "HLint: ignore Use <>" #-}
 {-# ANN baseTestTerms "HLint: ignore Use String" #-}
 {-# ANN baseTestTerms "HLint: ignore Use const" #-}
 {-# ANN baseTestTerms "HLint: ignore Use fmap" #-}
+{-# ANN baseTestTerms "HLint: ignore Use fromRight" #-}
 {-# ANN baseTestTerms "HLint: ignore Use pure" #-}
 {-# ANN baseTestTerms "HLint: ignore Use tuple-section" #-}
 

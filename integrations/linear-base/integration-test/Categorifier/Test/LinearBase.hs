@@ -44,6 +44,9 @@ import GHC.Word (Word16, Word32, Word64, Word8)
 import qualified Prelude.Linear
 import qualified Unsafe.Linear
 
+-- TODO: Remove after this module is re-enabled
+{-# ANN module "HLint: ignore" #-}
+
 testTerms :: TestTerms _
 testTerms =
   insertTest (Proxy @"LinearAbs") mkUnaryTestConfig (\a -> (a, a)) [|Data.Num.Linear.abs|]

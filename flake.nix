@@ -13,12 +13,33 @@
     sandbox = "relaxed";
   };
 
+  ### This is a complicated flake. Here’s the rundown:
+  ###
+  ### overlays.default – includes all of the packages from cabal.project
+  ### packages = {
+  ###   default = points to `packages.${defaultGhcVersion}`
+  ###   <ghcVersion>-<cabal-package> = an individual package compiled for one
+  ###                                  GHC version
+  ###   <ghcVersion>-all = all of the packages in cabal.project compiled for one
+  ###                      GHC version
+  ### };
+  ### devShells = {
+  ###   default = points to `devShells.${defaultGhcVersion}`
+  ###   <ghcVersion> = a shell providing all of the dependencies for all
+  ###                  packages in cabal.project compiled for one GHC version
+  ### };
+  ### checks.format = verify that code matches Ormolu expectations
   outputs = {
-    self,
-    nixpkgs,
-    flake-utils,
     concat,
+    flake-utils,
+    flaky,
+    nixpkgs,
+    self,
   }: let
+    pname = "categorifier";
+
+    supportedSystems = flaky.lib.defaultSystems;
+
     cabalPackages = pkgs: hpkgs:
       concat.lib.cabalProject2nix
       ./cabal.project
@@ -29,14 +50,71 @@
       });
   in
     {
+      schemas = {
+        inherit
+          (flaky.schemas)
+          overlays
+          homeConfigurations
+          packages
+          devShells
+          projectConfigurations
+          checks
+          formatter
+          ;
+      };
+
       overlays = {
         default =
           concat.lib.overlayHaskellPackages
           self.lib.supportedGhcVersions
-          self.overlays.haskell;
+          self.overlays.haskellWithDependencies;
 
         haskell = concat.lib.haskellOverlay cabalPackages;
+
+        haskellWithDependencies = final: prev:
+          nixpkgs.lib.composeManyExtensions [
+            (self: super: {
+              #the included 0.3.1 no longer supports GHC 9.0
+              "linear-base" = self.callHackageDirect {
+                pkg = "linear-base";
+                ver = "0.3.0";
+                sha256 = "StvR4D8AwJUXhJE4PasvUq0N0oEQgl/FR4LbDUojBfE=";
+              } {};
+            })
+            (concat.overlays.haskell final prev)
+            (self.overlays.haskell final prev)
+          ];
       };
+
+      homeConfigurations =
+        builtins.listToAttrs
+        (builtins.map
+          (flaky.lib.homeConfigurations.example
+            pname
+            self
+            [
+              ({pkgs, ...}: {
+                home.packages = [
+                  ## TODO: This should use `pkgs.haskellPackages`, but
+                  ##       Categorifier doesn’t yet support GHC 9.4.
+                  (pkgs.haskell.packages.${self.lib.defaultCompiler}.ghcWithPackages (hpkgs: [
+                    hpkgs.categorifier-adjunctions-integration
+                    hpkgs.categorifier-categories-integration
+                    hpkgs.categorifier-category
+                    hpkgs.categorifier-client
+                    hpkgs.categorifier-concat-extensions-category
+                    hpkgs.categorifier-concat-extensions-integration
+                    hpkgs.categorifier-concat-integration
+                    hpkgs.categorifier-fin-integration
+                    hpkgs.categorifier-plugin
+                    hpkgs.categorifier-unconcat-category
+                    hpkgs.categorifier-unconcat-integration
+                    hpkgs.categorifier-vec-integration
+                  ]))
+                ];
+              })
+            ])
+          supportedSystems);
 
       lib = {
         ## TODO: Extract this automatically from `pkgs.haskellPackages`.
@@ -57,6 +135,15 @@
           # "ghcHEAD" # Not yet covered by dependency ranges
         ];
 
+        ## The versions that are older than those supported by Nix that we
+        ## prefer to test against.
+        nonNixTestedGhcVersions = [
+          "8.10.1"
+          "9.0.1"
+          "9.2.1"
+          "9.2.2" # there's an API breakage introduced here
+        ];
+
         ## However, provide packages in the default overlay for _every_
         ## supported version.
         supportedGhcVersions =
@@ -68,48 +155,15 @@
           ];
       };
     }
-    // flake-utils.lib.eachSystem flake-utils.lib.allSystems (system: let
-      overlay = {
-        haskellDependencies = final: prev: self: super: {
-          #the included 0.3.1 no longer supports GHC 9.0
-          "linear-base" = self.callHackageDirect {
-            pkg = "linear-base";
-            ver = "0.3.0";
-            sha256 = "StvR4D8AwJUXhJE4PasvUq0N0oEQgl/FR4LbDUojBfE=";
-          } {};
-        };
-
-        dependencies =
-          concat.lib.overlayHaskellPackages
-          self.lib.supportedGhcVersions
-          overlay.haskellDependencies;
-
-        # Concat has stopped supporting GHC 8, but we can re-add the overlays
-        # here until it actually breaks something we depend on. We also add the
-        # overlays for other supported versions that Concat doesn't yet provide
-        # overlays for.
-        missingConcat =
-          concat.lib.overlayHaskellPackages
-          # TODO: Use `nixpkgs.lib.subtractLists concat.lib.supportedGhcVersions
-          #       self.lib.supportedGhcVersions` once Concat provides
-          #       `supportedGhcVersions`.
-          ["ghc8107" "ghc924" "ghc925" "ghc926" "ghc927"]
-          concat.overlays.haskell;
-      };
-
+    // flake-utils.lib.eachSystem supportedSystems (system: let
       pkgs = import nixpkgs {
-        overlays = [
-          concat.overlays.default
-          overlay.dependencies
-          overlay.missingConcat
-          # see these issues and discussions:
-          # - https://github.com/NixOS/nixpkgs/issues/16394
-          # - https://github.com/NixOS/nixpkgs/issues/25887
-          # - https://github.com/NixOS/nixpkgs/issues/26561
-          # - https://discourse.nixos.org/t/nix-haskell-development-2020/6170
-          self.overlays.default
-        ];
         inherit system;
+        # see these issues and discussions:
+        # - https://github.com/NixOS/nixpkgs/issues/16394
+        # - https://github.com/NixOS/nixpkgs/issues/25887
+        # - https://github.com/NixOS/nixpkgs/issues/26561
+        # - https://discourse.nixos.org/t/nix-haskell-development-2020/6170
+        overlays = [self.overlays.default];
       };
     in {
       packages =
@@ -124,27 +178,39 @@
         cabalPackages
         (hpkgs:
           [
-            # For these CLI tools, we use nixpkgs default
-            pkgs.haskellPackages.cabal-install
-            pkgs.haskellPackages.hlint
+            self.projectConfigurations.${system}.packages.path
+            pkgs.cabal-install
           ]
           ## NB: Haskell Language Server no longer supports GHC <9.
           ++ nixpkgs.lib.optional
           (nixpkgs.lib.versionAtLeast hpkgs.ghc.version "9")
           hpkgs.haskell-language-server);
 
-      formatter = pkgs.alejandra;
+      projectConfigurations =
+        flaky.lib.projectConfigurations.default {inherit pkgs self;};
+
+      checks = self.projectConfigurations.${system}.checks;
+      formatter = self.projectConfigurations.${system}.formatter;
     });
 
   inputs = {
+    # Currently contains our Haskell/Nix lib that should be extracted into its
+    # own flake.
     concat = {
+      inputs.nixpkgs.follows = "nixpkgs";
       url = "github:compiling-to-categories/concat";
+    };
+
+    flake-utils.url = "github:numtide/flake-utils";
+
+    flaky = {
       inputs = {
         flake-utils.follows = "flake-utils";
         nixpkgs.follows = "nixpkgs";
       };
+      url = "github:sellout/flaky";
     };
-    flake-utils.url = "github:numtide/flake-utils";
+
     nixpkgs.url = "github:NixOS/nixpkgs/release-23.11";
   };
 }
