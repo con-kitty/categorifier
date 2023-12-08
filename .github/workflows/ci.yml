@@ -33,7 +33,7 @@ jobs:
       with:
         nix_path: nixpkgs=channel:nixos-unstable
     - name: Checkout repositiory code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - name: dry-run
       run: nix build --dry-run --print-build-logs .#${{ matrix.ghc }}_all || ${{ matrix.experimental }}
     - name: build
@@ -50,7 +50,7 @@ jobs:
     env:
       CONFIG: "--enable-tests --enable-benchmarks"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: haskell/actions/setup@v1
         id: setup-haskell-cabal
         with:
@@ -68,12 +68,12 @@ jobs:
   format:
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: mrkkrp/ormolu-action@v5
   hlint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: haskell/actions/hlint-setup@v2
         with:
           version: '3.4'
