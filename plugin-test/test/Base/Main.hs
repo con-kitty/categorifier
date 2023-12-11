@@ -14,7 +14,7 @@ module Main
   )
 where
 
-import Categorifier.Hedgehog (genFloating)
+import Categorifier.Hedgehog (genFloating, genIntegralBounded)
 import Categorifier.Test.Data (Pair (..))
 import Categorifier.Test.HList (HMap1 (..))
 import Categorifier.Test.Hask (Hask (..))
@@ -51,20 +51,20 @@ mkTestTerms
       <> builtinTestCategories
   )
   -- core
-  . HInsert1 (Proxy @"LamId") (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))
-  . HInsert1 (Proxy @"ComposeLam") (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))
+  . HInsert1 (Proxy @"LamId") (TestCases (const [([t|Word8|], pure ([|genIntegralBounded|], [|show|]))]))
+  . HInsert1 (Proxy @"ComposeLam") (TestCases (const [([t|Word8|], pure ([|genIntegralBounded|], [|show|]))]))
   . HInsert1 (Proxy @"ConstLam") (TestCases (const [(([t|Int64|], [t|Word8|]), Nothing)]))
-  . HInsert1 (Proxy @"ReturnLam") (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))
-  . HInsert1 (Proxy @"BuildTuple") (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))
+  . HInsert1 (Proxy @"ReturnLam") (TestCases (const [([t|Word8|], pure ([|genIntegralBounded|], [|show|]))]))
+  . HInsert1 (Proxy @"BuildTuple") (TestCases (const [([t|Word8|], pure ([|genIntegralBounded|], [|show|]))]))
   . HInsert1
     (Proxy @"EliminateTupleFst")
     ( TestCases
-        (const [([t|Word8|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+        (const [([t|Word8|], pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))])
     )
   . HInsert1
     (Proxy @"EliminateTupleSnd")
     ( TestCases
-        (const [([t|Word8|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+        (const [([t|Word8|], pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))])
     )
   . HInsert1
     (Proxy @"EliminateNestedTuples")
@@ -72,7 +72,7 @@ mkTestTerms
         ( const
             [ ( [t|Word8|],
                 pure
-                  ( [|(,) <$> Gen.enumBounded <*> ((,) <$> Gen.enumBounded <*> Gen.enumBounded)|],
+                  ( [|(,) <$> genIntegralBounded <*> ((,) <$> genIntegralBounded <*> genIntegralBounded)|],
                     [|show|]
                   )
               )
@@ -85,7 +85,7 @@ mkTestTerms
     ( TestCases
         ( const
             [ ( [t|Word8|],
-                pure ([|Gen.choice [const <$> Gen.enumBounded, pure id]|], [|const "<function>"|])
+                pure ([|Gen.choice [const <$> genIntegralBounded, pure id]|], [|const "<function>"|])
               )
             ]
         )
@@ -96,7 +96,7 @@ mkTestTerms
         ( const
             [ ( [t|Int64|],
                 pure
-                  ([|(,) <$> Gen.bool <*> ((,) <$> Gen.enumBounded <*> Gen.enumBounded)|], [|show|])
+                  ([|(,) <$> Gen.bool <*> ((,) <$> genIntegralBounded <*> genIntegralBounded)|], [|show|])
               )
             ]
         )
@@ -107,7 +107,7 @@ mkTestTerms
     ( TestCases
         ( const
             [ ( [t|Word8|],
-                pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|])
+                pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|])
               )
             ]
         )
@@ -117,20 +117,20 @@ mkTestTerms
     ( TestCases
         ( const
             [ ( [t|Word8|],
-                pure ([|Pair <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|])
+                pure ([|Pair <$> genIntegralBounded <*> genIntegralBounded|], [|show|])
               )
             ]
         )
     )
   -- base
-  . HInsert1 (Proxy @"Id") (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))
+  . HInsert1 (Proxy @"Id") (TestCases (const [([t|Word8|], pure ([|genIntegralBounded|], [|show|]))]))
   . HInsert1 (Proxy @"Const") (TestCases (const [(([t|Int64|], [t|Word8|]), Nothing)]))
   . HInsert1
     (Proxy @"Snd")
     ( TestCases
         ( const
             [ ( ([t|Word8|], [t|Word8|]),
-                pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|])
+                pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|])
               )
             ]
         )
@@ -142,7 +142,7 @@ mkTestTerms
         ( const
             [ ( ([t|Word8|], [t|Word8|], [t|Word8|]),
                 pure
-                  ( [|(,) <$> Gen.enumBounded <*> ((,) <$> Gen.enumBounded <*> Gen.enumBounded)|],
+                  ( [|(,) <$> genIntegralBounded <*> ((,) <$> genIntegralBounded <*> genIntegralBounded)|],
                     [|show|]
                   )
               )
@@ -154,7 +154,7 @@ mkTestTerms
     ( TestCases
         ( const
             [ ( ([t|Word8|], [t|Int64|]),
-                pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|])
+                pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|])
               )
             ]
         )
@@ -163,7 +163,7 @@ mkTestTerms
   . HInsert1 (Proxy @"Join") (TestCases (const [(([t|Int64|], [t|Word8|]), Nothing)]))
   . HInsert1 (Proxy @"Arr") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"Either") (TestCases (const [(([t|Int64|], [t|Word8|]), Nothing)]))
-  . HInsert1 (Proxy @"Coerce") (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))
+  . HInsert1 (Proxy @"Coerce") (TestCases (const [([t|Word8|], pure ([|genIntegralBounded|], [|show|]))]))
   . HInsert1 (Proxy @"ComposedCoerce") (TestCases (const [([t|Word8|], Nothing)]))
   . HInsert1 (Proxy @"Bool") (TestCases (const [([t|Double|], Nothing)]))
   . HInsert1 (Proxy @"Acos") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
@@ -315,7 +315,7 @@ mkTestTerms
     )
   . HInsert1 (Proxy @"Max") (TestCases (const [([t|Double|], Nothing)]))
   . HInsert1 (Proxy @"Min") (TestCases (const [([t|Double|], Nothing)]))
-  . HInsert1 (Proxy @"Not") (TestCases (const [((), pure ([|Gen.enumBounded|], [|show|]))]))
+  . HInsert1 (Proxy @"Not") (TestCases (const [((), pure ([|Gen.bool|], [|show|]))]))
   . HInsert1 (Proxy @"Plus") (TestCases (const [([t|Int64|], Nothing)]))
   . HInsert1 (Proxy @"Minus") (TestCases (const [([t|Int64|], Nothing)]))
   . HInsert1 (Proxy @"Times") (TestCases (const [([t|Int64|], Nothing)]))
@@ -368,7 +368,7 @@ mkTestTerms
     ( TestCases
         ( const
             [ ([t|Double|], pure ([|genFloating|], [|show|])),
-              ([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))
+              ([t|Word8|], pure ([|genIntegralBounded|], [|show|]))
             ]
         )
     )
@@ -386,8 +386,8 @@ mkTestTerms
                 ]
         )
     )
-  . HInsert1 (Proxy @"BuildLeft") (TestCases (const [(([t|Int64|], [t|Word8|]), pure ([|Gen.enumBounded|], [|show|]))]))
-  . HInsert1 (Proxy @"BuildRight") (TestCases (const [(([t|Int64|], [t|Word8|]), pure ([|Gen.enumBounded|], [|show|]))]))
+  . HInsert1 (Proxy @"BuildLeft") (TestCases (const [(([t|Int64|], [t|Word8|]), pure ([|genIntegralBounded|], [|show|]))]))
+  . HInsert1 (Proxy @"BuildRight") (TestCases (const [(([t|Int64|], [t|Word8|]), pure ([|genIntegralBounded|], [|show|]))]))
   . HInsert1 (Proxy @"EliminateEither") (TestCases (const [([t|Word8|], Nothing)]))
   . HInsert1 (Proxy @"EliminateEitherSwapped") (TestCases (const [([t|Word8|], Nothing)]))
   . HInsert1 (Proxy @"Apply") (TestCases (const [(([t|Word8|], [t|Bool|]), Nothing)]))
@@ -408,8 +408,8 @@ mkTestTerms
   . HInsert1 (Proxy @"Sum") (TestCases (const [])) -- can only work with specialization
   . HInsert1 (Proxy @"SumList") (TestCases (const []))
   . HInsert1 (Proxy @"ToList") (TestCases (const [])) -- can only work with specialization
-  . HInsert1 (Proxy @"Even") (TestCases (const [([t|Int64|], pure ([|Gen.enumBounded|], [|show|]))]))
-  . HInsert1 (Proxy @"Odd") (TestCases (const [([t|Int64|], pure ([|Gen.enumBounded|], [|show|]))]))
+  . HInsert1 (Proxy @"Even") (TestCases (const [([t|Int64|], pure ([|genIntegralBounded|], [|show|]))]))
+  . HInsert1 (Proxy @"Odd") (TestCases (const [([t|Int64|], pure ([|genIntegralBounded|], [|show|]))]))
   $ HEmpty1
 
 main :: IO ()

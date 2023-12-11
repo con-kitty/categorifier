@@ -68,14 +68,14 @@ mkTestTerms
   . HInsert1 (Proxy @"LinearAbs") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1
     (Proxy @"LinearAnd")
-    (TestCases (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]))
+    (TestCases (const [((), pure ([|(,) <$> Gen.bool <*> Gen.bool|], [|show|]))]))
   . HInsert1
     (Proxy @"LinearAp")
     ( TestCases
         ( const
             [ ( ([t|Identity|], [t|Int64|], [t|Int64|]),
                 pure
-                  ( [|(,) <$> pure (Control.Functor.Linear.pure Prelude.Linear.id) <*> (pure <$> Gen.enumBounded)|],
+                  ( [|(,) <$> pure (Control.Functor.Linear.pure Prelude.Linear.id) <*> (pure <$> genIntegralBounded)|],
                     [|show . snd|]
                   )
               )
@@ -88,7 +88,7 @@ mkTestTerms
         ( const
             [ ( ([t|Identity|], [t|Int64|], [t|Int64|]),
                 pure
-                  ( [|(,) <$> pure (Control.Functor.Linear.pure Prelude.Linear.id) <*> (pure <$> Gen.enumBounded)|],
+                  ( [|(,) <$> pure (Control.Functor.Linear.pure Prelude.Linear.id) <*> (pure <$> genIntegralBounded)|],
                     [|show . snd|]
                   )
               )
@@ -101,7 +101,7 @@ mkTestTerms
         ( const
             [ ( ([t|Data.V.Linear.V 9|], [t|Int64|], [t|Int64|]),
                 pure
-                  ( [|(,) <$> pure (Data.Functor.Linear.pure Prelude.Linear.id) <*> sequenceA (pure Gen.enumBounded)|],
+                  ( [|(,) <$> pure (Data.Functor.Linear.pure Prelude.Linear.id) <*> sequenceA (pure genIntegralBounded)|],
                     [|show . snd|]
                   )
               )
@@ -116,7 +116,7 @@ mkTestTerms
               then [] -- No @`Applicative` `Replicator`@
               else
                 [ ( ([t|Int64|], [t|Int64|]),
-                    pure ([|(,) <$> pure (Control.Functor.Linear.pure Prelude.Linear.id) <*> fmap pure Gen.enumBounded|], [|show|])
+                    pure ([|(,) <$> pure (Control.Functor.Linear.pure Prelude.Linear.id) <*> fmap pure genIntegralBounded|], [|show|])
                   )
                 ]
         )
@@ -127,7 +127,7 @@ mkTestTerms
         ( const
             [ ( ([t|Int64|], [t|Int64|]),
                 pure
-                  ( [|(,) <$> pure (Data.Functor.Linear.pure Prelude.Linear.id) <*> sequenceA (pure Gen.enumBounded)|],
+                  ( [|(,) <$> pure (Data.Functor.Linear.pure Prelude.Linear.id) <*> sequenceA (pure genIntegralBounded)|],
                     [|show . snd|]
                   )
               )
@@ -144,8 +144,8 @@ mkTestTerms
   --               pure
   --                 ( [|
   --                     (,)
-  --                       <$> Gen.list (Range.linear 0 100) Gen.enumBounded
-  --                       <*> Gen.list (Range.linear 0 100) Gen.enumBounded
+  --                       <$> Gen.list (Range.linear 0 100) genIntegralBounded
+  --                       <*> Gen.list (Range.linear 0 100) genIntegralBounded
   --                     |],
   --                   [|show|]
   --                 )
@@ -161,8 +161,8 @@ mkTestTerms
                 pure
                   ( [|
                       (,)
-                        <$> Gen.list (Range.linear 0 100) Gen.enumBounded
-                        <*> Gen.list (Range.linear 0 100) Gen.enumBounded
+                        <$> Gen.list (Range.linear 0 100) genIntegralBounded
+                        <*> Gen.list (Range.linear 0 100) genIntegralBounded
                       |],
                     [|show|]
                   )
@@ -175,7 +175,7 @@ mkTestTerms
     ( TestCases
         ( const
             [ ( ([t|Word8|], [t|Identity Word8|]),
-                pure ([|(Control.Functor.Linear.pure,) <$> Gen.enumBounded|], [|show . snd|])
+                pure ([|(Control.Functor.Linear.pure,) <$> genIntegralBounded|], [|show . snd|])
               )
             ]
         )
@@ -185,7 +185,7 @@ mkTestTerms
     ( TestCases
         ( const
             [ ( ([t|Identity|], [t|Word8|], [t|Word8|]),
-                pure ([|(\x -> (x, Control.Functor.Linear.pure)) . Identity <$> Gen.enumBounded|], [|show . fst|])
+                pure ([|(\x -> (x, Control.Functor.Linear.pure)) . Identity <$> genIntegralBounded|], [|show . fst|])
               )
             ]
         )
@@ -199,14 +199,14 @@ mkTestTerms
   . HInsert1
     (Proxy @"LinearCompose")
     ( TestCases
-        (const [(([t|Identity|], [t|Identity|], [t|Int64|]), pure ([|Gen.enumBounded|], [|show|]))])
+        (const [(([t|Identity|], [t|Identity|], [t|Int64|]), pure ([|genIntegralBounded|], [|show|]))])
     )
   . HInsert1
     (Proxy @"LinearConst")
     ( TestCases
         ( const
             [ ( ([t|Int64|], [t|Word8|]),
-                pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|])
+                pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|])
               )
             ]
         )
@@ -216,7 +216,7 @@ mkTestTerms
     ( TestCases
         ( const
             [ ( ([t|Word8|], [t|Bool|]),
-                pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show . snd|])
+                pure ([|(,) <$> genIntegralBounded <*> Gen.bool|], [|show . snd|])
               )
             ]
         )
@@ -227,7 +227,7 @@ mkTestTerms
         ( const
             [ ( [t|Int64|],
                 pure
-                  ([|Gen.choice [Left <$> Gen.enumBounded, Right <$> Gen.enumBounded]|], [|show|])
+                  ([|Gen.choice [Left <$> genIntegralBounded, Right <$> genIntegralBounded]|], [|show|])
               )
             ]
         )
@@ -235,7 +235,7 @@ mkTestTerms
   . HInsert1
     (Proxy @"LinearEqual")
     ( TestCases
-        (const [([t|Int64|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+        (const [([t|Int64|], pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))])
     )
   . HInsert1
     (Proxy @"LinearFmapControl")
@@ -246,7 +246,7 @@ mkTestTerms
                   ( [|
                       (,)
                         <$> pure (Data.Either.Linear.either Prelude.Linear.id Prelude.Linear.id)
-                        <*> (pure <$> Gen.choice [Left <$> Gen.enumBounded, Right <$> Gen.enumBounded])
+                        <*> (pure <$> Gen.choice [Left <$> genIntegralBounded, Right <$> genIntegralBounded])
                       |],
                     [|show . snd|]
                   )
@@ -265,7 +265,7 @@ mkTestTerms
   --                 ( [|
   --                     (,)
   --                       <$> pure (Data.Either.Linear.either Prelude.Linear.id Prelude.Linear.id)
-  --                       <*> Gen.list (Range.exponential 1 1024) (Gen.choice [Left <$> Gen.enumBounded, Right <$> Gen.enumBounded])
+  --                       <*> Gen.list (Range.exponential 1 1024) (Gen.choice [Left <$> genIntegralBounded, Right <$> genIntegralBounded])
   --                     |],
   --                   [|show . snd|]
   --                 )
@@ -282,7 +282,7 @@ mkTestTerms
                   ( [|
                       (,)
                         <$> pure (Data.Either.Linear.either Prelude.Linear.id Prelude.Linear.id)
-                        <*> (pure <$> Gen.choice [Left <$> Gen.enumBounded, Right <$> Gen.enumBounded])
+                        <*> (pure <$> Gen.choice [Left <$> genIntegralBounded, Right <$> genIntegralBounded])
                       |],
                     [|show . snd|]
                   )
@@ -299,7 +299,7 @@ mkTestTerms
                   ( [|
                       (,)
                         <$> pure (Data.Either.Linear.either Prelude.Linear.id Prelude.Linear.id)
-                        <*> Gen.list (Range.exponential 1 1024) (Gen.choice [Left <$> Gen.enumBounded, Right <$> Gen.enumBounded])
+                        <*> Gen.list (Range.exponential 1 1024) (Gen.choice [Left <$> genIntegralBounded, Right <$> genIntegralBounded])
                       |],
                     [|show . snd|]
                   )
@@ -333,7 +333,7 @@ mkTestTerms
     ( TestCases
         ( const
             [ ( ([t|Word8|], [t|Word8|]),
-                pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|])
+                pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|])
               )
             ]
         )
@@ -341,28 +341,28 @@ mkTestTerms
   . HInsert1
     (Proxy @"LinearGe")
     ( TestCases
-        (const [([t|Int64|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+        (const [([t|Int64|], pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))])
     )
   . HInsert1
     (Proxy @"LinearGt")
     ( TestCases
-        (const [([t|Int64|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+        (const [([t|Int64|], pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))])
     )
   . HInsert1
     (Proxy @"LinearLe")
     ( TestCases
-        (const [([t|Int64|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+        (const [([t|Int64|], pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))])
     )
   . HInsert1
     (Proxy @"LinearLiftA2Control")
-    (TestCases (const [(([t|Identity|], [t|Int64|], [t|Int64|]), pure ([|(,) <$> sequenceA (pure Gen.enumBounded) <*> sequenceA (pure Gen.enumBounded)|], [|show|]))]))
+    (TestCases (const [(([t|Identity|], [t|Int64|], [t|Int64|]), pure ([|(,) <$> sequenceA (pure genIntegralBounded) <*> sequenceA (pure genIntegralBounded)|], [|show|]))]))
   . HInsert1
     (Proxy @"LinearLiftA2Data")
-    (TestCases (const [(([t|Data.V.Linear.V 9|], [t|Int64|], [t|Int64|]), pure ([|(,) <$> sequenceA (pure Gen.enumBounded) <*> sequenceA (pure Gen.enumBounded)|], [|show|]))]))
+    (TestCases (const [(([t|Data.V.Linear.V 9|], [t|Int64|], [t|Int64|]), pure ([|(,) <$> sequenceA (pure genIntegralBounded) <*> sequenceA (pure genIntegralBounded)|], [|show|]))]))
   . HInsert1
     (Proxy @"LinearLt")
     ( TestCases
-        (const [([t|Int64|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+        (const [([t|Int64|], pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))])
     )
   . HInsert1
     (Proxy @"LinearMapList")
@@ -373,7 +373,7 @@ mkTestTerms
                   ( [|
                       (,)
                         <$> pure (Data.Either.Linear.either Prelude.Linear.id Prelude.Linear.id)
-                        <*> Gen.list (Range.exponential 1 1024) (Gen.choice [Left <$> Gen.enumBounded, Right <$> Gen.enumBounded])
+                        <*> Gen.list (Range.exponential 1 1024) (Gen.choice [Left <$> genIntegralBounded, Right <$> genIntegralBounded])
                       |],
                     [|show . snd|]
                   )
@@ -397,7 +397,7 @@ mkTestTerms
                       ( [|
                           (,)
                             <$> pure (Data.Either.Linear.either Prelude.Linear.id Prelude.Linear.id)
-                            <*> (pure <$> Gen.choice [Left <$> Gen.enumBounded, Right <$> Gen.enumBounded])
+                            <*> (pure <$> Gen.choice [Left <$> genIntegralBounded, Right <$> genIntegralBounded])
                           |],
                         [|show|]
                       )
@@ -414,7 +414,7 @@ mkTestTerms
                   ( [|
                       (,)
                         <$> pure (Data.Either.Linear.either Prelude.Linear.id Prelude.Linear.id)
-                        <*> sequenceA (pure $ Gen.choice [Left <$> Gen.enumBounded, Right <$> Gen.enumBounded])
+                        <*> sequenceA (pure $ Gen.choice [Left <$> genIntegralBounded, Right <$> genIntegralBounded])
                       |],
                     [|show . snd|]
                   )
@@ -430,8 +430,8 @@ mkTestTerms
                 pure
                   ( [|
                       (,)
-                        <$> Gen.list (Range.linear 0 100) Gen.enumBounded
-                        <*> Gen.list (Range.linear 0 100) Gen.enumBounded
+                        <$> Gen.list (Range.linear 0 100) genIntegralBounded
+                        <*> Gen.list (Range.linear 0 100) genIntegralBounded
                       |],
                     [|show|]
                   )
@@ -444,7 +444,7 @@ mkTestTerms
     ( TestCases
         ( const
             [ ([t|Double|], pure ([|(,) <$> genFloating <*> genFloating|], [|show|])),
-              ([t|Int64|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))
+              ([t|Int64|], pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))
             ]
         )
     )
@@ -453,7 +453,7 @@ mkTestTerms
     ( TestCases
         ( const
             [ ([t|Double|], pure ([|(,) <$> genFloating <*> genFloating|], [|show|])),
-              ([t|Int64|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))
+              ([t|Int64|], pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))
             ]
         )
     )
@@ -463,15 +463,15 @@ mkTestTerms
   . HInsert1
     (Proxy @"LinearNegate")
     (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
-  . HInsert1 (Proxy @"LinearNot") (TestCases (const [((), pure ([|Gen.enumBounded|], [|show|]))]))
+  . HInsert1 (Proxy @"LinearNot") (TestCases (const [((), pure ([|Gen.bool|], [|show|]))]))
   . HInsert1
     (Proxy @"LinearNotEqual")
     ( TestCases
-        (const [([t|Int64|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+        (const [([t|Int64|], pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))])
     )
   . HInsert1
     (Proxy @"LinearOr")
-    (TestCases (const [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]))
+    (TestCases (const [((), pure ([|(,) <$> Gen.bool <*> Gen.bool|], [|show|]))]))
   . HInsert1
     (Proxy @"LinearPlus")
     (TestCases (const []))
@@ -482,7 +482,7 @@ mkTestTerms
     ( TestCases
         ( const
             [ (([t|Identity|], [t|Double|]), pure ([|genFloating|], [|show|])),
-              (([t|Identity|], [t|Word8|]), pure ([|Gen.enumBounded|], [|show|]))
+              (([t|Identity|], [t|Word8|]), pure ([|genIntegralBounded|], [|show|]))
             ]
         )
     )
@@ -491,7 +491,7 @@ mkTestTerms
     ( TestCases
         ( const
             [ (([t|Data.V.Linear.V 9|], [t|Double|]), pure ([|genFloating|], [|show|])),
-              (([t|Identity|], [t|Word8|]), pure ([|Gen.enumBounded|], [|show|]))
+              (([t|Identity|], [t|Word8|]), pure ([|genIntegralBounded|], [|show|]))
             ]
         )
     )
@@ -503,7 +503,7 @@ mkTestTerms
               then [] -- No `Eq` on `Replicator`
               else
                 [ ([t|Double|], pure ([|genFloating|], [|show|])),
-                  ([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))
+                  ([t|Word8|], pure ([|genIntegralBounded|], [|show|]))
                 ]
         )
     )
@@ -512,7 +512,7 @@ mkTestTerms
     ( TestCases
         ( const
             [ ([t|Double|], pure ([|genFloating|], [|show|])),
-              ([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))
+              ([t|Word8|], pure ([|genIntegralBounded|], [|show|]))
             ]
         )
     )
@@ -524,7 +524,7 @@ mkTestTerms
     ( TestCases
         ( const
             [ ( ([t|Maybe|], [t|Identity|], [t|Word8|]),
-                pure ([|Gen.maybe $ pure <$> Gen.enumBounded|], [|show|])
+                pure ([|Gen.maybe $ pure <$> genIntegralBounded|], [|show|])
               )
             ]
         )
@@ -534,7 +534,7 @@ mkTestTerms
     ( TestCases
         ( const
             [ ( ([t|Maybe|], [t|Identity|], [t|Word8|]),
-                pure ([|Gen.maybe $ pure <$> Gen.enumBounded|], [|show|])
+                pure ([|Gen.maybe $ pure <$> genIntegralBounded|], [|show|])
               )
             ]
         )
@@ -547,7 +547,7 @@ mkTestTerms
     ( TestCases
         ( const
             [ ( ([t|Word8|], [t|Word8|]),
-                pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|])
+                pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|])
               )
             ]
         )
@@ -555,14 +555,14 @@ mkTestTerms
   . HInsert1
     (Proxy @"LinearSumList")
     ( TestCases
-        (const [([t|Int|], pure ([|Gen.list (Range.linear 0 100) Gen.enumBounded|], [|show|]))])
+        (const [([t|Int|], pure ([|Gen.list (Range.linear 0 100) genIntegralBounded|], [|show|]))])
     )
   . HInsert1
     (Proxy @"LinearSwap")
     ( TestCases
         ( const
             [ ( ([t|Word8|], [t|Int64|]),
-                pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|])
+                pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|])
               )
             ]
         )
@@ -578,7 +578,7 @@ mkTestTerms
         ( const
             [ ( ([t|Maybe|], [t|Identity|], [t|Word8|]),
                 pure
-                  ( [|(,) <$> pure Control.Functor.Linear.pure <*> (Gen.maybe Gen.enumBounded)|],
+                  ( [|(,) <$> pure Control.Functor.Linear.pure <*> (Gen.maybe genIntegralBounded)|],
                     [|show . snd|]
                   )
               )
@@ -591,7 +591,7 @@ mkTestTerms
         ( const
             [ ( ([t|Identity|], [t|Word8|]),
                 pure
-                  ( [|(,) <$> pure Control.Functor.Linear.pure <*> Gen.list (Range.linear 0 100) Gen.enumBounded|],
+                  ( [|(,) <$> pure Control.Functor.Linear.pure <*> Gen.list (Range.linear 0 100) genIntegralBounded|],
                     [|show . snd|]
                   )
               )
@@ -603,7 +603,7 @@ mkTestTerms
     ( TestCases
         ( const
             [ ( ([t|Word8|], [t|Bool|]),
-                pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|])
+                pure ([|(,) <$> genIntegralBounded <*> Gen.bool|], [|show|])
               )
             ]
         )

@@ -1,4 +1,4 @@
-{config, flaky, lib, self, ...}: {
+{config, flaky, lib, pkgs, self, ...}: {
   project = {
     name = "categorifier";
     summary = "Defining novel interpretations of Haskell programs";
@@ -34,7 +34,8 @@
     treefmt = {
       enable = true;
       ## Haskell formatter
-      programs.ormolu.enable = true;
+      ## TODO: `validity`, required by Ormolu, fails to build on i686-linux.
+      programs.ormolu.enable = pkgs.system != "i686-linux";
     };
     vale = {
       enable = true;

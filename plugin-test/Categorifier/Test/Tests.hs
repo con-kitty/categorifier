@@ -79,19 +79,19 @@ import Unsafe.Coerce (unsafeCoerce)
 zerosafeUnsignedPrimitiveCases :: [(Q Type, Maybe (Q Exp, Q Exp))]
 zerosafeUnsignedPrimitiveCases =
   [ ( [t|Word16|],
-      pure ([|(,) <$> Gen.enumBounded <*> Gen.integral (Range.linear 1 maxBound)|], [|show|])
+      pure ([|(,) <$> genIntegralBounded <*> Gen.integral (Range.linear 1 maxBound)|], [|show|])
     ),
     ( [t|Word32|],
-      pure ([|(,) <$> Gen.enumBounded <*> Gen.integral (Range.linear 1 maxBound)|], [|show|])
+      pure ([|(,) <$> genIntegralBounded <*> Gen.integral (Range.linear 1 maxBound)|], [|show|])
     ),
     ( [t|Word64|],
       pure
-        ( [|(,) <$> genLargeIntegral <*> Gen.integral (Range.linear 1 maxBound)|],
+        ( [|(,) <$> genIntegralBounded <*> Gen.integral (Range.linear 1 maxBound)|],
           [|show|]
         )
     ),
     ( [t|Word8|],
-      pure ([|(,) <$> Gen.enumBounded <*> Gen.integral (Range.linear 1 maxBound)|], [|show|])
+      pure ([|(,) <$> genIntegralBounded <*> Gen.integral (Range.linear 1 maxBound)|], [|show|])
     )
   ]
 

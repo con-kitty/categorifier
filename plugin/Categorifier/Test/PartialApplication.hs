@@ -16,7 +16,7 @@ testArrow arrow = Hedgehog.property $ do
   input <-
     Hedgehog.forAll
       ( (,)
-          <$> Gen.enumBounded
+          <$> genIntegralBounded
           <*> ( (,)
                   <$> Gen.enumBounded
                   <*> Gen.enumBounded

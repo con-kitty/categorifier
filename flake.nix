@@ -82,6 +82,9 @@
               } {};
             })
             (concat.overlays.haskell final prev)
+            ## TODO: I think this overlay is only needed by formatters, devShells, etc., so it
+            ##       shouldn’t be included in the standard overlay.
+            (flaky.overlays.haskell-dependencies final prev)
             (self.overlays.haskell final prev)
           ];
       };
@@ -171,20 +174,26 @@
         // concat.lib.mkPackages pkgs self.lib.testedGhcVersions cabalPackages;
 
       devShells =
-        {default = self.devShells.${system}.${self.lib.defaultCompiler};}
-        // concat.lib.mkDevShells
-        pkgs
-        self.lib.testedGhcVersions
-        cabalPackages
-        (hpkgs:
-          [
-            self.projectConfigurations.${system}.packages.path
-            pkgs.cabal-install
-          ]
-          ## NB: Haskell Language Server no longer supports GHC <9.
-          ++ nixpkgs.lib.optional
-          (nixpkgs.lib.versionAtLeast hpkgs.ghc.version "9")
-          hpkgs.haskell-language-server);
+        ## TODO: determine why devShells are failing on i686.
+        if system != "i686-linux"
+        then
+          {default = self.devShells.${system}.${self.lib.defaultCompiler};}
+          // (
+            concat.lib.mkDevShells
+            pkgs
+            self.lib.testedGhcVersions
+            cabalPackages
+            (hpkgs:
+              [
+                self.projectConfigurations.${system}.packages.path
+                pkgs.cabal-install
+              ]
+              ## NB: Haskell Language Server no longer supports GHC <9.
+              ++ nixpkgs.lib.optional
+              (nixpkgs.lib.versionAtLeast hpkgs.ghc.version "9")
+              hpkgs.haskell-language-server)
+          )
+        else {};
 
       projectConfigurations =
         flaky.lib.projectConfigurations.default {inherit pkgs self;};
@@ -197,7 +206,12 @@
     # Currently contains our Haskell/Nix lib that should be extracted into its
     # own flake.
     concat = {
-      inputs.nixpkgs.follows = "nixpkgs";
+      inputs = {
+        ## TODO: The version currently used by concat doesn’t support i686-linux.
+        bash-strict-mode.follows = "flaky/bash-strict-mode";
+        flake-utils.follows = "flake-utils";
+        nixpkgs.follows = "nixpkgs";
+      };
       url = "github:compiling-to-categories/concat";
     };
 

@@ -13,7 +13,7 @@
 module Main (main) where
 
 import qualified Categorifier.Client as Client
-import Categorifier.Hedgehog (genFloating)
+import Categorifier.Hedgehog (genFloating, genIntegralBounded)
 import Data.Constraint (Dict (..))
 import Data.Functor.Compose (Compose (..))
 import Data.Proxy (Proxy (..))
@@ -54,7 +54,7 @@ genFoo a =
   Hedgehog.Gen.choice
     [ Bar
         <$> a
-        <*> Hedgehog.Gen.enumBounded
+        <*> genIntegralBounded
         <*> Hedgehog.Gen.string (Hedgehog.Range.constant 0 100) Hedgehog.Gen.unicodeAll,
       Baz <$> genFloating
     ]
@@ -65,7 +65,7 @@ genRepFoo a =
     ( (,)
         <$> ((Dict,) <$> a)
         <*> ( (,)
-                <$> Hedgehog.Gen.enumBounded
+                <$> genIntegralBounded
                 <*> Hedgehog.Gen.string (Hedgehog.Range.constant 0 100) Hedgehog.Gen.unicodeAll
             )
     )
@@ -163,13 +163,13 @@ genSomeExprInt :: Hedgehog.Gen (SomeExpr Int)
 genSomeExprInt =
   Hedgehog.Gen.recursive
     Hedgehog.Gen.choice
-    [IntLit <$> Hedgehog.Gen.enumBounded]
+    [IntLit <$> genIntegralBounded]
     [Add <$> genSomeExprInt <*> genSomeExprInt]
 
 genRepSomeExprInt :: Hedgehog.Gen (Client.Rep (SomeExpr Int))
 genRepSomeExprInt =
   Hedgehog.Gen.choice
-    [Left <$> Hedgehog.Gen.enumBounded, Right <$> ((,) <$> genSomeExprInt <*> genSomeExprInt)]
+    [Left <$> genIntegralBounded, Right <$> ((,) <$> genSomeExprInt <*> genSomeExprInt)]
 
 prop_someExprIntIso :: Hedgehog.Property
 prop_someExprIntIso = iso genSomeExprInt genRepSomeExprInt
@@ -224,13 +224,13 @@ genWeirdExprInt :: Hedgehog.Gen (WeirdExpr Int)
 genWeirdExprInt =
   Hedgehog.Gen.recursive
     Hedgehog.Gen.choice
-    [WeirdInt <$> Hedgehog.Gen.enumBounded, pure Empty]
+    [WeirdInt <$> genIntegralBounded, pure Empty]
     [Combine <$> genWeirdExprInt <*> genWeirdExprInt]
 
 genRepWeirdExprInt :: Hedgehog.Gen (Client.Rep (WeirdExpr Int))
 genRepWeirdExprInt =
   Hedgehog.Gen.choice
-    [ Left <$> Hedgehog.Gen.enumBounded,
+    [ Left <$> genIntegralBounded,
       pure . Right $ Left (),
       Right . Right <$> ((,) <$> genWeirdExprInt <*> genWeirdExprInt)
     ]
