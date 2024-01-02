@@ -133,8 +133,6 @@
           # NB: need 8.10.7 specifically, because there's an API breakage that
           #     affects only it
           "ghc8107"
-          "ghc902"
-          "ghc924"
           # "ghcHEAD" # Not yet covered by dependency ranges
         ];
 
@@ -152,6 +150,8 @@
         supportedGhcVersions =
           self.lib.testedGhcVersions
           ++ [
+            "ghc902"
+            "ghc924"
             "ghc925"
             "ghc926"
             "ghc927"
