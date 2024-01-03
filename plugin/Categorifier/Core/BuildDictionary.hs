@@ -63,7 +63,7 @@ traceTc' str doc = pprTrace' str doc (pure ())
 --  `Typechecker.runTcInteractive`, so not too much we can do about it other than hide it a bit and
 --   try to keep it from leaking all over everything.
 runTcRn ::
-  Plugins.Outputable a =>
+  (Plugins.Outputable a) =>
   Plugins.HscEnv ->
   Plugins.ModGuts ->
   Typechecker.TcRn a ->
@@ -208,19 +208,20 @@ buildDictionary env guts inScope goalTy =
                   --         terms of the `Plugins.CompilerPhase` they run in (this is
                   --        `Plugins.InitialPhase` vs @`Plugins.Phase` 0@ in Conal's. AFAICT, that
                   --         shouldn't matter, but if it does, come back here.
-                  . ( lift . Plugins.simplifyExpr env
+                  . ( lift
+                        . Plugins.simplifyExpr env
                         &&& ExceptT
-                          . pure
-                          . traverse_ (Left . pure . FreeIds)
-                          . nonEmpty
-                          . freeIdTys
+                        . pure
+                        . traverse_ (Left . pure . FreeIds)
+                        . nonEmpty
+                        . freeIdTys
                     )
                   . dict
                   &&& ExceptT
-                    . pure
-                    . traverse_ (Left . pure . CoercionHoles)
-                    . nonEmpty
-                    . NonEmpty.filter hasCoercionHole
+                  . pure
+                  . traverse_ (Left . pure . CoercionHoles)
+                  . nonEmpty
+                  . NonEmpty.filter hasCoercionHole
               )
         )
         . nonEmpty
@@ -239,7 +240,7 @@ buildDictionary env guts inScope goalTy =
             `Plugins.minusVarSet` scopedDicts
         freeIdTys = fmap (id &&& Plugins.varType) . uniqSetToList . freeIds
 
-hasCoercionHole :: Data t => t -> Bool
+hasCoercionHole :: (Data t) => t -> Bool
 hasCoercionHole = getAny . everything (<>) (mkQ mempty (Any . isHole))
   where
     isHole :: Plugins.CoercionHole -> Bool

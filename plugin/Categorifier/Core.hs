@@ -410,39 +410,39 @@ categorifyRules convert opts guts =
     uniqS <- lift Plugins.getUniqueSupplyM
     logger <- lift Plugins.getLogger
     hierarchyOptions' <- hierarchyOptions
-    pure $
-      partialAppRules apply (Plugins.varName convert) conversionFunctionArity $
-        \_ inScope ident exprs ->
-          let baseArrowMakers = haskMakers inScope guts hscEnv hask bh Plugins.properFunTy
-           in if ident == convert
-                then
-                  unsafePerformIO $
-                    applyCategorify
-                      convert
-                      hierarchyOptions'
-                      ( if Map.member DeferFailuresOption opts
-                          then pure $ deferFailures throw str
-                          else Nothing
-                      )
-                      (Plugins.hsc_dflags hscEnv)
-                      uniqS
-                      ( \cat ->
-                          categorify
-                            (Map.member DebugOption opts)
-                            (Map.member BenchmarkOption opts)
-                            (Plugins.hsc_dflags hscEnv)
-                            logger
-                            cat
-                            (BuildDictionary.buildDictionary hscEnv guts inScope)
-                            baseIdentifiers
-                            baseArrowMakers
-                            (haskMakers inScope guts hscEnv hask h cat)
-                            tryAutoInterpret
-                            (makerMapFun sl)
-                            additionalBoxers
-                      )
-                      exprs
-                else Nothing
+    pure
+      . partialAppRules apply (Plugins.varName convert) conversionFunctionArity
+      $ \_ inScope ident exprs ->
+        let baseArrowMakers = haskMakers inScope guts hscEnv hask bh Plugins.properFunTy
+         in if ident == convert
+              then
+                unsafePerformIO $
+                  applyCategorify
+                    convert
+                    hierarchyOptions'
+                    ( if Map.member DeferFailuresOption opts
+                        then pure $ deferFailures throw str
+                        else Nothing
+                    )
+                    (Plugins.hsc_dflags hscEnv)
+                    uniqS
+                    ( \cat ->
+                        categorify
+                          (Map.member DebugOption opts)
+                          (Map.member BenchmarkOption opts)
+                          (Plugins.hsc_dflags hscEnv)
+                          logger
+                          cat
+                          (BuildDictionary.buildDictionary hscEnv guts inScope)
+                          baseIdentifiers
+                          baseArrowMakers
+                          (haskMakers inScope guts hscEnv hask h cat)
+                          tryAutoInterpret
+                          (makerMapFun sl)
+                          additionalBoxers
+                    )
+                    exprs
+              else Nothing
   where
     combineHierarchies = fmap getFirst . foldMapD (fmap First)
 

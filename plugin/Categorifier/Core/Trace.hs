@@ -68,7 +68,7 @@ maybeTraceWith = bool (const id) (traceWith . withTime)
 {-# INLINE maybeTraceWith #-}
 {-# ANN maybeTraceWith ("HLint: ignore Missing NOINLINE pragma" :: String) #-}
 
-maybeTraceWithStack :: MonadIO m => Bool -> (a -> String) -> (a -> m b) -> a -> m b
+maybeTraceWithStack :: (MonadIO m) => Bool -> (a -> String) -> (a -> m b) -> a -> m b
 maybeTraceWithStack doTrace render act a =
   if doTrace
     then do

@@ -153,7 +153,7 @@ import qualified UnliftIO.Exception as Exception
 -- | This is a trivial wrapper, but it prevents `impureThrow` from being inlined too soon for the
 --  "Categorifier" plugin to handle it. It also doesn't work using `Exception.impureThrow` instead of
 --  `throw` (presumably becasue of the `Exception.SyncExceptionWrapper` handling).
-impureThrow :: Exception e => e -> a
+impureThrow :: (Exception e) => e -> a
 impureThrow = throw
 {-# NOINLINE impureThrow #-}
 
@@ -173,14 +173,14 @@ handleIgnoringStack :: (MonadUnliftIO m, Exception e) => (e -> m a) -> m a -> m 
 handleIgnoringStack f = Exception.handle f . Exception.handle (\(CallStacked e _) -> f e)
 
 -- | See the instance for @`Show` (`AsException` e)@ to understand the job this instance does.
-instance Exception e => Show (CallStacked e) where
+instance (Exception e) => Show (CallStacked e) where
   show = displayException
 
-instance Exception e => Exception (CallStacked e) where
+instance (Exception e) => Exception (CallStacked e) where
   displayException (CallStacked e calls') = [fmt|{displayException e}\n{prettyCallStack calls'}|]
 
 -- | Bundles up the current call stack information with the given value.
-addCallStack :: HasCallStack => e -> CallStacked e
+addCallStack :: (HasCallStack) => e -> CallStacked e
 addCallStack e = CallStacked e callStack
 
 -- | A way to lift reified errors into the exception system. This means we get the best of both
@@ -205,10 +205,10 @@ data AsException e = AsException
 -- without requiring `Show` or `Exception` instances, and it already requires you to provide a
 -- helpful way of displaying it.  This instance exists only to get around GHC's behavior and connect
 -- top-level display of exceptions to the `displayAsException` field of your `AsException`.
-instance Typeable e => Show (AsException e) where
+instance (Typeable e) => Show (AsException e) where
   show = displayException
 
-instance Typeable e => Exception (AsException e) where
+instance (Typeable e) => Exception (AsException e) where
   displayException (AsException display failure) = display failure
 
 -- | Throws any type. The provided function is what's used for serialization if the exception isn't
@@ -284,10 +284,10 @@ throwIOLeft = either Exception.throwIO pure
 newtype Display a = Display a
 
 -- | See the instance for @`Show` (`AsException` e)@ to understand the job this instance does.
-instance Exception e => Show (Display e) where
+instance (Exception e) => Show (Display e) where
   show (Display e) = displayException e
 
-instance Exception e => Exception (Display e)
+instance (Exception e) => Exception (Display e)
 
 -- | This "fixes" @main@ to use `displayException` instead of `show` when failing with an exception.
 --
@@ -297,7 +297,7 @@ instance Exception e => Exception (Display e)
 -- This works by wrapping the `Exception` in a newtype that has the correct behavior, which means
 -- that if you want to try handling these exceptions outside a call to `displayExceptions`, you
 -- should be using `handleIgnoringDisplay` (or `catchIgnoringDisplay`).
-displayExceptions :: MonadUnliftIO m => m a -> m a
+displayExceptions :: (MonadUnliftIO m) => m a -> m a
 displayExceptions =
   -- Using `handleIgnoringDisplay` in order to avoid re-wrapping already-wrapped
   -- exceptions.

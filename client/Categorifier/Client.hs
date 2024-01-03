@@ -35,13 +35,13 @@ import qualified GHC.Generics as Generic
 -- | This property should be true for every `HasRep` instance. `r` should be a classifying object,
 --   and the first argument a comparison (e.g., `Bool` and `==` or `Hedgehog.Property` and
 --  `Hedgehog.===`) to make it easy to test.
-abstReturn :: forall a r. HasRep a => Proxy a -> (Rep a -> Rep a -> r) -> Rep a -> r
+abstReturn :: forall a r. (HasRep a) => Proxy a -> (Rep a -> Rep a -> r) -> Rep a -> r
 abstReturn Proxy eq = eq <$> id <*> repr . abst @a
 
 -- | This property should be true for every `HasRep` instance. `r` should be a classifying object,
 --   and the first argument a comparison (e.g., `Bool` and `==` or `Hedgehog.Property` and
 --  `Hedgehog.===`) to make it easy to test.
-reprReturn :: HasRep a => (a -> a -> r) -> a -> r
+reprReturn :: (HasRep a) => (a -> a -> r) -> a -> r
 reprReturn eq = eq <$> id <*> abst . repr
 
 deriveHasRep ''[]

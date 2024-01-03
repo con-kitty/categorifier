@@ -127,11 +127,11 @@ data DictionaryFailure
   | -- | Typechecking ostensibly succeeded, but also returned errors. Not sure if this is possible,
     --   but the types allow for it. Here we treat it as a failure in order to at least diagnose the
     --   problem.
-    forall r. Plugins.Outputable r => ErroneousTypecheckSuccess Plugins.ErrorMessages r
+    forall r. (Plugins.Outputable r) => ErroneousTypecheckSuccess Plugins.ErrorMessages r
   | NoBindings
   | CoercionHoles (NonEmpty (Plugins.Bind Plugins.CoreBndr))
   | FreeIds (NonEmpty (Plugins.Id, Plugins.Kind))
 
 -- | Construct a writer computation from a (result, output) pair inside the monad.
-writerT :: Functor m => m (a, w) -> RWST r w s m a
+writerT :: (Functor m) => m (a, w) -> RWST r w s m a
 writerT x = RWST (\_ s -> uncurry (,s,) <$> x)

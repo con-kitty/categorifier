@@ -1,193 +1,230 @@
 {
-  description = "categorifier";
-  inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-21.11";
-    flake-utils.url = "github:numtide/flake-utils";
-    concat = {
-      url = "github:con-kitty/concat/wavewave-flake";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.flake-utlis.follows = "flake-utils";
-    };
-    yaya = {
-      # 0.4.2.1
-      url = "github:sellout/yaya/c96718e6de9787284ace3602451f194ac7711ace";
-      flake = false;
-    };
-    ghc-typelits-natnormalise = {
-      # 0.7.7
-      url =
-        "github:clash-lang/ghc-typelits-natnormalise/a68b722a6b10a932621dbf578f1408745a37a5ca";
-      flake = false;
-    };
-    hlint = {
-      url = "github:ndmitchell/hlint/v3.4";
-      flake = false;
-    };
-    linear-base = {
-      url = "github:tweag/linear-base/v0.2.0";
-      flake = false;
-    };
-    # this library git repo has an inconsistency in version bound increasing.
-    ghc-lib-parser-ex = {
-      url =
-        "https://hackage.haskell.org/package/ghc-lib-parser-ex-9.2.0.3/ghc-lib-parser-ex-9.2.0.3.tar.gz";
-      flake = false;
-    };
+  description = "Defining novel interpretations of Haskell programs";
+
+  nixConfig = {
+    ## https://github.com/NixOS/rfcs/blob/master/rfcs/0045-deprecate-url-syntax.md
+    extra-experimental-features = ["no-url-literals"];
+    extra-substituters = ["https://cache.garnix.io"];
+    extra-trusted-public-keys = [
+      "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g="
+    ];
+    ## Isolate the build.
+    registries = false;
+    sandbox = "relaxed";
   };
-  outputs = { self, nixpkgs, flake-utils, concat, linear-base, yaya
-    , ghc-typelits-natnormalise, hlint, ghc-lib-parser-ex }:
-    flake-utils.lib.eachSystem flake-utils.lib.allSystems (system:
-      let
-        haskellLib = (import nixpkgs { inherit system; }).haskell.lib;
-        overlay_deps = final: prev: {
-          haskellPackages = prev.haskellPackages.override (old: {
-            overrides =
-              final.lib.composeExtensions (old.overrides or (_: _: { }))
-              (self: super:
-                { # test is broken for some GHC versions.
-                  "PyF" = haskellLib.dontCheck super.PyF;
-                  # test is broken.
-                  "barbies" = haskellLib.dontCheck super.barbies;
-                  # found the test is flaky.
-                  "hls-pragmas-plugin" =
-                    haskellLib.dontCheck super.hls-pragmas-plugin;
-                  # linear-base 0.2.0
-                  "linear-base" =
-                    self.callCabal2nix "linear-base" linear-base { };
-                  # yaya 0.4.2.1
-                  "yaya" = self.callCabal2nix "yaya" (yaya + "/core") { };
-                } // (prev.lib.optionalAttrs
-                  (prev.haskellPackages.ghc.version == "9.2.1") {
-                    # loose base bound
-                    "boring" = haskellLib.doJailbreak super.boring;
-                    # fin-0.2.1
-                    "fin" = haskellLib.doJailbreak super.fin;
-                    # ghc-lib-parser-ex-9.2.0.3
-                    "ghc-lib-parser-ex" =
-                      self.callCabal2nix "ghc-lib-parser-ex" ghc-lib-parser-ex
-                      { };
-                    # loosen ghc-bignum bound on GHC-9.2.1
-                    "ghc-typelits-natnormalise" =
-                      self.callCabal2nix "ghc-typelits-natnormalise"
-                      ghc-typelits-natnormalise { };
-                    # hlint-3.4
-                    "hlint" = self.callCabal2nix "hlint" hlint { };
-                    # loosen base bound on GHC-9.2.1
-                    "some" = haskellLib.doJailbreak super.some;
-                    # loosen base bound on GHC-9.2.1
-                    "universe-base" = super.universe-base_1_1_3;
-                    # loosen base bound on GHC-9.2.1
-                    "vec" = haskellLib.doJailbreak super.vec;
-                  }));
-          });
-        };
 
-        parseCabalProject = import ./parse-cabal-project.nix;
-        categorifierPackages = parseCabalProject ./cabal.project;
-        categorifierPackageNames =
-          builtins.map ({ name, ... }: name) categorifierPackages;
-        haskellOverlay = self: super:
-          builtins.listToAttrs (builtins.map ({ name, path }: {
-            inherit name;
-            value =
-              let p = self.callCabal2nix name (./. + "/${path}") { };
-              in haskellLib.appendConfigureFlag p "--ghc-options=-Werror";
-          }) categorifierPackages);
+  ### This is a complicated flake. Here’s the rundown:
+  ###
+  ### overlays.default – includes all of the packages from cabal.project
+  ### packages = {
+  ###   default = points to `packages.${defaultGhcVersion}`
+  ###   <ghcVersion>-<cabal-package> = an individual package compiled for one
+  ###                                  GHC version
+  ###   <ghcVersion>-all = all of the packages in cabal.project compiled for one
+  ###                      GHC version
+  ### };
+  ### devShells = {
+  ###   default = points to `devShells.${defaultGhcVersion}`
+  ###   <ghcVersion> = a shell providing all of the dependencies for all
+  ###                  packages in cabal.project compiled for one GHC version
+  ### };
+  ### checks.format = verify that code matches Ormolu expectations
+  outputs = {
+    concat,
+    flake-utils,
+    flaky,
+    nixpkgs,
+    self,
+  }: let
+    pname = "categorifier";
 
+    supportedSystems = flaky.lib.defaultSystems;
+
+    cabalPackages = pkgs: hpkgs:
+      concat.lib.cabalProject2nix
+      ./cabal.project
+      pkgs
+      hpkgs
+      (old: {
+        configureFlags = old.configureFlags ++ ["--ghc-options=-Werror"];
+      });
+  in
+    {
+      schemas = {
+        inherit
+          (flaky.schemas)
+          overlays
+          homeConfigurations
+          packages
+          devShells
+          projectConfigurations
+          checks
+          formatter
+          ;
+      };
+
+      overlays = {
+        default =
+          concat.lib.overlayHaskellPackages
+          self.lib.supportedGhcVersions
+          self.overlays.haskellWithDependencies;
+
+        haskell = concat.lib.haskellOverlay cabalPackages;
+
+        haskellWithDependencies = final: prev:
+          nixpkgs.lib.composeManyExtensions [
+            (hfinal: hprev: {
+              #the included 0.3.1 no longer supports GHC 9.0
+              "linear-base" = hprev.callHackageDirect {
+                pkg = "linear-base";
+                ver = "0.3.0";
+                sha256 = "StvR4D8AwJUXhJE4PasvUq0N0oEQgl/FR4LbDUojBfE=";
+              } {};
+            })
+            (concat.overlays.haskell final prev)
+            ## TODO: I think this overlay is only needed by formatters, devShells, etc., so it
+            ##       shouldn’t be included in the standard overlay.
+            (flaky.overlays.haskell-dependencies final prev)
+            (self.overlays.haskell final prev)
+          ];
+      };
+
+      homeConfigurations =
+        builtins.listToAttrs
+        (builtins.map
+          (flaky.lib.homeConfigurations.example
+            pname
+            self
+            [
+              ({pkgs, ...}: {
+                home.packages = [
+                  ## TODO: This should use `pkgs.haskellPackages`, but
+                  ##       Categorifier doesn’t yet support GHC 9.4.
+                  (pkgs.haskell.packages.${self.lib.defaultCompiler}.ghcWithPackages (hpkgs: [
+                    hpkgs.categorifier-adjunctions-integration
+                    hpkgs.categorifier-categories-integration
+                    hpkgs.categorifier-category
+                    hpkgs.categorifier-client
+                    hpkgs.categorifier-concat-extensions-category
+                    hpkgs.categorifier-concat-extensions-integration
+                    hpkgs.categorifier-concat-integration
+                    hpkgs.categorifier-fin-integration
+                    hpkgs.categorifier-plugin
+                    hpkgs.categorifier-unconcat-category
+                    hpkgs.categorifier-unconcat-integration
+                    hpkgs.categorifier-vec-integration
+                  ]))
+                ];
+              })
+            ])
+          supportedSystems);
+
+      lib = {
+        ## TODO: Extract this automatically from `pkgs.haskellPackages`.
+        defaultCompiler = "ghc928";
+
+        ## Test the oldest revision possible for each minor release. If it’s not
+        ## available in nixpkgs, test the oldest available, then try an older
+        ## one via GitHub workflow. Additionally, check any revisions that have
+        ## explicit conditionalization. And check whatever version `pkgs.ghc`
+        ## maps to in the nixpkgs we depend on.
+        testedGhcVersions = [
+          self.lib.defaultCompiler
+          # NB: need 8.10.7 specifically, because there's an API breakage that
+          #     affects only it
+          "ghc8107"
+          # "ghcHEAD" # Not yet covered by dependency ranges
+        ];
+
+        ## The versions that are older than those supported by Nix that we
+        ## prefer to test against.
+        nonNixTestedGhcVersions = [
+          "8.10.1"
+          "9.0.1"
+          "9.2.1"
+          "9.2.2" # there's an API breakage introduced here
+        ];
+
+        ## However, provide packages in the default overlay for _every_
+        ## supported version.
+        supportedGhcVersions =
+          self.lib.testedGhcVersions
+          ++ [
+            "ghc902"
+            "ghc924"
+            "ghc925"
+            "ghc926"
+            "ghc927"
+          ];
+      };
+    }
+    // flake-utils.lib.eachSystem supportedSystems (system: let
+      pkgs = import nixpkgs {
+        inherit system;
         # see these issues and discussions:
         # - https://github.com/NixOS/nixpkgs/issues/16394
         # - https://github.com/NixOS/nixpkgs/issues/25887
         # - https://github.com/NixOS/nixpkgs/issues/26561
         # - https://discourse.nixos.org/t/nix-haskell-development-2020/6170
-        fullOverlays = [
-          overlay_deps
-          (final: prev: {
-            haskellPackages = prev.haskellPackages.override (old: {
-              overrides =
-                final.lib.composeExtensions (old.overrides or (_: _: { }))
-                haskellOverlay;
-            });
-          })
-        ];
+        overlays = [self.overlays.default];
+      };
+    in {
+      packages =
+        {default = self.packages.${system}."${self.lib.defaultCompiler}_all";}
+        // concat.lib.mkPackages pkgs self.lib.testedGhcVersions cabalPackages;
 
-      in {
-        # This package set is only useful for CI build test.
-        # In practice, users will create a development environment composed by overlays.
-        packages = let
-          packagesOnGHC = ghcVer:
-            let
-              overlayGHC = final: prev: {
-                haskellPackages = prev.haskell.packages.${ghcVer};
-              };
+      devShells =
+        ## TODO: determine why devShells are failing on i686.
+        if system != "i686-linux"
+        then
+          {default = self.devShells.${system}.${self.lib.defaultCompiler};}
+          // (
+            concat.lib.mkDevShells
+            pkgs
+            self.lib.testedGhcVersions
+            cabalPackages
+            (hpkgs:
+              [
+                self.projectConfigurations.${system}.packages.path
+                pkgs.cabal-install
+              ]
+              ## NB: Haskell Language Server no longer supports GHC <9.
+              ++ nixpkgs.lib.optional
+              (nixpkgs.lib.versionAtLeast hpkgs.ghc.version "9")
+              hpkgs.haskell-language-server)
+          )
+        else {};
 
-              newPkgs = import nixpkgs {
-                overlays = [ overlayGHC (concat.overlay.${system}) ]
-                  ++ fullOverlays;
-                inherit system;
-                config.allowBroken = true;
-              };
+      projectConfigurations =
+        flaky.lib.projectConfigurations.default {inherit pkgs self;};
 
-              individualPackages = builtins.listToAttrs (builtins.map
-                ({ name, ... }: {
-                  name = ghcVer + "_" + name;
-                  value = builtins.getAttr name newPkgs.haskellPackages;
-                }) categorifierPackages);
+      checks = self.projectConfigurations.${system}.checks;
+      formatter = self.projectConfigurations.${system}.formatter;
+    });
 
-              allEnv = let
-                hsenv = newPkgs.haskellPackages.ghcWithPackages (p:
-                  let
-                    deps = builtins.map ({ name, ... }: p.${name})
-                      categorifierPackages;
-                  in deps);
-              in newPkgs.buildEnv {
-                name = "all-packages";
-                paths = [ hsenv ];
-              };
-            in individualPackages // { "${ghcVer}_all" = allEnv; };
+  inputs = {
+    # Currently contains our Haskell/Nix lib that should be extracted into its
+    # own flake.
+    concat = {
+      inputs = {
+        ## TODO: The version currently used by concat doesn’t support i686-linux.
+        bash-strict-mode.follows = "flaky/bash-strict-mode";
+        flake-utils.follows = "flake-utils";
+        nixpkgs.follows = "nixpkgs";
+      };
+      url = "github:compiling-to-categories/concat";
+    };
 
-        in packagesOnGHC "ghc8107" // packagesOnGHC "ghc884"
-        // packagesOnGHC "ghc901" // packagesOnGHC "ghc921"
-        // packagesOnGHC "ghcHEAD";
+    flake-utils.url = "github:numtide/flake-utils";
 
-        overlays = fullOverlays;
+    flaky = {
+      inputs = {
+        flake-utils.follows = "flake-utils";
+        nixpkgs.follows = "nixpkgs";
+      };
+      url = "github:sellout/flaky";
+    };
 
-        devShells = let
-          mkDevShell = ghcVer:
-            let
-              overlayGHC = final: prev: {
-                haskellPackages = prev.haskell.packages.${ghcVer};
-              };
-
-              newPkgs = import nixpkgs {
-                # Here we use the full overlays from this flake, but the categorifier-*
-                # packages will not be provided in the shell. The overlay is only used
-                # to extract dependencies.
-                overlays = [ overlayGHC concat.overlay.${system} ]
-                  ++ fullOverlays;
-                inherit system;
-                # linear-generics is broken upstream
-                config.allowBroken = true;
-              };
-
-            in newPkgs.haskellPackages.shellFor {
-              packages = ps:
-                builtins.map (name: ps.${name}) categorifierPackageNames;
-              buildInputs =
-                # For these CLI tools, we use nixpkgs default
-                [
-                  newPkgs.haskell.packages.ghc8107.cabal-install
-                  newPkgs.haskell.packages.ghc8107.hlint
-                ] ++
-                # haskell-language-server on GHC 9.2.1 is broken yet.
-                newPkgs.lib.optional (ghcVer != "ghc921")
-                [ newPkgs.haskell-language-server ];
-              withHoogle = false;
-            };
-        in {
-          "default" = mkDevShell "ghc901";
-          "ghc8107" = mkDevShell "ghc8107";
-          "ghc901" = mkDevShell "ghc901";
-          "ghc921" = mkDevShell "ghc921";
-        };
-      });
+    nixpkgs.url = "github:NixOS/nixpkgs/release-23.11";
+  };
 }

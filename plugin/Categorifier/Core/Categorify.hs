@@ -183,11 +183,11 @@ categorify
                       joinD $
                         composeCat makers
                           <$> mkCoerce makers b' b
-                          <*\> joinD
-                            (composeCat makers <$> categorifyFun from <*\> mkCoerce makers a a')
+                            <*\> joinD
+                              (composeCat makers <$> categorifyFun from <*\> mkCoerce makers a a')
                   )
                     <$> extractTypes from
-                    <*\> extractTypes to
+                      <*\> extractTypes to
               Plugins.Refl {} -> categorifyFun from
               Plugins.TransCo inner outer ->
                 categorifyFun $ Plugins.Cast (Plugins.Cast from inner) outer -- NON-INDUCTIVE
@@ -305,7 +305,7 @@ categorify
                               baseMakers
                               (Plugins.exprType head)
                               (Plugins.exprType (Plugins.mkTyApps head tyArgs))
-                            <*\> pure head
+                              <*\> pure head
                         handleExtraArgs makers name otherArgs =<\< categorifyLambda name headCoerced
                     | otherwise ->
                         -- If we are dealing with something like
@@ -426,15 +426,15 @@ categorify
                       joinD $
                         composeCat makers
                           <$> mkIf makers typ
-                          <*\> joinD
-                            ( forkCat makers
-                                <$> categorifyLambda name scrut
-                                <*\> joinD
-                                  ( forkCat makers
-                                      <$> categorifyLambda name rhsT
-                                      <*\> categorifyLambda name rhsF
-                                  )
-                            )
+                            <*\> joinD
+                              ( forkCat makers
+                                  <$> categorifyLambda name scrut
+                                    <*\> joinD
+                                      ( forkCat makers
+                                          <$> categorifyLambda name rhsT
+                                            <*\> categorifyLambda name rhsF
+                                      )
+                              )
               -- @Data.Constraint.Dict@ contains a constraint, so it can't have a
               -- @HasRep@ instance. Here we handle it as a special case.
               [Plugins.Alt (Plugins.DataAlt dc) [v] rhs]
@@ -625,7 +625,7 @@ binder type: {dbg bt}
             joinD $
               composeCat makers
                 <$> mkCoerce makers (Plugins.exprType from) (Plugins.exprType to)
-                <*\> categorifyLambda name from
+                  <*\> categorifyLambda name from
           Plugins.Tick tickish body -> Plugins.Tick tickish <$> categorifyLambda name body
           -- This case is covered by "constant as abstraction body", but hard to convince GHC of
           -- that, so we duplicate the relevant logic here.
@@ -678,7 +678,9 @@ binder type: {dbg bt}
             -- Here we expect `simplifyFun` to apply the `let`-substitution and
             -- case-of-known-constructor transformations.
             categorifyLambda name
-              <=\< simplifyFun dflags logger [] . Plugins.mkLams binds . Plugins.App abst
+              <=\< simplifyFun dflags logger []
+              . Plugins.mkLams binds
+              . Plugins.App abst
               $ Plugins.App repr body
       -- `HasRep` is special to the plugin. We need to ensure the operations /don't/ inline in some
       -- cases and the must be /fully/ inlined in others. We wrap the methods in functions so we can
@@ -752,7 +754,7 @@ binder type: {dbg bt}
 
       handleExtraArgs m = handleAdditionalArgs m . categorifyLambda
 
-      thump :: Plugins.Outputable a => Plugins.SDoc -> a -> String
+      thump :: (Plugins.Outputable a) => Plugins.SDoc -> a -> String
       thump label term =
         renderSDoc dflags $
           Plugins.sep [label Plugins.<> ":", Plugins.nest 2 $ Plugins.ppr term]
@@ -997,7 +999,7 @@ binder type: {dbg bt}
                 target
               $ takeWhile isTypeOrPred args
 
-      dbg :: Plugins.Outputable a => a -> String
+      dbg :: (Plugins.Outputable a) => a -> String
       dbg = renderSDoc dflags . Plugins.ppr
 
       -- Try `mkConst'`. If the required `ConstCat` instance doesn't exist, retry
@@ -1056,8 +1058,8 @@ binder type: {dbg bt}
             sameTyVar :: (Plugins.Var, Plugins.Type) -> Bool
             sameTyVar (var, Plugins.TyVarTy var') = var == var'
             sameTyVar _ = False
-        unless (length exprTyBinders == length tyArgs) $
-          throwE . pure $ InvalidUnfixTyArgs name exprTyBinders tyArgs
+        unless (length exprTyBinders == length tyArgs) . throwE . pure $
+          InvalidUnfixTyArgs name exprTyBinders tyArgs
         newExpr <-
           -- I don't know why @subst@ doesn't do what we want, but this does. It uses
           -- `Plugins.substExpr` to apply (potentially multiple) substitutions over an
@@ -1130,8 +1132,8 @@ binder type: {dbg bt}
               . ( go onMissingUnfolding pure lets
                     . uncurry Plugins.mkCoreApps
                     <=\< bitraverse (simplifyFun dflags logger [Plugins.Rules]) pure
-                      . uncurry (applyTyAndPredArgs varUnfoldingFun)
-                      . Plugins.collectArgs
+                    . uncurry (applyTyAndPredArgs varUnfoldingFun)
+                    . Plugins.collectArgs
                 )
           )
           onNonVar

@@ -104,22 +104,8 @@ import FamInstEnv
 import GhcPlugins () -- to get the orphan @instance `MonadThings` `CoreM`@
 import MkCore
 import OccurAnal
-#if MIN_VERSION_ghc(8, 10, 0)
 import Predicate
 import TyCoRep
-#else
-import Id as Predicate hiding (mkSysLocal)
-import TyCoRep hiding
-  ( extendCvSubst,
-    extendTvSubst,
-    extendTvSubstList,
-    isInScope,
-    substCo,
-    substCoVarBndr,
-    substTy,
-    substTyVarBndr,
-  )
-#endif
 import SimplCore hiding (simplifyExpr)
 import qualified SimplCore
 import SimplEnv
@@ -179,7 +165,6 @@ funTy a b = mkTyConApp funTyCon [typeKind a, typeKind b, a, b]
 --    Here we need two dictionaries, not three, i.e., it should only proceed if the
 --    arrow is "=>", not "->".
 invisFunArg :: Type -> Maybe Type
-#if MIN_VERSION_ghc(8, 10, 0)
 invisFunArg ty | Just ty' <- coreView ty = invisFunArg ty'
 #if MIN_VERSION_ghc(9, 0, 0)
 invisFunArg (TyCoRep.FunTy InvisArg _ arg _) = Just arg
@@ -187,10 +172,6 @@ invisFunArg (TyCoRep.FunTy InvisArg _ arg _) = Just arg
 invisFunArg (TyCoRep.FunTy InvisArg arg _) = Just arg
 #endif
 invisFunArg _ = Nothing
-#else
-invisFunArg =
-  (\(arg, _) -> if isPredTy arg then pure arg else Nothing) <=< splitFunTy_maybe
-#endif
 
 -- | Make a unique identifier for a specified type, using a provided name.
 localId :: InScopeEnv -> String -> Type -> Types.Id
@@ -374,7 +355,7 @@ pprCoercion (TyCoRep.KindCo co) = "KindCo" <+> nestedCo co
 pprCoercion (TyCoRep.SubCo coN) = "SubCo" <+> nestedCo coN
 pprCoercion (TyCoRep.HoleCo coH) = "HoleCo" <+> Utils.ppr coH
 
-nestedCo :: Utils.Outputable (Unpretty a) => a -> Utils.SDoc
+nestedCo :: (Utils.Outputable (Unpretty a)) => a -> Utils.SDoc
 nestedCo = Utils.parens . Utils.ppr . Unpretty
 
 instance Utils.Outputable (Unpretty MCoercion) where

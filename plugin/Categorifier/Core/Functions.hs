@@ -15,11 +15,11 @@ where
 import qualified Categorifier.Client as Client
 
 -- | Lower `abst` from a method to a function, for inlining purposes.
-abst :: Client.HasRep a => Client.Rep a -> a
+abst :: (Client.HasRep a) => Client.Rep a -> a
 abst = Client.abst
 {-# INLINE [0] abst #-}
 
 -- | Lower `repr` from a method to a function, for inlining purposes.
-repr :: Client.HasRep a => a -> Client.Rep a
+repr :: (Client.HasRep a) => a -> Client.Rep a
 repr = Client.repr
 {-# INLINE [0] repr #-}

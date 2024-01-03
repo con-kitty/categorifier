@@ -53,6 +53,9 @@ import qualified Prelude.Linear
 import qualified Streaming.Prelude.Linear
 import qualified Unsafe.Linear
 
+-- TODO: Remove after this module is re-enabled
+{-# ANN module "HLint: ignore" #-}
+
 -- These instances are pushed upstream in https://github.com/tweag/linear-base/pull/416 and should
 -- be in any release of linear-base >0.2.0
 
@@ -107,9 +110,9 @@ deriving instance Show (Data.V.Linear.V n a)
 
 deriving instance Foldable (Data.V.Linear.V n)
 
-deriving instance KnownNat n => Traversable (Data.V.Linear.V n)
+deriving instance (KnownNat n) => Traversable (Data.V.Linear.V n)
 
-instance KnownNat n => Applicative (Data.V.Linear.V n) where
+instance (KnownNat n) => Applicative (Data.V.Linear.V n) where
   pure = Data.Functor.Linear.pure
   Data.V.Linear.Internal.V fs <*> Data.V.Linear.Internal.V xs =
     Data.V.Linear.Internal.V $ Vector.zipWith (\f x -> f $ x) fs xs
@@ -228,7 +231,7 @@ makerMapFun
                   pure . joinD $
                     applyEnriched' [u, v] rest
                       <$> mkJoin (nameTuple a1) (nameTuple a2) b
-                      <*\> mkDistl (Plugins.varType n) a1 a2
+                        <*\> mkDistl (Plugins.varType n) a1 a2
                 _ -> Nothing
             ),
             ( '(Data.Functor.Linear.<*>),
@@ -294,7 +297,7 @@ makerMapFun
                     pure . joinD $
                       applyEnriched' [u] rest
                         <$> mkTraverse t f (nameTuple a) b
-                        <*\> mkStrength t (Plugins.varType n) a
+                          <*\> mkStrength t (Plugins.varType n) a
                 _ -> Nothing
             ),
             ( '(Data.List.Linear.++),
@@ -325,7 +328,7 @@ makerMapFun
                      in pure . joinD $
                           applyEnriched' [u] rest
                             <$> mkTraverse list f (nameTuple a) b
-                            <*\> mkStrength list (Plugins.varType n) a
+                              <*\> mkStrength list (Plugins.varType n) a
                 _ -> Nothing
             ),
             ( '(Data.Monoid.Linear.<>),
@@ -447,13 +450,13 @@ makerMapFun
                   pure . joinD $
                     applyEnriched rest
                       <$> mkCurry (nameTuple a1) a2 b
-                      <*\> mkId (nameTuple a1)
-                      <*\> sequenceA
-                        [ joinD $
-                            composeCat m
-                              <$> (uncurryCat m =<\< categorifyLambda u)
-                              <*\> mkRAssoc (Plugins.varType n) a1 a2
-                        ]
+                        <*\> mkId (nameTuple a1)
+                        <*\> sequenceA
+                          [ joinD $
+                              composeCat m
+                                <$> (uncurryCat m =<\< categorifyLambda u)
+                                  <*\> mkRAssoc (Plugins.varType n) a1 a2
+                          ]
                 _ -> Nothing
             ),
             ( 'Data.Tuple.Linear.fst,
@@ -488,7 +491,7 @@ makerMapFun
                     pure . joinD $
                       applyEnriched' [u] rest
                         <$> mkUncurry (nameTuple a1) a2 b
-                        <*\> mkLAssoc (Plugins.varType n) a1 a2
+                          <*\> mkLAssoc (Plugins.varType n) a1 a2
                 _ -> Nothing
             ),
             ( '(Data.V.Linear.<*>),
@@ -542,19 +545,20 @@ makerMapFun
                           joinD $
                             applyEnriched rest
                               <$> mkCompose (nameTuple a) (nameTuple b) c
-                              <*\> mkId (nameTuple a)
-                              <*\> sequenceA
-                                [ uncurryCat m =<\< categorifyLambda f,
-                                  joinD $
-                                    forkCat m
-                                      <$> mkExl (Plugins.varType n) a
-                                      <*\> (uncurryCat m =<\< categorifyLambda g)
-                                ]
+                                <*\> mkId (nameTuple a)
+                                <*\> sequenceA
+                                  [ uncurryCat m =<\< categorifyLambda f,
+                                    joinD $
+                                      forkCat m
+                                        <$> mkExl (Plugins.varType n) a
+                                          <*\> (uncurryCat m =<\< categorifyLambda g)
+                                  ]
                         Just fn ->
                           handleExtraArgs rest
                             =<\< joinD
-                              ( fn (Plugins.varType n) b c a <$> categorifyLambda f
-                                  <*\> categorifyLambda g
+                              ( fn (Plugins.varType n) b c a
+                                  <$> categorifyLambda f
+                                    <*\> categorifyLambda g
                               )
                 _ -> Nothing
             ),
@@ -596,13 +600,13 @@ makerMapFun
                 <$> ( curryCat m
                         =<\< ( Plugins.App
                                  <$> mkLiftA2 f (nameTuple a) b c
-                                 <*\> ( uncurryCat m
-                                          =<\< uncurryCat m
-                                          =<\< categorifyLambda u
-                                      )
+                                   <*\> ( uncurryCat m
+                                            =<\< uncurryCat m
+                                            =<\< categorifyLambda u
+                                        )
                              )
                     )
-                <*\> mkStrength f (Plugins.varType n) a
+                  <*\> mkStrength f (Plugins.varType n) a
             )
       -- from: (\n -> fmap {{u}}) :: n -> f a -> f b
       -- to:   curry (fmap (uncurry (categorifyLambda n {{u}})) . strength) ::
@@ -611,7 +615,7 @@ makerMapFun
         joinD $
           applyEnriched' [u] rest
             <$> mkMap f (nameTuple a) b
-            <*\> mkStrength f (Plugins.varType n) a
+              <*\> mkStrength f (Plugins.varType n) a
       applyEnriched = applyEnrichedCat m categorifyLambda
       applyEnriched' = applyEnrichedCat' m categorifyLambda
       nameTuple = makeTupleTyWithVar n

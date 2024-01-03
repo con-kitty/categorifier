@@ -13,7 +13,7 @@ module Main
   )
 where
 
-import Categorifier.Hedgehog (genFloating)
+import Categorifier.Hedgehog (genFloating, genIntegralBounded)
 import Categorifier.Test.ConCatExtensions.Instances (Hask (..), Term)
 import Categorifier.Test.HList (HMap1 (..))
 import Categorifier.Test.Tests
@@ -31,7 +31,6 @@ import qualified Data.Type.Nat as Nat
 import Data.Vec.Lazy (Vec (..))
 import qualified Data.Vec.Lazy as Vec
 import GHC.Word (Word8)
-import qualified Hedgehog.Gen as Gen
 import System.Exit (exitFailure, exitSuccess)
 
 -- For @NoRebindableSyntax@
@@ -49,14 +48,24 @@ mkTestTerms
     ( TestCases
         ( const
             [ ( [t|Double|],
-                pure ([|fmap (\x -> (x, pure)) . sequenceA $ pure genFloating|], [|show . fst|])
+                pure ([|fmap (,pure) . sequenceA $ pure genFloating|], [|show . fst|])
               )
             ]
         )
     )
   . HInsert1
     (Proxy @"IndexVec")
-    (TestCases (const [([t|Word8|], pure ([|(,) <$> sequenceA (Vec.tabulate $ const Gen.enumBounded) <*> Gen.enumBounded|], [|show|]))]))
+    ( TestCases
+        ( const
+            [ ( [t|Word8|],
+                pure
+                  ( [|(,) <$> sequenceA (Vec.tabulate $ const genIntegralBounded) <*> genIntegralBounded|],
+                    [|show|]
+                  )
+              )
+            ]
+        )
+    )
   . HInsert1
     (Proxy @"MapVec")
     (TestCases (const [([t|Double|], pure ([|sequenceA $ pure genFloating|], [|show|]))]))
@@ -69,7 +78,7 @@ mkTestTerms
         ( const
             [ ( [t|Word8|],
                 pure
-                  ( [|fmap (Vec.!) . sequenceA $ pure Gen.enumBounded|],
+                  ( [|fmap (Vec.!) . sequenceA $ pure genIntegralBounded|],
                     [|show . (<$> Vec.universe)|]
                   )
               )
@@ -81,10 +90,10 @@ mkTestTerms
     ( TestCases
         ( const
             [ ( ([t|Identity|], [t|Word8|]),
-                pure ([|sequenceA (pure Gen.enumBounded)|], [|show|])
+                pure ([|sequenceA (pure genIntegralBounded)|], [|show|])
               ),
               ( ([t|Vec Nat.Nat9|], [t|Word8|]),
-                pure ([|sequenceA (pure Gen.enumBounded)|], [|show|])
+                pure ([|sequenceA (pure genIntegralBounded)|], [|show|])
               )
             ]
         )

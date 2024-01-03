@@ -97,7 +97,7 @@ instance ConCat.EqCat Term a where
   equal = ZeroId
 
 -- | Overconstrained, because the class in ConCat is overconstrained.
-instance Ord a => ConCat.OrdCat Term a where
+instance (Ord a) => ConCat.OrdCat Term a where
   lessThan = ZeroId
 
 instance ConCat.MinMaxCat Term a where
@@ -132,6 +132,7 @@ instance ConCat.FloatingCat Term a where
   logC = ZeroId
   sinC = ZeroId
   sqrtC = ZeroId
+  tanhC = ZeroId
 
 instance ConCat.AddCat Term m a where
   sumAC = ZeroId
@@ -176,7 +177,7 @@ instance ConCat.BoolCat Hask where
   notC = Hask not
   andC = Hask $ uncurry (&&)
   orC = Hask $ uncurry (||)
-  xorC = Hask $ \(a, b) -> a /= b
+  xorC = Hask $ uncurry (/=)
 
 instance ConCat.AssociativePCat Hask
 
@@ -199,65 +200,66 @@ instance ConCat.ClosedCat Hask where
 instance ConCat.OkFunctor Hask f where
   okFunctor = ConCat.Entail (Sub Dict)
 
-instance ConCat.FunctorCat (->) f => ConCat.FunctorCat Hask f where
+instance (ConCat.FunctorCat (->) f) => ConCat.FunctorCat Hask f where
   fmapC (Hask fn) = Hask (ConCat.fmapC fn)
   unzipC = Hask ConCat.unzipC
 
-instance ConCat.Strong (->) f => ConCat.Strong Hask f where
+instance (ConCat.Strong (->) f) => ConCat.Strong Hask f where
   strength = Hask ConCat.strength
 
-instance ConCat.TraversableCat (->) t f => ConCat.TraversableCat Hask t f where
+instance (ConCat.TraversableCat (->) t f) => ConCat.TraversableCat Hask t f where
   sequenceAC = Hask ConCat.sequenceAC
 
-instance Eq a => ConCat.EqCat Hask a where
+instance (Eq a) => ConCat.EqCat Hask a where
   equal = Hask ConCat.equal
   notEqual = Hask ConCat.notEqual
 
-instance Ord a => ConCat.OrdCat Hask a where
+instance (Ord a) => ConCat.OrdCat Hask a where
   lessThan = Hask ConCat.lessThan
   greaterThan = Hask ConCat.greaterThan
   lessThanOrEqual = Hask ConCat.lessThanOrEqual
   greaterThanOrEqual = Hask ConCat.greaterThanOrEqual
 
-instance Ord a => ConCat.MinMaxCat Hask a where
+instance (Ord a) => ConCat.MinMaxCat Hask a where
   minC = Hask ConCat.minC
   maxC = Hask ConCat.maxC
 
 instance (Integral a, Num b) => ConCat.FromIntegralCat Hask a b where
   fromIntegralC = Hask ConCat.fromIntegralC
 
-instance Num a => ConCat.NumCat Hask a where
+instance (Num a) => ConCat.NumCat Hask a where
   negateC = Hask ConCat.negateC
   addC = Hask ConCat.addC
   subC = Hask ConCat.subC
   mulC = Hask ConCat.mulC
   powIC = Hask ConCat.powIC
 
-instance Floating a => ConCat.FloatingCat Hask a where
+instance (Floating a) => ConCat.FloatingCat Hask a where
   cosC = Hask ConCat.cosC
   expC = Hask ConCat.expC
   logC = Hask ConCat.logC
   sinC = Hask ConCat.sinC
   sqrtC = Hask ConCat.sqrtC
+  tanhC = Hask ConCat.tanhC
 
-instance Fractional a => ConCat.FractionalCat Hask a where
+instance (Fractional a) => ConCat.FractionalCat Hask a where
   divideC = Hask ConCat.divideC
   recipC = Hask ConCat.recipC
 
-instance ConCat.RepresentableCat (->) f => ConCat.RepresentableCat Hask f where
+instance (ConCat.RepresentableCat (->) f) => ConCat.RepresentableCat Hask f where
   tabulateC = Hask ConCat.tabulateC
   indexC = Hask ConCat.indexC
 
 instance (Foldable m, Num a) => ConCat.AddCat Hask m a where
   sumAC = Hask sum
 
-instance ConCat.PointedCat (->) m a => ConCat.PointedCat Hask m a where
+instance (ConCat.PointedCat (->) m a) => ConCat.PointedCat Hask m a where
   pointC = Hask ConCat.pointC
 
 instance ConCat.BottomCat Hask a b where
   bottomC = Hask ConCat.bottomC
 
-instance Integral a => ConCat.IntegralCat Hask a where
+instance (Integral a) => ConCat.IntegralCat Hask a where
   divC = Hask ConCat.divC
   modC = Hask ConCat.modC
 

@@ -41,7 +41,7 @@ hierarchy =
 
 -- | `hierarchy` without the bits from @base@. This is just separated out for clarity. It shouldn't
 --   be public.
-hierarchy' :: Monad f => Lookup (Hierarchy f)
+hierarchy' :: (Monad f) => Lookup (Hierarchy f)
 hierarchy' = do
   let tensor = Plugins.mkTyConTy (Plugins.tupleTyCon Plugins.Boxed 2)
   let absV = Nothing

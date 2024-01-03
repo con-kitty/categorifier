@@ -35,7 +35,7 @@ import qualified GHC.Real
 
 -- Term
 
-instance Ord a => OrdCat' Term a where
+instance (Ord a) => OrdCat' Term a where
   compareK = ZeroId
 
 instance PowICat Term a where
@@ -82,11 +82,11 @@ instance LaxMonoidalFunctorCat Term m where
 instance ApplicativeCat Term m where
   apK = ZeroId
 
-instance Functor m => MonadCat Term m where
+instance (Functor m) => MonadCat Term m where
   joinK = ZeroId
   mmapK = unaryZero
 
-instance Functor m => BindableCat Term m where
+instance (Functor m) => BindableCat Term m where
   bindK = ZeroId
 
 instance TraversableCat' Term t f where
@@ -105,39 +105,39 @@ instance FixedCat Term where
 
 -- Hask
 
-instance Ord a => OrdCat' Hask a where
+instance (Ord a) => OrdCat' Hask a where
   compareK = Hask compareK
 
-instance Num a => PowICat Hask a where
+instance (Num a) => PowICat Hask a where
   powIK i = Hask (powIK i)
 
-instance LaxMonoidalFunctorCat (->) m => LaxMonoidalFunctorCat Hask m where
+instance (LaxMonoidalFunctorCat (->) m) => LaxMonoidalFunctorCat Hask m where
   liftA2K (Hask f) = Hask $ liftA2K f
 
-instance ApplicativeCat (->) m => ApplicativeCat Hask m where
+instance (ApplicativeCat (->) m) => ApplicativeCat Hask m where
   apK = Hask apK
 
-instance MonadCat (->) m => MonadCat Hask m where
+instance (MonadCat (->) m) => MonadCat Hask m where
   joinK = Hask joinK
   mmapK (Hask fn) = Hask $ mmapK fn
 
-instance BindableCat (->) m => BindableCat Hask m where
+instance (BindableCat (->) m) => BindableCat Hask m where
   bindK = Hask bindK
 
-instance TraversableCat' (->) t f => TraversableCat' Hask t f where
+instance (TraversableCat' (->) t f) => TraversableCat' Hask t f where
   traverseK (Hask fn) = Hask (traverseK fn)
 
-instance NumCat' (->) m => NumCat' Hask m where
+instance (NumCat' (->) m) => NumCat' Hask m where
   absK = Hask absK
   signumK = Hask signumK
 
-instance Integral a => IntegralCat' Hask a where
+instance (Integral a) => IntegralCat' Hask a where
   evenK = Hask evenK
   oddK = Hask oddK
   quotK = Hask quotK
   remK = Hask remK
 
-instance FloatingCat' (->) m => FloatingCat' Hask m where
+instance (FloatingCat' (->) m) => FloatingCat' Hask m where
   powK = Hask powK
 
 instance (Floating a, TranscendentalCat (->) a) => TranscendentalCat Hask a where
@@ -152,7 +152,7 @@ instance (Floating a, TranscendentalCat (->) a) => TranscendentalCat Hask a wher
   acoshK = Hask acoshK
   atanhK = Hask atanhK
 
-instance SemigroupCat (->) m => SemigroupCat Hask m where
+instance (SemigroupCat (->) m) => SemigroupCat Hask m where
   appendK = Hask appendK
 
 instance FixedCat Hask where
@@ -181,10 +181,10 @@ instance FloatingPointClassifyCat Hask Float where
 
 -- TotOrd
 
-instance Applicative f => LaxMonoidalFunctorCat TotOrd f where
+instance (Applicative f) => LaxMonoidalFunctorCat TotOrd f where
   liftA2K (TotOrd fn) = TotOrd $ liftA2K fn
 
-instance Monad f => MonadCat TotOrd f where
+instance (Monad f) => MonadCat TotOrd f where
   joinK = TotOrd joinK
   mmapK (TotOrd fn) = TotOrd $ mmapK fn
 
@@ -220,18 +220,18 @@ instance
 instance (Real a, Fractional b) => RealToFracCat TotOrd a b where
   realToFracK = TotOrd $ ConCat.Constrained GHC.Real.realToFrac
 
-instance Num a => NumCat' TotOrd a where
+instance (Num a) => NumCat' TotOrd a where
   absK = TotOrd $ ConCat.Constrained abs
 
   signumK = TotOrd $ ConCat.Constrained signum
 
-instance Integral a => IntegralCat' TotOrd a where
+instance (Integral a) => IntegralCat' TotOrd a where
   evenK = TotOrd evenK
   oddK = TotOrd oddK
   quotK = TotOrd quotK
   remK = TotOrd remK
 
-instance Semigroup m => SemigroupCat TotOrd m where
+instance (Semigroup m) => SemigroupCat TotOrd m where
   appendK = TotOrd . ConCat.Constrained $ uncurry (<>)
 
 -- | This should live in "Categorifier.ConCatExtensions", but can't until

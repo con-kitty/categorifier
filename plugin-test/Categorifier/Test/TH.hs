@@ -261,8 +261,8 @@ mkExprTest ::
   ExprTest a
 mkExprTest testName idxTy calcExpected = ExprTest $ \props arrowTy ->
   let testConfig = testName arrowTy
-   in pure $
-        zipWith
+   in pure
+        . zipWith
           ( \i (testTys, testGen) ->
               maybe
                 expectBuildFailure
@@ -275,4 +275,4 @@ mkExprTest testName idxTy calcExpected = ExprTest $ \props arrowTy ->
                 $ idxTy testTys
           )
           [0 ..]
-          $ getTestCases props (arrName arrowTy)
+        $ getTestCases props (arrName arrowTy)

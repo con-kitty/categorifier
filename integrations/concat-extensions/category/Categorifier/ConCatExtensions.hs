@@ -1,7 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableSuperClasses #-}
@@ -56,16 +55,16 @@ Potential superclass cycle for 'FModCat'
 class OrdCat' (k :: Type -> Type -> Type) a where
   compareK :: ConCat.Prod k a a `k` Ordering
 
-instance Ord a => OrdCat' (->) a where
+instance (Ord a) => OrdCat' (->) a where
   compareK = uncurry compare
 
 class LaxMonoidalFunctorCat (k :: Type -> Type -> Type) f where
   liftA2K :: forall a b c. ConCat.Prod k a b `k` c -> ConCat.Prod k (f a) (f b) `k` f c
 
-instance Applicative f => LaxMonoidalFunctorCat (->) f where
+instance (Applicative f) => LaxMonoidalFunctorCat (->) f where
   liftA2K f = uncurry . liftA2 $ curry f
 
-instance LaxMonoidalFunctorCat k f => LaxMonoidalFunctorCat (ConCat.Constrained con k) f where
+instance (LaxMonoidalFunctorCat k f) => LaxMonoidalFunctorCat (ConCat.Constrained con k) f where
   liftA2K (ConCat.Constrained fn) = ConCat.Constrained $ liftA2K fn
 
 class
@@ -76,31 +75,32 @@ class
     forall a b. (ConCat.Ok k a, ConCat.Ok k b) => ConCat.Prod k (f (ConCat.Exp k a b)) (f a) `k` f b
   apK = liftA2K (ConCat.uncurry ConCat.id) ConCat.<+ ConCat.okExp @k @a @b
 
-instance Applicative f => ApplicativeCat (->) f where
+instance (Applicative f) => ApplicativeCat (->) f where
   apK = uncurry (<*>)
 
 class (ConCat.Category k, ConCat.FunctorCat k h) => MonadCat (k :: Type -> Type -> Type) h where
   {-# MINIMAL joinK | mmapK #-}
-  joinK :: forall a. ConCat.Ok k a => h (h a) `k` h a
+  joinK :: forall a. (ConCat.Ok k a) => h (h a) `k` h a
   joinK = mmapK ConCat.id ConCat.<+ ConCat.okFunctor @k @h @a
 
   -- | This is `=<<`.
-  mmapK :: forall a b. ConCat.Ok2 k a b => a `k` h b -> h a `k` h b
+  mmapK :: forall a b. (ConCat.Ok2 k a b) => a `k` h b -> h a `k` h b
   mmapK fn =
-    joinK ConCat.. ConCat.fmapC fn
+    joinK
+      ConCat.. ConCat.fmapC fn
       ConCat.<+ ConCat.okFunctor @k @h @a
       ConCat.<+ ConCat.okFunctor @k @h @(h b)
       ConCat.<+ ConCat.okFunctor @k @h @b
 
-instance Monad h => MonadCat (->) h where
+instance (Monad h) => MonadCat (->) h where
   joinK = join
   mmapK = (=<<)
 
-instance MonadCat k f => MonadCat (ConCat.Constrained con k) f where
+instance (MonadCat k f) => MonadCat (ConCat.Constrained con k) f where
   joinK = ConCat.Constrained joinK
   mmapK (ConCat.Constrained fn) = ConCat.Constrained $ mmapK fn
 
-class MonadCat k h => BindableCat (k :: Type -> Type -> Type) h where
+class (MonadCat k h) => BindableCat (k :: Type -> Type -> Type) h where
   -- | It seems like it /should/ be possible to define a default implementation for this in terms of
   --  `MonadCat` and `ConCat.CCC`, but I think some limitations in how closed categories are modeled
   --  (i.e., they're never really self-enriched, everything is enriched in `(->)`) prevent the
@@ -110,10 +110,10 @@ class MonadCat k h => BindableCat (k :: Type -> Type -> Type) h where
     (ConCat.Ok k a, ConCat.Ok k b) =>
     ConCat.Prod k (h a) (ConCat.Exp k a (h b)) `k` h b
 
-instance Monad h => BindableCat (->) h where
+instance (Monad h) => BindableCat (->) h where
   bindK = uncurry (>>=)
 
-class ConCat.TraversableCat k t f => TraversableCat' k t f where
+class (ConCat.TraversableCat k t f) => TraversableCat' k t f where
   traverseK :: forall a b. a `k` f b -> t a `k` f (t b)
 
 instance (Traversable t, Applicative f) => TraversableCat' (->) t f where
@@ -125,7 +125,7 @@ class NumCat' (k :: Type -> Type -> Type) a where
 
   signumK :: a `k` a
 
-instance Num a => NumCat' (->) a where
+instance (Num a) => NumCat' (->) a where
   absK = abs
 
   signumK = signum
@@ -142,7 +142,7 @@ class IntegralCat' (k :: Type -> Type -> Type) a where
   quotK :: ConCat.Prod k a a `k` a
   remK :: ConCat.Prod k a a `k` a
 
-instance Integral a => IntegralCat' (->) a where
+instance (Integral a) => IntegralCat' (->) a where
   evenK = even
   oddK = odd
   quotK = uncurry quot
@@ -157,7 +157,7 @@ instance (IntegralCat' k a, con a) => IntegralCat' (ConCat.Constrained con k) a 
 class FloatingCat' (k :: Type -> Type -> Type) a where
   powK :: ConCat.Prod k a a `k` a
 
-instance Floating a => FloatingCat' (->) a where
+instance (Floating a) => FloatingCat' (->) a where
   powK = uncurry (**)
 
 instance (FloatingCat' k a, con a) => FloatingCat' (ConCat.Constrained con k) a where
@@ -168,19 +168,19 @@ class PowICat k a where
   -- Haskell, and the latter requires that `TargetOb i ~ i`, which is only true for non-primitive
   -- types like `Int` and `Integer`. Putting `i` to the left of `->` makes it work for
   -- all `Integral`s.
-  powIK :: forall i. Integral i => i -> a `k` a
+  powIK :: forall i. (Integral i) => i -> a `k` a
 
-instance Num a => PowICat (->) a where
+instance (Num a) => PowICat (->) a where
   powIK = flip (^)
 
 class SemigroupCat (k :: Type -> Type -> Type) m where
   appendK :: ConCat.Prod k m m `k` m
 
-instance Semigroup m => SemigroupCat (->) m where
+instance (Semigroup m) => SemigroupCat (->) m where
   appendK = uncurry (<>)
 
 class (ConCat.MonoidalPCat k, ConCat.TracedCat k) => FixedCat (k :: Type -> Type -> Type) where
-  fixK :: forall a x. ConCat.Ok2 k a x => ConCat.Prod k a x `k` x -> a `k` x
+  fixK :: forall a x. (ConCat.Ok2 k a x) => ConCat.Prod k a x `k` x -> a `k` x
   fixK f = ConCat.trace (f ConCat.&&& f) ConCat.<+ ConCat.okProd @k @a @x
 
 -- | If `FixedCat` moves up stream, this should be the actual default method for `ConCat.trace`.
@@ -190,7 +190,9 @@ defaultTrace ::
   ConCat.Prod k a x `k` ConCat.Prod k b x ->
   a `k` b
 defaultTrace f =
-  ConCat.exl ConCat.. f ConCat.. (ConCat.id ConCat.&&& fixK (ConCat.exr ConCat.. f))
+  ConCat.exl
+    ConCat.. f
+    ConCat.. (ConCat.id ConCat.&&& fixK (ConCat.exr ConCat.. f))
     ConCat.<+ ConCat.okProd @k @a @x
     ConCat.<+ ConCat.okProd @k @b @x
 
@@ -214,7 +216,7 @@ instance FloatingPointConvertCat (->) where
   floatToDoubleK = GHC.float2Double
   doubleToFloatK = GHC.double2Float
 
-class NumCat' k a => FloatingPointClassifyCat (k :: Type -> Type -> Type) a where
+class (NumCat' k a) => FloatingPointClassifyCat (k :: Type -> Type -> Type) a where
   isNegativeZeroK :: a `k` Bool
   isInfiniteK :: a `k` Bool
   isFiniteK :: a `k` Bool
@@ -248,7 +250,7 @@ instance
 -- | This class provides all the usual transcendental functions.  `ConCat.FloatingCat` provides the
 -- first four functions, but in order to both define a self-consistent class and not modify
 -- `ConCat.FloatingCat`, we provide the whole set here.
-class ConCat.FloatingCat k a => TranscendentalCat (k :: Type -> Type -> Type) a where
+class (ConCat.FloatingCat k a) => TranscendentalCat (k :: Type -> Type -> Type) a where
   expK :: a `k` a
   expK = ConCat.expC
   logK :: a `k` a
@@ -268,7 +270,7 @@ class ConCat.FloatingCat k a => TranscendentalCat (k :: Type -> Type -> Type) a 
   acoshK :: a `k` a
   atanhK :: a `k` a
 
-instance Floating a => TranscendentalCat (->) a where
+instance (Floating a) => TranscendentalCat (->) a where
   tanK = tan
   asinK = asin
   acosK = acos
@@ -292,16 +294,16 @@ instance (TranscendentalCat k a, con a) => TranscendentalCat (ConCat.Constrained
   acoshK = ConCat.Constrained acoshK
   atanhK = ConCat.Constrained atanhK
 
-class TranscendentalCat k a => ArcTan2Cat (k :: Type -> Type -> Type) a where
+class (TranscendentalCat k a) => ArcTan2Cat (k :: Type -> Type -> Type) a where
   arctan2K :: ConCat.Prod k a a `k` a
 
-instance RealFloat a => ArcTan2Cat (->) a where
+instance (RealFloat a) => ArcTan2Cat (->) a where
   arctan2K = uncurry atan2
 
 instance (ArcTan2Cat k a, con a) => ArcTan2Cat (ConCat.Constrained con k) a where
   arctan2K = ConCat.Constrained arctan2K
 
-class ConCat.FloatingCat k a => FModCat (k :: Type -> Type -> Type) a where
+class (ConCat.FloatingCat k a) => FModCat (k :: Type -> Type -> Type) a where
   fmodK :: ConCat.Prod k a a `k` a
 
 instance (FModCat k a, con a) => FModCat (ConCat.Constrained con k) a where
@@ -309,4 +311,4 @@ instance (FModCat k a, con a) => FModCat (ConCat.Constrained con k) a where
 
 -- | Similar to 'ConCat.ConstCat', but for constraints.
 class ConstraintCat (k :: kind -> Constraint -> Type) (c :: Constraint) where
-  constraintK :: forall a. c => a `k` c
+  constraintK :: forall a. (c) => a `k` c

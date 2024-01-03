@@ -1,39 +1,38 @@
 source-repository-package
   type: git
-  location: https://github.com/con-kitty/concat.git
-  tag: 99ee4981c096180abe99c24b12ff79e85d1817df
+  location: https://github.com/compiling-to-categories/concat.git
+  tag: d95c79d23f2728f2ab50497760195fffaf4ba675
   subdir: classes
 
 source-repository-package
   type: git
-  location: https://github.com/con-kitty/concat.git
-  tag: 99ee4981c096180abe99c24b12ff79e85d1817df
+  location: https://github.com/compiling-to-categories/concat.git
+  tag: d95c79d23f2728f2ab50497760195fffaf4ba675
   subdir: examples
 
 -- dependency of concat-classes, concat-examples
 source-repository-package
   type: git
-  location: https://github.com/con-kitty/concat.git
-  tag: 99ee4981c096180abe99c24b12ff79e85d1817df
+  location: https://github.com/compiling-to-categories/concat.git
+  tag: d95c79d23f2728f2ab50497760195fffaf4ba675
   subdir: inline
 
 -- dependency of concat-classes, concat-examples
 source-repository-package
   type: git
-  location: https://github.com/con-kitty/concat.git
-  tag: 99ee4981c096180abe99c24b12ff79e85d1817df
+  location: https://github.com/compiling-to-categories/concat.git
+  tag: d95c79d23f2728f2ab50497760195fffaf4ba675
   subdir: known
 
 -- dependency of concat-classes
 source-repository-package
   type: git
-  location: https://github.com/con-kitty/concat.git
-  tag: 99ee4981c096180abe99c24b12ff79e85d1817df
+  location: https://github.com/compiling-to-categories/concat.git
+  tag: d95c79d23f2728f2ab50497760195fffaf4ba675
   subdir: satisfy
 
--- TODO: Uncomment with Cabal 3.8
--- program-options
---   ghc-options: -Werror
+program-options
+  ghc-options: -Werror
 
 tests: True
 
@@ -63,8 +62,8 @@ packages:
   ./plugin/categorifier-plugin.cabal
   ./plugin-test/categorifier-plugin-test.cabal
   ./th/categorifier-th.cabal
--- __TODO__: Uncomment below once Cabal 3.8 is released.
--- if impl(ghc >= 9.0.0)
---   packages:
---     ./integrations/linear-base/integration/categorifier-linear-base-integration.cabal
---     ./integrations/linear-base/integration-test/categorifier-linear-base-integration-test.cabal
+--- __TODO__: Uncomment below once Cabal 3.8 is released.
+--- if impl(ghc >= 9.0.0)
+---   packages:
+---     ./integrations/linear-base/integration/categorifier-linear-base-integration.cabal
+---     ./integrations/linear-base/integration-test/categorifier-linear-base-integration-test.cabal

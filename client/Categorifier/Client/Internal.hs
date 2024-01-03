@@ -213,7 +213,7 @@ deriveHasRep' = \case
   TH.TyConI (TH.DataD ctx name tyVarBndrs _ dataCons _) ->
     first GadtProcessingFailures $ hasReps (applyType name tyVarBndrs) ctx dataCons
   TH.TyConI (TH.NewtypeD ctx name tyVarBndrs _ dataCon _) ->
-    first GadtProcessingFailures $ hasReps (applyType name tyVarBndrs) ctx $ pure dataCon
+    first GadtProcessingFailures . hasReps (applyType name tyVarBndrs) ctx $ pure dataCon
   info -> Left $ InvalidName info
   where
     applyType name = foldl' TH.AppT (TH.ConT name) . fmap (TH.VarT . TH.tyVarBndrName)
@@ -252,8 +252,8 @@ deriveHasRep' = \case
             )
             ( buildClauses id (mkNestedSums (\x -> [|Left $x|]) (\x -> [|Right $x|])) $
                 fmap thd3 cons
-            ) :
-          if overlappable then mempty else pure $ repInstD (pure type0) repTy
+            )
+            : if overlappable then mempty else pure $ repInstD (pure type0) repTy
 
     buildClauses ::
       ([TH.PatQ] -> [TH.PatQ]) -> ([TH.ExpQ] -> [TH.ExpQ]) -> [(TH.PatQ, TH.ExpQ)] -> [TH.ClauseQ]
@@ -288,7 +288,7 @@ deriveHasRep' = \case
                 fmap (`TH.conP` []) dicts <> fmap TH.VarP vars,
               pure $ foldl' (\e -> TH.AppE e . TH.VarE) (TH.ConE conName) vars
             ),
-            ( pure $ TH.conP conName . fmap TH.VarP $ toList vars,
+            ( pure . TH.conP conName . fmap TH.VarP $ toList vars,
               mkNestedPairs (\x y -> [|($x, $y)|]) [|()|] $ fmap TH.ConE dicts <> fmap TH.VarE vars
             )
           )

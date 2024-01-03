@@ -36,7 +36,7 @@ import qualified Language.Haskell.TH.Syntax as TH
 --  __NB__: This uses `mkMethodApps` even though for `functionHierarchy` they're not methods. But,
 --          this approach degrades fine -- it just means there will be no dictionaries resolved in
 --          the first attempt. If this causes performance problems, we can tighten it up later.
-hierarchy' :: Monad f => String -> String -> Lookup (Hierarchy f)
+hierarchy' :: (Monad f) => String -> String -> Lookup (Hierarchy f)
 hierarchy' pkgName moduleName = do
   let absV = Nothing
   abstCV <- pure <$> repOp 'Categorifier.Category.abstC
@@ -311,7 +311,7 @@ hierarchy' pkgName moduleName = do
   where
     identifier' n = identifier $ TH.mkNameG_v pkgName moduleName n
     repOp ::
-      Monad f =>
+      (Monad f) =>
       TH.Name ->
       Lookup
         ( (Plugins.CoreExpr -> f Plugins.CoreExpr) ->
@@ -336,7 +336,8 @@ classHierarchy :: Lookup (Hierarchy CategoryStack)
 classHierarchy = do
   hierarchy <-
     Parallel $
-      getParallel . uncurry hierarchy'
+      getParallel
+        . uncurry hierarchy'
         =<\< getParallel (globalNameComponents ''ConCat.Category.Category)
   fromIntegerV <-
     pure <$> do
@@ -361,7 +362,8 @@ functionHierarchy :: Lookup (Hierarchy CategoryStack)
 functionHierarchy = do
   hierarchy <-
     Parallel $
-      getParallel . uncurry hierarchy'
+      getParallel
+        . uncurry hierarchy'
         =<\< getParallel (globalNameComponents ''ConCat.AltCat.Category)
   fromIntegerV <-
     pure <$> do

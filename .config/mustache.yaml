@@ -1,0 +1,11 @@
+{
+  project:
+    {
+      description: "Interpret Haskell programs into any cartesian closed category.",
+      name: "categorifier",
+      repo: "con-kitty/categorifier",
+      summary: "Defining novel interpretations of Haskell programs",
+      version: "0.1.0.0",
+    },
+  type: { name: "haskell" },
+}

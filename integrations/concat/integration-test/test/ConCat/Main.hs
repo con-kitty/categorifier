@@ -39,7 +39,7 @@ module Main
   )
 where
 
-import Categorifier.Hedgehog (genFloating, genLargeIntegral)
+import Categorifier.Hedgehog (genFloating, genIntegralBounded)
 import qualified Categorifier.Test.Adjunctions as Adjunctions
 import Categorifier.Test.ConCat.Instances (Hask (..), Term)
 import Categorifier.Test.Data (One (..), Pair (..))
@@ -90,7 +90,7 @@ mkTestTerms
                        ''TotOrd -- #19
                      ]
               then []
-              else [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]
+              else [([t|Word8|], pure ([|genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1 (Proxy @"ApRep") (TestCases (const [])) -- no support for `apRep` in ConCat
@@ -103,10 +103,10 @@ mkTestTerms
               then [] -- no ClosedCat
               else
                 [ ( ([t|Identity|], [t|Word8|]),
-                    pure ([|(,) <$> Gen.enumBounded <*> pure ()|], [|show|])
+                    pure ([|(,) <$> genIntegralBounded <*> pure ()|], [|show|])
                   ),
                   ( ([t|One|], [t|Word8|]),
-                    pure ([|(,) <$> (One <$> Gen.enumBounded) <*> pure ()|], [|show|])
+                    pure ([|(,) <$> (One <$> genIntegralBounded) <*> pure ()|], [|show|])
                   )
                 ]
         )
@@ -119,17 +119,17 @@ mkTestTerms
               then [] -- no ClosedCat
               else
                 [ ( ([t|Identity|], [t|Word8|]),
-                    pure ([|const <$> Gen.enumBounded|], [|("\\() -> " <>) . show . ($ ())|])
+                    pure ([|const <$> genIntegralBounded|], [|("\\() -> " <>) . show . ($ ())|])
                   ),
                   ( ([t|One|], [t|Word8|]),
-                    pure ([|const <$> Gen.enumBounded|], [|("\\() -> " <>) . show . ($ ())|])
+                    pure ([|const <$> genIntegralBounded|], [|("\\() -> " <>) . show . ($ ())|])
                   )
                 ]
         )
     )
   -- core
-  . HInsert1 (Proxy @"LamId") (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))
-  . HInsert1 (Proxy @"ComposeLam") (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))
+  . HInsert1 (Proxy @"LamId") (TestCases (const [([t|Word8|], pure ([|genIntegralBounded|], [|show|]))]))
+  . HInsert1 (Proxy @"ComposeLam") (TestCases (const [([t|Word8|], pure ([|genIntegralBounded|], [|show|]))]))
   . HInsert1
     (Proxy @"ConstLam")
     ( TestCases
@@ -138,22 +138,22 @@ mkTestTerms
               then [] -- #19
               else
                 [ ( ([t|Int64|], [t|Word8|]),
-                    pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|])
+                    pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|])
                   )
                 ]
         )
     )
-  . HInsert1 (Proxy @"ReturnLam") (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))
-  . HInsert1 (Proxy @"BuildTuple") (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))
+  . HInsert1 (Proxy @"ReturnLam") (TestCases (const [([t|Word8|], pure ([|genIntegralBounded|], [|show|]))]))
+  . HInsert1 (Proxy @"BuildTuple") (TestCases (const [([t|Word8|], pure ([|genIntegralBounded|], [|show|]))]))
   . HInsert1
     (Proxy @"EliminateTupleFst")
     ( TestCases
-        (const [([t|Word8|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+        (const [([t|Word8|], pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))])
     )
   . HInsert1
     (Proxy @"EliminateTupleSnd")
     ( TestCases
-        (const [([t|Word8|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+        (const [([t|Word8|], pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))])
     )
   . HInsert1
     (Proxy @"EliminateNestedTuples")
@@ -161,7 +161,7 @@ mkTestTerms
         ( const
             [ ( [t|Word8|],
                 pure
-                  ( [|(,) <$> Gen.enumBounded <*> ((,) <$> Gen.enumBounded <*> Gen.enumBounded)|],
+                  ( [|(,) <$> genIntegralBounded <*> ((,) <$> genIntegralBounded <*> genIntegralBounded)|],
                     [|show|]
                   )
               )
@@ -178,7 +178,7 @@ mkTestTerms
               else
                 [ ( [t|Word8|],
                     pure
-                      ([|Gen.choice [const <$> Gen.enumBounded, pure id]|], [|const "<function>"|])
+                      ([|Gen.choice [const <$> genIntegralBounded, pure id]|], [|const "<function>"|])
                   )
                 ]
         )
@@ -189,7 +189,7 @@ mkTestTerms
         ( const
             [ ( [t|Int64|],
                 pure
-                  ([|(,) <$> Gen.bool <*> ((,) <$> Gen.enumBounded <*> Gen.enumBounded)|], [|show|])
+                  ([|(,) <$> Gen.bool <*> ((,) <$> genIntegralBounded <*> genIntegralBounded)|], [|show|])
               )
             ]
         )
@@ -199,16 +199,16 @@ mkTestTerms
     (Proxy @"Abst")
     ( TestCases
         ( const
-            [([t|Word8|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+            [([t|Word8|], pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
     (Proxy @"Repr")
     ( TestCases
-        (const [([t|Word8|], pure ([|Pair <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))])
+        (const [([t|Word8|], pure ([|Pair <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))])
     )
   -- base
-  . HInsert1 (Proxy @"Id") (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))
+  . HInsert1 (Proxy @"Id") (TestCases (const [([t|Word8|], pure ([|genIntegralBounded|], [|show|]))]))
   . HInsert1
     (Proxy @"Const")
     ( TestCases
@@ -217,7 +217,7 @@ mkTestTerms
               then [] -- #19
               else
                 [ ( ([t|Int64|], [t|Word8|]),
-                    pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|])
+                    pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|])
                   )
                 ]
         )
@@ -227,7 +227,7 @@ mkTestTerms
     ( TestCases
         ( const
             [ ( ([t|Word8|], [t|Word8|]),
-                pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|])
+                pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|])
               )
             ]
         )
@@ -242,7 +242,7 @@ mkTestTerms
                 [ ( ([t|Word8|], [t|Word8|], [t|Word8|]),
                     pure
                       ( [|
-                          (,) <$> Gen.enumBounded <*> ((,) <$> Gen.enumBounded <*> Gen.enumBounded)
+                          (,) <$> genIntegralBounded <*> ((,) <$> genIntegralBounded <*> genIntegralBounded)
                           |],
                         [|show|]
                       )
@@ -256,7 +256,7 @@ mkTestTerms
         ( const
             [ ( ([t|Word8|], [t|Word8|], [t|Word8|]),
                 pure
-                  ( [|(,) <$> Gen.enumBounded <*> ((,) <$> Gen.enumBounded <*> Gen.enumBounded)|],
+                  ( [|(,) <$> genIntegralBounded <*> ((,) <$> genIntegralBounded <*> genIntegralBounded)|],
                     [|show|]
                   )
               )
@@ -268,7 +268,7 @@ mkTestTerms
     ( TestCases
         ( const
             [ ( ([t|Word8|], [t|Int64|]),
-                pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|])
+                pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|])
               )
             ]
         )
@@ -279,7 +279,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [(([t|Int64|], [t|Word8|]), pure ([|Gen.enumBounded|], [|show|]))]
+              else [(([t|Int64|], [t|Word8|]), pure ([|genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -291,7 +291,7 @@ mkTestTerms
               else
                 [ ( ([t|Int64|], [t|Word8|]),
                     pure
-                      ( [|Gen.choice [Left <$> Gen.enumBounded, Right <$> Gen.enumBounded]|],
+                      ( [|Gen.choice [Left <$> genIntegralBounded, Right <$> genIntegralBounded]|],
                         [|show|]
                       )
                   )
@@ -308,21 +308,21 @@ mkTestTerms
               else
                 [ ( ([t|Int64|], [t|Word8|]),
                     pure
-                      ( [|Gen.choice [Left <$> Gen.enumBounded, Right <$> Gen.enumBounded]|],
+                      ( [|Gen.choice [Left <$> genIntegralBounded, Right <$> genIntegralBounded]|],
                         [|show|]
                       )
                   )
                 ]
         )
     )
-  . HInsert1 (Proxy @"Coerce") (TestCases (const [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]))
+  . HInsert1 (Proxy @"Coerce") (TestCases (const [([t|Word8|], pure ([|genIntegralBounded|], [|show|]))]))
   . HInsert1
     (Proxy @"ComposedCoerce")
     ( TestCases
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))]
+              else [([t|Word8|], pure ([|genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -340,43 +340,44 @@ mkTestTerms
                   ),
                   ( [t|Word8|],
                     pure
-                      ( [|(,,) <$> Gen.enumBounded <*> Gen.enumBounded <*> Gen.bool|],
+                      ( [|(,,) <$> genIntegralBounded <*> genIntegralBounded <*> Gen.bool|],
                         [|show|]
                       )
                   ),
                   ( [t|Word16|],
                     pure
-                      ( [|(,,) <$> Gen.enumBounded <*> Gen.enumBounded <*> Gen.bool|],
+                      ( [|(,,) <$> genIntegralBounded <*> genIntegralBounded <*> Gen.bool|],
                         [|show|]
                       )
                   ),
                   ( [t|Word32|],
                     pure
-                      ( [|(,,) <$> Gen.enumBounded <*> Gen.enumBounded <*> Gen.bool|],
+                      ( [|(,,) <$> genIntegralBounded <*> genIntegralBounded <*> Gen.bool|],
                         [|show|]
                       )
                   ),
                   ( [t|Word64|],
                     pure
                       ( [|
-                          (,,) <$> genLargeIntegral
-                            <*> genLargeIntegral
+                          (,,)
+                            <$> genIntegralBounded
+                            <*> genIntegralBounded
                             <*> Gen.bool
                           |],
                         [|show|]
                       )
                   ),
                   ( [t|Int8|],
-                    pure ([|(,,) <$> Gen.enumBounded <*> Gen.enumBounded <*> Gen.bool|], [|show|])
+                    pure ([|(,,) <$> genIntegralBounded <*> genIntegralBounded <*> Gen.bool|], [|show|])
                   ),
                   ( [t|Int16|],
-                    pure ([|(,,) <$> Gen.enumBounded <*> Gen.enumBounded <*> Gen.bool|], [|show|])
+                    pure ([|(,,) <$> genIntegralBounded <*> genIntegralBounded <*> Gen.bool|], [|show|])
                   ),
                   ( [t|Int32|],
-                    pure ([|(,,) <$> Gen.enumBounded <*> Gen.enumBounded <*> Gen.bool|], [|show|])
+                    pure ([|(,,) <$> genIntegralBounded <*> genIntegralBounded <*> Gen.bool|], [|show|])
                   ),
                   ( [t|Int64|],
-                    pure ([|(,,) <$> Gen.enumBounded <*> Gen.enumBounded <*> Gen.bool|], [|show|])
+                    pure ([|(,,) <$> genIntegralBounded <*> genIntegralBounded <*> Gen.bool|], [|show|])
                   ),
                   ( [t|Float|],
                     pure ([|(,,) <$> genFloating <*> genFloating <*> Gen.bool|], [|show|])
@@ -501,7 +502,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> Gen.bool <*> Gen.bool|], [|show|]))]
         )
     )
   . HInsert1
@@ -510,7 +511,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> Gen.bool <*> Gen.bool|], [|show|]))]
         )
     )
   . HInsert1
@@ -519,7 +520,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [([t|Int64|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [([t|Int64|], pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -528,7 +529,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [([t|Int64|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [([t|Int64|], pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -537,7 +538,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [([t|Int64|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [([t|Int64|], pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -546,7 +547,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [([t|Int64|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [([t|Int64|], pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -555,7 +556,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [([t|Int64|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [([t|Int64|], pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -564,7 +565,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [([t|Int64|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [([t|Int64|], pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -663,7 +664,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -672,7 +673,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -681,7 +682,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -690,7 +691,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -699,7 +700,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -708,7 +709,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -717,7 +718,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -726,7 +727,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -735,7 +736,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -744,7 +745,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -753,7 +754,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -762,7 +763,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -771,7 +772,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -780,7 +781,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -789,7 +790,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -798,7 +799,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -807,7 +808,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -816,7 +817,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -825,7 +826,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -834,7 +835,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -843,7 +844,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -852,7 +853,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -861,7 +862,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -870,7 +871,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -879,7 +880,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -888,7 +889,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -897,7 +898,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -906,7 +907,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -915,7 +916,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -924,7 +925,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -933,7 +934,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -942,7 +943,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -951,7 +952,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -960,7 +961,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -969,7 +970,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -978,7 +979,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -987,7 +988,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -996,7 +997,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -1005,7 +1006,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -1014,7 +1015,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -1023,7 +1024,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -1032,7 +1033,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -1041,7 +1042,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -1050,7 +1051,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -1059,7 +1060,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -1068,7 +1069,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -1077,7 +1078,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -1086,7 +1087,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -1095,7 +1096,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -1104,7 +1105,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -1113,7 +1114,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -1122,7 +1123,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -1131,7 +1132,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -1140,7 +1141,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> genLargeIntegral <*> genLargeIntegral|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -1149,7 +1150,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -1158,7 +1159,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -1167,7 +1168,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -1176,7 +1177,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -1185,7 +1186,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -1194,7 +1195,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- #19
-              else [((), pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1 (Proxy @"Compare") (TestCases (const [])) -- no support for `compare` in ConCat
@@ -1216,7 +1217,7 @@ mkTestTerms
               else [([t|Double|], pure ([|(,) <$> genFloating <*> genFloating|], [|show|]))]
         )
     )
-  . HInsert1 (Proxy @"Not") (TestCases (const [((), pure ([|Gen.enumBounded|], [|show|]))]))
+  . HInsert1 (Proxy @"Not") (TestCases (const [((), pure ([|Gen.bool|], [|show|]))]))
   . HInsert1
     (Proxy @"Plus")
     ( TestCases
@@ -1257,7 +1258,7 @@ mkTestTerms
               else
                 [ ( [t|Word8|],
                     pure
-                      ( [|(,) <$> Gen.enumBounded <*> Gen.integral (Range.linear 1 maxBound)|],
+                      ( [|(,) <$> genIntegralBounded <*> Gen.integral (Range.linear 1 maxBound)|],
                         [|show|]
                       )
                   )
@@ -1273,7 +1274,7 @@ mkTestTerms
               else
                 [ ( [t|Word8|],
                     pure
-                      ( [|(,) <$> Gen.enumBounded <*> Gen.integral (Range.linear 1 maxBound)|],
+                      ( [|(,) <$> genIntegralBounded <*> Gen.integral (Range.linear 1 maxBound)|],
                         [|show|]
                       )
                   )
@@ -1353,7 +1354,7 @@ mkTestTerms
     ( TestCases
         ( const
             [ ([t|Double|], pure ([|genFloating|], [|show|])),
-              ([t|Word8|], pure ([|Gen.enumBounded|], [|show|]))
+              ([t|Word8|], pure ([|genIntegralBounded|], [|show|]))
             ]
         )
     )
@@ -1373,8 +1374,8 @@ mkTestTerms
         -- )
         (const [])
     )
-  . HInsert1 (Proxy @"BuildLeft") (TestCases (const [(([t|Int64|], [t|Word8|]), pure ([|Gen.enumBounded|], [|show|]))]))
-  . HInsert1 (Proxy @"BuildRight") (TestCases (const [(([t|Int64|], [t|Word8|]), pure ([|Gen.enumBounded|], [|show|]))]))
+  . HInsert1 (Proxy @"BuildLeft") (TestCases (const [(([t|Int64|], [t|Word8|]), pure ([|genIntegralBounded|], [|show|]))]))
+  . HInsert1 (Proxy @"BuildRight") (TestCases (const [(([t|Int64|], [t|Word8|]), pure ([|genIntegralBounded|], [|show|]))]))
   . HInsert1
     (Proxy @"EliminateEither")
     ( TestCases
@@ -1386,7 +1387,7 @@ mkTestTerms
                     pure
                       ( [|
                           do
-                            x :: Word8 <- Gen.enumBounded
+                            x :: Word8 <- genIntegralBounded
                             Gen.element [Left x, Right x]
                           |],
                         [|show|]
@@ -1406,7 +1407,7 @@ mkTestTerms
                     pure
                       ( [|
                           do
-                            x :: Word8 <- Gen.enumBounded
+                            x :: Word8 <- genIntegralBounded
                             Gen.element [Left x, Right x]
                           |],
                         [|show|]
@@ -1423,7 +1424,7 @@ mkTestTerms
               then [] -- no ClosedCat
               else
                 [ ( ([t|Word8|], [t|Bool|]),
-                    pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|])
+                    pure ([|(,) <$> genIntegralBounded <*> Gen.bool|], [|show|])
                   )
                 ]
         )
@@ -1443,7 +1444,7 @@ mkTestTerms
                       ( [|
                           (,)
                             <$> Gen.element [const 42, id]
-                            <*> (Pair <$> Gen.enumBounded <*> Gen.enumBounded)
+                            <*> (Pair <$> genIntegralBounded <*> genIntegralBounded)
                           |],
                         [|show . snd|]
                       )
@@ -1460,7 +1461,7 @@ mkTestTerms
                        ''TotOrd -- #19
                      ]
               then []
-              else [([t|Word8|], pure ([|Pair <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [([t|Word8|], pure ([|Pair <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -1474,7 +1475,7 @@ mkTestTerms
               then []
               else
                 [ ( ([t|Pair|], [t|Word8|]),
-                    pure ([|Pair <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|])
+                    pure ([|Pair <$> genIntegralBounded <*> genIntegralBounded|], [|show|])
                   )
                 ]
         )
@@ -1488,7 +1489,7 @@ mkTestTerms
                        ''TotOrd -- #19
                      ]
               then []
-              else [([t|Word8|], pure ([|Pair <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [([t|Word8|], pure ([|Pair <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
     )
   . HInsert1
@@ -1497,7 +1498,7 @@ mkTestTerms
         ( \arrow ->
             if arrow == ''TotOrd
               then [] -- no ClosedCat
-              else [([t|Word8|], pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|]))]
+              else [([t|Word8|], pure ([|(,) <$> genIntegralBounded <*> Gen.bool|], [|show|]))]
         )
     )
   . HInsert1
@@ -1511,7 +1512,7 @@ mkTestTerms
               then []
               else
                 [ ( [t|Word8|],
-                    pure ([|Gen.list (Range.exponential 1 1024) Gen.enumBounded|], [|show|])
+                    pure ([|Gen.list (Range.exponential 1 1024) genIntegralBounded|], [|show|])
                   )
                 ]
         )
@@ -1527,7 +1528,7 @@ mkTestTerms
               then [] -- no ClosedCat
               else
                 [ ( ([t|Word8|], [t|Bool|]),
-                    pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|])
+                    pure ([|(,) <$> genIntegralBounded <*> Gen.bool|], [|show|])
                   )
                 ]
         )
@@ -1540,7 +1541,7 @@ mkTestTerms
               then [] -- no ClosedCat
               else
                 [ ( ([t|Word8|], [t|Bool|]),
-                    pure ([|(,) <$> Gen.enumBounded <*> Gen.enumBounded|], [|show|])
+                    pure ([|(,) <$> genIntegralBounded <*> Gen.bool|], [|show|])
                   )
                 ]
         )
@@ -1553,7 +1554,7 @@ mkTestTerms
               then [] -- no ClosedCat
               else
                 [ ( ([t|Sum|], [t|Product|], [t|Word8|]),
-                    pure ([|Sum . Product <$> Gen.enumBounded|], [|show|])
+                    pure ([|Sum . Product <$> genIntegralBounded|], [|show|])
                   )
                 ]
         )

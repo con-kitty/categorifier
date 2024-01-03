@@ -51,7 +51,7 @@ type Logger = Logger.Logger
 type Logger = ()
 #endif
 
-getLogger :: HasLogger m => m Logger
+getLogger :: (HasLogger m) => m Logger
 #if MIN_VERSION_ghc(9, 2, 0)
 getLogger = Logger.getLogger
 #else

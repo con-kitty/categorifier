@@ -2,7 +2,7 @@
 module Categorifier.Hedgehog
   ( floatingEq,
     genFloating,
-    genLargeIntegral,
+    genIntegralBounded,
   )
 where
 
@@ -57,7 +57,7 @@ genFloating =
     aroundPosNeg :: a -> a -> [Range.Range a]
     aroundPosNeg float size = [aroundFloat float size, aroundFloat (negate float) size]
 
--- | The enum instances for @Word*@ are bad (they do 0W ~ 0I, rather than 0W ~ (minBound :: Int)),
---   so `Gen.enumBounded` fails for large `Word` types. Instead we use these generators.
-genLargeIntegral :: (Hedgehog.MonadGen m, Bounded a, Integral a) => m a
-genLargeIntegral = Gen.integral Range.linearBounded
+-- | Like `Gen.enumBounded`, but safe for integral types larger than `Int`
+--   (which can vary based on the platform).
+genIntegralBounded :: (Hedgehog.MonadGen m, Bounded a, Integral a) => m a
+genIntegralBounded = Gen.integral Range.linearBounded

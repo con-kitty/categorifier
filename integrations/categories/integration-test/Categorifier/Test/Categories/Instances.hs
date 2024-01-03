@@ -74,33 +74,33 @@ instance Categories.Distributive Term where
 
 -- Hask
 
-instance Categories.Functor f (->) (->) => Categories.Functor f Hask Hask where
+instance (Categories.Functor f (->) (->)) => Categories.Functor f Hask Hask where
   fmap (Hask f) = Hask (Categories.fmap f)
 
-instance Categories.PFunctor f (->) (->) => Categories.PFunctor f Hask Hask where
+instance (Categories.PFunctor f (->) (->)) => Categories.PFunctor f Hask Hask where
   first (Hask f) = Hask (Categories.first f)
 
-instance Categories.QFunctor f (->) (->) => Categories.QFunctor f Hask Hask where
+instance (Categories.QFunctor f (->) (->)) => Categories.QFunctor f Hask Hask where
   second (Hask g) = Hask (Categories.second g)
 
-instance Categories.Bifunctor t (->) (->) (->) => Categories.Bifunctor t Hask Hask Hask where
+instance (Categories.Bifunctor t (->) (->) (->)) => Categories.Bifunctor t Hask Hask Hask where
   bimap (Hask f) (Hask g) = Hask (Categories.bimap f g)
 
-instance Categories.Associative (->) t => Categories.Associative Hask t where
+instance (Categories.Associative (->) t) => Categories.Associative Hask t where
   associate = Hask Categories.associate
   disassociate = Hask Categories.disassociate
 
-instance Categories.Monoidal (->) t => Categories.Monoidal Hask t where
+instance (Categories.Monoidal (->) t) => Categories.Monoidal Hask t where
   type Id Hask t = Categories.Id (->) t
   idl = Hask Categories.idl
   idr = Hask Categories.idr
   coidl = Hask Categories.coidl
   coidr = Hask Categories.coidr
 
-instance Categories.Braided (->) t => Categories.Braided Hask t where
+instance (Categories.Braided (->) t) => Categories.Braided Hask t where
   braid = Hask Categories.braid
 
-instance Categories.Symmetric (->) t => Categories.Symmetric Hask t
+instance (Categories.Symmetric (->) t) => Categories.Symmetric Hask t
 
 instance Categories.Cartesian Hask where
   type Product Hask = (,)

@@ -2,6 +2,7 @@
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 -- To avoid turning @if then else@ into `ifThenElse`.
 {-# LANGUAGE NoRebindableSyntax #-}
@@ -12,7 +13,7 @@ module Main
   )
 where
 
-import Categorifier.Hedgehog (genFloating)
+import Categorifier.Hedgehog (genFloating, genIntegralBounded)
 import qualified Categorifier.Test.Adjunctions as Adjunctions
 import Categorifier.Test.Categories.Instances (Hask (..), Term)
 import Categorifier.Test.Data (One (..))
@@ -28,7 +29,6 @@ import Data.Functor.Identity (Identity (..))
 import Data.Proxy (Proxy (..))
 import GHC.Int (Int64)
 import GHC.Word (Word8)
-import qualified Hedgehog.Gen as Gen
 import System.Exit (exitFailure, exitSuccess)
 
 -- For @NoRebindableSyntax@
@@ -44,13 +44,13 @@ mkTestTerms
   -- adjunctions
   . HInsert1 (Proxy @"PureRep") (TestCases (const [([t|Double|], pure ([|genFloating|], [|show|]))]))
   . HInsert1 (Proxy @"FmapRep") (TestCases (const []))
-  . HInsert1 (Proxy @"ApRep") (TestCases (const [([t|Int64|], pure ([|Gen.enumBounded|], [|show|]))]))
+  . HInsert1 (Proxy @"ApRep") (TestCases (const [([t|Int64|], pure ([|genIntegralBounded|], [|show|]))]))
   . HInsert1
     (Proxy @"BindRep")
     ( TestCases
         ( const
             [ ( [t|Word8|],
-                pure ([|(\x -> (x, pure)) . Identity <$> Gen.enumBounded|], [|show . fst|])
+                pure ([|(,pure) . Identity <$> genIntegralBounded|], [|show . fst|])
               )
             ]
         )
@@ -60,10 +60,10 @@ mkTestTerms
     ( TestCases
         ( const
             [ ( ([t|Identity|], [t|Word8|]),
-                pure ([|(,) <$> Gen.enumBounded <*> pure ()|], [|show|])
+                pure ([|(,) <$> genIntegralBounded <*> pure ()|], [|show|])
               ),
               ( ([t|One|], [t|Word8|]),
-                pure ([|(,) <$> (One <$> Gen.enumBounded) <*> pure ()|], [|show|])
+                pure ([|(,) <$> (One <$> genIntegralBounded) <*> pure ()|], [|show|])
               )
             ]
         )
@@ -73,10 +73,10 @@ mkTestTerms
     ( TestCases
         ( const
             [ ( ([t|Identity|], [t|Word8|]),
-                pure ([|const <$> Gen.enumBounded|], [|("\\() -> " <>) . show . ($ ())|])
+                pure ([|const <$> genIntegralBounded|], [|("\\() -> " <>) . show . ($ ())|])
               ),
               ( ([t|One|], [t|Word8|]),
-                pure ([|const <$> Gen.enumBounded|], [|("\\() -> " <>) . show . ($ ())|])
+                pure ([|const <$> genIntegralBounded|], [|("\\() -> " <>) . show . ($ ())|])
               )
             ]
         )
