@@ -73,9 +73,9 @@
 
         haskellWithDependencies = final: prev:
           nixpkgs.lib.composeManyExtensions [
-            (self: super: {
+            (hfinal: hprev: {
               #the included 0.3.1 no longer supports GHC 9.0
-              "linear-base" = self.callHackageDirect {
+              "linear-base" = hprev.callHackageDirect {
                 pkg = "linear-base";
                 ver = "0.3.0";
                 sha256 = "StvR4D8AwJUXhJE4PasvUq0N0oEQgl/FR4LbDUojBfE=";
