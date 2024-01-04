@@ -16,7 +16,6 @@ import Data.Array.Destination (DArray)
 import qualified Data.Array.Polarized.Pull as Pull
 import Data.HashMap.Mutable.Linear (HashMap)
 import Data.Monoid.Linear (Endo, NonLinear)
-import Data.Num.Linear (Adding, Multiplying)
 import Data.Profunctor.Kleisli.Linear (CoKleisli, Kleisli)
 import Data.Profunctor.Linear (Exchange, Market)
 import Data.Replicator.Linear (Replicator)
@@ -28,9 +27,10 @@ import Foreign.Marshal.Pure (Box, Pool)
 import Prelude.Linear.Generically (Generically, Generically1)
 import Streaming.Linear (Of, Stream)
 import Streaming.Prelude.Linear (Either3)
-import System.IO.Resource.Linear (Handle, RIO, UnsafeResource)
+import System.IO.Resource.Linear (RIO)
 
-deriveHasRep ''Adding
+-- import System.IO.Resource.Linear (Handle, RIO, UnsafeResource)
+
 deriveHasRep ''AsMovable
 deriveHasRep ''Box
 deriveHasRep ''CoKleisli
@@ -41,12 +41,12 @@ deriveHasRep ''Endo
 deriveHasRep ''Exchange
 deriveHasRep ''Generically
 deriveHasRep ''Generically1
-deriveHasRep ''Handle
+
+-- deriveHasRep ''Handle
 deriveHasRep ''HashMap
 deriveHasRep ''Kleisli
 deriveHasRep ''Market
 deriveHasRep ''MovableMonoid
-deriveHasRep ''Multiplying
 deriveHasRep ''NonLinear
 deriveHasRep ''Of
 deriveHasRep ''Optic_
@@ -59,7 +59,8 @@ deriveHasRep ''Replicator
 deriveHasRep ''Set
 deriveHasRep ''StateT
 deriveHasRep ''Stream
-deriveHasRep ''UnsafeResource
+
+-- deriveHasRep ''UnsafeResource
 deriveHasRep ''Ur
 deriveHasRep ''UrT
 deriveHasRep ''V
