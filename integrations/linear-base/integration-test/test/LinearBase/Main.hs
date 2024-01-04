@@ -76,7 +76,7 @@ mkTestTerms
         ( const
             [ ( ([t|Identity|], [t|Int64|], [t|Int64|]),
                 pure
-                  ( [|(,) <$> pure (Control.Functor.Linear.pure Prelude.Linear.id) <*> (pure <$> genIntegralBounded)|],
+                  ( [|(Control.Functor.Linear.pure Prelude.Linear.id,) <$> (pure <$> genIntegralBounded)|],
                     [|show . snd|]
                   )
               )
@@ -89,7 +89,7 @@ mkTestTerms
         ( const
             [ ( ([t|Identity|], [t|Int64|], [t|Int64|]),
                 pure
-                  ( [|(,) <$> pure (Control.Functor.Linear.pure Prelude.Linear.id) <*> (pure <$> genIntegralBounded)|],
+                  ( [|(Control.Functor.Linear.pure Prelude.Linear.id,) <$> (pure <$> genIntegralBounded)|],
                     [|show . snd|]
                   )
               )
@@ -102,7 +102,7 @@ mkTestTerms
         ( const
             [ ( ([t|Data.V.Linear.V 9|], [t|Int64|], [t|Int64|]),
                 pure
-                  ( [|(,) <$> pure (Data.Functor.Linear.pure Prelude.Linear.id) <*> sequenceA (pure genIntegralBounded)|],
+                  ( [|(Data.Functor.Linear.pure Prelude.Linear.id,) <$> sequenceA (pure genIntegralBounded)|],
                     [|show . snd|]
                   )
               )
@@ -117,7 +117,7 @@ mkTestTerms
               then [] -- No @`Applicative` `Replicator`@
               else
                 [ ( ([t|Int64|], [t|Int64|]),
-                    pure ([|(,) <$> pure (Control.Functor.Linear.pure Prelude.Linear.id) <*> fmap pure genIntegralBounded|], [|show|])
+                    pure ([|(Control.Functor.Linear.pure Prelude.Linear.id,) <$> fmap pure genIntegralBounded|], [|show|])
                   )
                 ]
         )
@@ -128,7 +128,7 @@ mkTestTerms
         ( const
             [ ( ([t|Int64|], [t|Int64|]),
                 pure
-                  ( [|(,) <$> pure (Data.Functor.Linear.pure Prelude.Linear.id) <*> sequenceA (pure genIntegralBounded)|],
+                  ( [|(Data.Functor.Linear.pure Prelude.Linear.id,) <$> sequenceA (pure genIntegralBounded)|],
                     [|show . snd|]
                   )
               )
@@ -186,7 +186,7 @@ mkTestTerms
     ( TestCases
         ( const
             [ ( ([t|Identity|], [t|Word8|], [t|Word8|]),
-                pure ([|(\x -> (x, Control.Functor.Linear.pure)) . Identity <$> genIntegralBounded|], [|show . fst|])
+                pure ([|(,Control.Functor.Linear.pure) . Identity <$> genIntegralBounded|], [|show . fst|])
               )
             ]
         )
@@ -245,9 +245,8 @@ mkTestTerms
             [ ( ([t|Identity|], [t|Either Word8 Word8|], [t|Word8|]),
                 pure
                   ( [|
-                      (,)
-                        <$> pure (Data.Either.Linear.either Prelude.Linear.id Prelude.Linear.id)
-                        <*> (pure <$> Gen.choice [Left <$> genIntegralBounded, Right <$> genIntegralBounded])
+                      (Data.Either.Linear.either Prelude.Linear.id Prelude.Linear.id,)
+                        <$> (pure <$> Gen.choice [Left <$> genIntegralBounded, Right <$> genIntegralBounded])
                       |],
                     [|show . snd|]
                   )
@@ -264,9 +263,8 @@ mkTestTerms
   --           [ ( ([t|[]|], [t|Either Word8 Word8|], [t|Word8|]),
   --               pure
   --                 ( [|
-  --                     (,)
-  --                       <$> pure (Data.Either.Linear.either Prelude.Linear.id Prelude.Linear.id)
-  --                       <*> Gen.list (Range.exponential 1 1024) (Gen.choice [Left <$> genIntegralBounded, Right <$> genIntegralBounded])
+  --                     (Data.Either.Linear.either Prelude.Linear.id Prelude.Linear.id,)
+  --                       <$> Gen.list (Range.exponential 1 1024) (Gen.choice [Left <$> genIntegralBounded, Right <$> genIntegralBounded])
   --                     |],
   --                   [|show . snd|]
   --                 )
@@ -281,9 +279,8 @@ mkTestTerms
             [ ( ([t|Identity|], [t|Either Word8 Word8|], [t|Word8|]),
                 pure
                   ( [|
-                      (,)
-                        <$> pure (Data.Either.Linear.either Prelude.Linear.id Prelude.Linear.id)
-                        <*> (pure <$> Gen.choice [Left <$> genIntegralBounded, Right <$> genIntegralBounded])
+                      (Data.Either.Linear.either Prelude.Linear.id Prelude.Linear.id,)
+                        <$> (pure <$> Gen.choice [Left <$> genIntegralBounded, Right <$> genIntegralBounded])
                       |],
                     [|show . snd|]
                   )
@@ -298,9 +295,8 @@ mkTestTerms
             [ ( ([t|[]|], [t|Either Word8 Word8|], [t|Word8|]),
                 pure
                   ( [|
-                      (,)
-                        <$> pure (Data.Either.Linear.either Prelude.Linear.id Prelude.Linear.id)
-                        <*> Gen.list (Range.exponential 1 1024) (Gen.choice [Left <$> genIntegralBounded, Right <$> genIntegralBounded])
+                      (Data.Either.Linear.either Prelude.Linear.id Prelude.Linear.id,)
+                        <$> Gen.list (Range.exponential 1 1024) (Gen.choice [Left <$> genIntegralBounded, Right <$> genIntegralBounded])
                       |],
                     [|show . snd|]
                   )
@@ -372,9 +368,8 @@ mkTestTerms
             [ ( ([t|Either Word8 Word8|], [t|Word8|]),
                 pure
                   ( [|
-                      (,)
-                        <$> pure (Data.Either.Linear.either Prelude.Linear.id Prelude.Linear.id)
-                        <*> Gen.list (Range.exponential 1 1024) (Gen.choice [Left <$> genIntegralBounded, Right <$> genIntegralBounded])
+                      (Data.Either.Linear.either Prelude.Linear.id Prelude.Linear.id,)
+                        <$> Gen.list (Range.exponential 1 1024) (Gen.choice [Left <$> genIntegralBounded, Right <$> genIntegralBounded])
                       |],
                     [|show . snd|]
                   )
@@ -396,9 +391,8 @@ mkTestTerms
                 [ ( ([t|Either Word8 Word8|], [t|Word8|]),
                     pure
                       ( [|
-                          (,)
-                            <$> pure (Data.Either.Linear.either Prelude.Linear.id Prelude.Linear.id)
-                            <*> (pure <$> Gen.choice [Left <$> genIntegralBounded, Right <$> genIntegralBounded])
+                          (Data.Either.Linear.either Prelude.Linear.id Prelude.Linear.id,)
+                            <$> (pure <$> Gen.choice [Left <$> genIntegralBounded, Right <$> genIntegralBounded])
                           |],
                         [|show|]
                       )
@@ -413,9 +407,8 @@ mkTestTerms
             [ ( ([t|Either Word8 Word8|], [t|Word8|]),
                 pure
                   ( [|
-                      (,)
-                        <$> pure (Data.Either.Linear.either Prelude.Linear.id Prelude.Linear.id)
-                        <*> sequenceA (pure $ Gen.choice [Left <$> genIntegralBounded, Right <$> genIntegralBounded])
+                      (Data.Either.Linear.either Prelude.Linear.id Prelude.Linear.id,)
+                        <$> sequenceA (pure $ Gen.choice [Left <$> genIntegralBounded, Right <$> genIntegralBounded])
                       |],
                     [|show . snd|]
                   )
@@ -581,7 +574,7 @@ mkTestTerms
         ( const
             [ ( ([t|Maybe|], [t|Identity|], [t|Word8|]),
                 pure
-                  ( [|(,) <$> pure Control.Functor.Linear.pure <*> (Gen.maybe genIntegralBounded)|],
+                  ( [|(Control.Functor.Linear.pure,) <$> Gen.maybe genIntegralBounded|],
                     [|show . snd|]
                   )
               )
@@ -594,7 +587,7 @@ mkTestTerms
         ( const
             [ ( ([t|Identity|], [t|Word8|]),
                 pure
-                  ( [|(,) <$> pure Control.Functor.Linear.pure <*> Gen.list (Range.linear 0 100) genIntegralBounded|],
+                  ( [|(Control.Functor.Linear.pure,) <$> Gen.list (Range.linear 0 100) genIntegralBounded|],
                     [|show . snd|]
                   )
               )

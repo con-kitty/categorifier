@@ -6,6 +6,7 @@
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections #-}
 -- To avoid having to specify massive HList types.
 {-# OPTIONS_GHC -Wno-partial-type-signatures #-}
 
@@ -155,7 +156,7 @@ testTerms =
     . insertTest
       (Proxy @"LinearFromInteger")
       mkUnaryTestConfig
-      (\a -> ([t|Integer|], a))
+      ([t|Integer|],)
       [|Data.Num.Linear.fromInteger|]
     . insertTest
       (Proxy @"LinearFst")
@@ -332,5 +333,5 @@ testTerms =
       (Proxy @"LinearUncurry")
       mkUnaryTestConfig
       (\(a, b) -> ([t|($a, $b)|], a))
-      [|Data.Tuple.Linear.uncurry (\x _ -> x)|]
+      [|Data.Tuple.Linear.uncurry const|]
     $ HEmpty1
