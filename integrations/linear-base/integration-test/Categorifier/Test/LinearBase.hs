@@ -6,6 +6,7 @@
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TupleSections #-}
 -- To avoid having to specify massive HList types.
 {-# OPTIONS_GHC -Wno-partial-type-signatures #-}
 
@@ -43,9 +44,6 @@ import GHC.TypeLits (KnownNat)
 import GHC.Word (Word16, Word32, Word64, Word8)
 import qualified Prelude.Linear
 import qualified Unsafe.Linear
-
--- TODO: Remove after this module is re-enabled
-{-# ANN module "HLint: ignore" #-}
 
 testTerms :: TestTerms _
 testTerms =
@@ -158,7 +156,7 @@ testTerms =
     . insertTest
       (Proxy @"LinearFromInteger")
       mkUnaryTestConfig
-      (\a -> ([t|Integer|], a))
+      ([t|Integer|],)
       [|Data.Num.Linear.fromInteger|]
     . insertTest
       (Proxy @"LinearFst")
@@ -335,5 +333,5 @@ testTerms =
       (Proxy @"LinearUncurry")
       mkUnaryTestConfig
       (\(a, b) -> ([t|($a, $b)|], a))
-      [|Data.Tuple.Linear.uncurry (\x _ -> x)|]
+      [|Data.Tuple.Linear.uncurry const|]
     $ HEmpty1

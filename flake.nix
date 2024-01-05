@@ -40,6 +40,12 @@
 
     supportedSystems = flaky.lib.defaultSystems;
 
+    ## NB: `cabalProjectToNix` isn’t that smart, so we need to duplicate some of
+    ##     its logic here. In particular, using `-Werror` and only supporting
+    ##     `linear-base` on GHC 9 and later.
+    ## TODO: This should filter out `linear-base` from GHC <9, but `cabalProject2nix` doesn’t make
+    ##       that easy yet, so instead see the `projectConfigurations`, which simply disable the
+    ##       corresponding builds on garnix.
     cabalPackages = pkgs: hpkgs:
       concat.lib.cabalProject2nix
       ./cabal.project
