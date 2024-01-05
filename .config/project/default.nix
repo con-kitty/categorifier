@@ -79,6 +79,12 @@
       "devShells.aarch64-darwin.ghc928"
       # TODO: Remove once garnix-io/garnix#285 is fixed.
       "homeConfigurations.x86_64-darwin-${config.project.name}-example"
+      # TODO: Remove these and filter the corresponding packages from the flake (see the comments on
+      #       `cabalPackages` for more information.
+      "devShells.*.ghc8107"
+      "packages.*.ghc8107_all"
+      "packages.*.ghc8107_categorifier-linear-base-integration"
+      "packages.*.ghc8107_categorifier-linear-base-integration-test"
     ];
   };
   ## FIXME: Shouldn’t need `mkForce` here (or to duplicate the base contexts).
