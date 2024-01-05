@@ -127,7 +127,7 @@
 
       lib = {
         ## TODO: Extract this automatically from `pkgs.haskellPackages`.
-        defaultCompiler = "ghc928";
+        defaultCompiler = "ghc948";
 
         ## Test the oldest revision possible for each minor release. If it’s not
         ## available in nixpkgs, test the oldest available, then try an older
@@ -149,6 +149,7 @@
           "9.0.1"
           "9.2.1"
           "9.2.2" # there's an API breakage introduced here
+          "9.4.1"
         ];
 
         ## However, provide packages in the default overlay for _every_
@@ -161,6 +162,12 @@
             "ghc925"
             "ghc926"
             "ghc927"
+            "ghc942"
+            "ghc943"
+            "ghc944"
+            "ghc945"
+            "ghc946"
+            "ghc947"
           ];
       };
     }

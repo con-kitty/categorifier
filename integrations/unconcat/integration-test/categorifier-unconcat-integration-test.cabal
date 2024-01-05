@@ -6,7 +6,7 @@ description:    Plugin using our extensions to Conal's ConCat functions.
 homepage:       https://github.com/con-kitty/categorifier#readme
 bug-reports:    https://github.com/con-kitty/categorifier/issues
 build-type:     Simple
-tested-with:    GHC==8.10.1, GHC==8.10.7, GHC==9.0.1, GHC==9.0.2, GHC==9.2.1, GHC==9.2.2, GHC==9.2.8
+tested-with:    GHC==8.10.1, GHC==8.10.7, GHC==9.0.1, GHC==9.2.1, GHC==9.2.2, GHC==9.4.1, GHC==9.4.8
 
 source-repository head
   type: git
@@ -24,7 +24,7 @@ library
   exposed-modules:
       Categorifier.Test.UnconCat.Instances
   build-depends:
-    , base >=4.13.0 && <4.17
+    , base >=4.13.0 && <4.18
     , categorifier-concat-integration-test
     , categorifier-unconcat-category
     , categorifier-plugin-test
@@ -60,7 +60,7 @@ test-suite unconcat-hierarchy
     -O0
   build-depends:
     , adjunctions >=4.4 && <4.5
-    , base >=4.13.0 && <4.17
+    , base >=4.13.0 && <4.18
     , categorifier-category
     , categorifier-client
     , categorifier-concat-integration
@@ -76,7 +76,7 @@ test-suite unconcat-hierarchy
     , either >=5.0.1 && <5.1
     , ghc-prim >=0.5.3 && <0.9
     , hedgehog >=1.0.3 && <1.3
-    , template-haskell >=2.15.0 && <2.19
+    , template-haskell >=2.15.0 && <2.20
 
 test-suite unconcat-hierarchy-optimized
   import: options
@@ -91,7 +91,7 @@ test-suite unconcat-hierarchy-optimized
     -fignore-interface-pragmas
   build-depends:
     , adjunctions >=4.4 && <4.5
-    , base >=4.13.0 && <4.17
+    , base >=4.13.0 && <4.18
     , categorifier-category
     , categorifier-client
     , categorifier-concat-integration
@@ -107,4 +107,4 @@ test-suite unconcat-hierarchy-optimized
     , either >=5.0.1 && <5.1
     , ghc-prim >=0.5.3 && <0.9
     , hedgehog >=1.0.3 && <1.3
-    , template-haskell >=2.15.0 && <2.19
+    , template-haskell >=2.15.0 && <2.20

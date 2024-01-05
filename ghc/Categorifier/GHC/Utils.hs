@@ -59,7 +59,11 @@ getLogger = pure ()
 #endif
 
 #if MIN_VERSION_ghc(9, 2, 0)
+#if MIN_VERSION_ghc(9, 4, 0)
+pprMsgEnvelopeBagWithLoc :: Diagnostic e => Data.Bag (MsgEnvelope e) -> [Outputable.SDoc]
+#else
 pprMsgEnvelopeBagWithLoc :: Data.Bag (MsgEnvelope DecoratedSDoc) -> [Outputable.SDoc]
+#endif
 pprMsgEnvelopeBagWithLoc = ErrUtils.pprMsgEnvelopeBagWithLoc
 #else
 pprMsgEnvelopeBagWithLoc :: Data.Bag ErrMsg -> [Outputable.SDoc]

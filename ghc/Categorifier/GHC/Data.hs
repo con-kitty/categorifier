@@ -1,6 +1,9 @@
 {-# LANGUAGE CPP #-}
+#if MIN_VERSION_ghc(9, 4, 0)
+#else
 -- -Wno-orphans is so we can add missing instances to `Bag.Bag`
 {-# OPTIONS_GHC -Wno-orphans #-}
+#endif
 
 module Categorifier.GHC.Data
   ( module Bag,
@@ -19,6 +22,8 @@ import FastString
 import Pair
 #endif
 
+#if MIN_VERSION_ghc(9, 4, 0)
+#else
 -- | Need this instance to use a `Bag.Bag` as the output of @RWST@.
 instance Semigroup (Bag.Bag a) where
   (<>) = Bag.unionBags
@@ -26,3 +31,4 @@ instance Semigroup (Bag.Bag a) where
 -- | Need this instance to use a `Bag.Bag` as the output of @RWST@.
 instance Monoid (Bag.Bag a) where
   mempty = Bag.emptyBag
+#endif

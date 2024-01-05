@@ -37,6 +37,9 @@ import qualified Categorifier.GHC.Utils as Utils
 #if MIN_VERSION_ghc(9, 0, 0)
 -- needed to avoid an import cycle
 import qualified GHC.Core.TyCo.Rep as Core
+#if MIN_VERSION_ghc(9, 4, 0)
+import GHC.Driver.Errors.Types as ErrUtils
+#endif
 import GHC.Types.Basic as BasicTypes hiding (Inline)
 import GHC.Types.ForeignCall as ForeignCall hiding (CCallSpec (..))
 import qualified GHC.Types.ForeignCall as ForeignCall
@@ -57,6 +60,9 @@ import GHC.Types.Id.Info as IdInfo
 import GHC.Types.Literal as Literal hiding (LitNumber)
 import qualified GHC.Types.Literal as Literal
 import GHC.Types.Name as Name hiding (varName)
+#if MIN_VERSION_ghc(9, 4, 0)
+import GHC.Types.Name.Env as Name
+#endif
 import GHC.Types.Name.Reader as RdrName
 import GHC.Types.SrcLoc as SrcLoc
 import GHC.Types.Unique as Unique

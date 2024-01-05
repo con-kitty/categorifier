@@ -20,6 +20,9 @@ import qualified Categorifier.GHC.Types as Types
 #if MIN_VERSION_ghc(9, 2, 0)
 import Control.Arrow (Arrow (..))
 #endif
+#if MIN_VERSION_ghc(9, 4, 0)
+import Data.Tuple (swap)
+#endif
 #if MIN_VERSION_ghc(9, 0, 0)
 import GHC.Tc.Errors as TcErrors
 import GHC.Tc.Module as TcRnDriver hiding (runTcInteractive)
@@ -49,7 +52,11 @@ import TcSimplify
 
 runTcInteractive ::
   Driver.HscEnv -> TcRn a -> IO ((Types.ErrorMessages, Types.WarningMessages), Maybe a)
-#if MIN_VERSION_ghc(9, 2, 0)
+#if MIN_VERSION_ghc(9, 4, 0)
+runTcInteractive env =
+  fmap (first $ swap . Types.partitionMessages . fmap Types.GhcTcRnMessage)
+    . TcRnDriver.runTcInteractive env
+#elif MIN_VERSION_ghc(9, 2, 0)
 runTcInteractive env =
   fmap (first (Types.getErrorMessages &&& Types.getWarningMessages))
     . TcRnDriver.runTcInteractive env
