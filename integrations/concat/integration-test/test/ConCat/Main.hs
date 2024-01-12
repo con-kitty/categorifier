@@ -39,7 +39,7 @@ module Main
   )
 where
 
-import Categorifier.Hedgehog (genFloating, genIntegralBounded)
+import Categorifier.Hedgehog (genFloating, genIntegralBounded, genNatural)
 import qualified Categorifier.Test.Adjunctions as Adjunctions
 import Categorifier.Test.ConCat.Instances (Hask (..), Term)
 import Categorifier.Test.Data (One (..), Pair (..))
@@ -926,6 +926,60 @@ mkTestTerms
             if arrow == ''TotOrd
               then [] -- #19
               else [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"EqualNatural")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> genNatural <*> genNatural|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"NotEqualNatural")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> genNatural <*> genNatural|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"GeNatural")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> genNatural <*> genNatural|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"GtNatural")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> genNatural <*> genNatural|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"LeNatural")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> genNatural <*> genNatural|], [|show|]))]
+        )
+    )
+  . HInsert1
+    (Proxy @"LtNatural")
+    ( TestCases
+        ( \arrow ->
+            if arrow == ''TotOrd
+              then [] -- #19
+              else [((), pure ([|(,) <$> genNatural <*> genNatural|], [|show|]))]
         )
     )
   . HInsert1

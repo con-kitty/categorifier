@@ -3,6 +3,7 @@ module Categorifier.Hedgehog
   ( floatingEq,
     genFloating,
     genIntegralBounded,
+    genNatural,
   )
 where
 
@@ -11,6 +12,7 @@ import GHC.Stack (HasCallStack, withFrozenCallStack)
 import qualified Hedgehog
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
+import Numeric.Natural (Natural)
 
 -- | A variant on `Hedgehog.===` that identifies NaNs as equals. It still works for non-FP types.
 floatingEq :: (Hedgehog.MonadTest m, Eq a, Show a, HasCallStack) => a -> a -> m ()
@@ -61,3 +63,6 @@ genFloating =
 --   (which can vary based on the platform).
 genIntegralBounded :: (Hedgehog.MonadGen m, Bounded a, Integral a) => m a
 genIntegralBounded = Gen.integral Range.linearBounded
+
+genNatural :: (Hedgehog.MonadGen m) => m Natural
+genNatural = Gen.integral $ Range.linear 0 1_000_000_000

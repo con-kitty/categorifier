@@ -37,6 +37,7 @@ library
     , FunctionalDependencies
     , InstanceSigs
     , LambdaCase
+    , NumericUnderscores
     , ScopedTypeVariables
     , StandaloneDeriving
     , TypeApplications

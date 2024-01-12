@@ -58,6 +58,8 @@ import Data.Tuple (swap)
 import qualified GHC.Float
 import GHC.Int (Int16, Int32, Int64, Int8)
 import qualified GHC.Int
+import GHC.Num.Natural (Natural)
+import qualified GHC.Num.Natural
 import GHC.TypeLits (KnownSymbol, symbolVal)
 import GHC.Word (Word16, Word32, Word64, Word8)
 import qualified GHC.Word
@@ -528,6 +530,36 @@ baseTestTerms =
     . insertTest (Proxy @"GtInt8") mkBinaryTestConfig (\() -> ([t|Int8|], [t|Int8 -> Bool|])) [|GHC.Int.gtInt8|]
     . insertTest (Proxy @"LeInt8") mkBinaryTestConfig (\() -> ([t|Int8|], [t|Int8 -> Bool|])) [|GHC.Int.leInt8|]
     . insertTest (Proxy @"LtInt8") mkBinaryTestConfig (\() -> ([t|Int8|], [t|Int8 -> Bool|])) [|GHC.Int.ltInt8|]
+    . insertTest
+      (Proxy @"EqualNatural")
+      mkBinaryTestConfig
+      (\() -> ([t|Natural|], [t|Natural -> Bool|]))
+      [|GHC.Num.Natural.naturalEq|]
+    . insertTest
+      (Proxy @"NotEqualNatural")
+      mkBinaryTestConfig
+      (\() -> ([t|Natural|], [t|Natural -> Bool|]))
+      [|GHC.Num.Natural.naturalNe|]
+    . insertTest
+      (Proxy @"GeNatural")
+      mkBinaryTestConfig
+      (\() -> ([t|Natural|], [t|Natural -> Bool|]))
+      [|GHC.Num.Natural.naturalGe|]
+    . insertTest
+      (Proxy @"GtNatural")
+      mkBinaryTestConfig
+      (\() -> ([t|Natural|], [t|Natural -> Bool|]))
+      [|GHC.Num.Natural.naturalGt|]
+    . insertTest
+      (Proxy @"LeNatural")
+      mkBinaryTestConfig
+      (\() -> ([t|Natural|], [t|Natural -> Bool|]))
+      [|GHC.Num.Natural.naturalLe|]
+    . insertTest
+      (Proxy @"LtNatural")
+      mkBinaryTestConfig
+      (\() -> ([t|Natural|], [t|Natural -> Bool|]))
+      [|GHC.Num.Natural.naturalLt|]
     . insertTest (Proxy @"EqualWord") mkBinaryTestConfig (\() -> ([t|Word|], [t|Word -> Bool|])) [|GHC.Word.eqWord|]
     . insertTest (Proxy @"NotEqualWord") mkBinaryTestConfig (\() -> ([t|Word|], [t|Word -> Bool|])) [|GHC.Word.neWord|]
     . insertTest (Proxy @"GeWord") mkBinaryTestConfig (\() -> ([t|Word|], [t|Word -> Bool|])) [|GHC.Word.geWord|]

@@ -14,7 +14,7 @@ module Main
   )
 where
 
-import Categorifier.Hedgehog (genFloating, genIntegralBounded)
+import Categorifier.Hedgehog (genFloating, genIntegralBounded, genNatural)
 import Categorifier.Test.Categories.Instances (Hask (..), Term)
 import Categorifier.Test.Data (Pair (..))
 import Categorifier.Test.HList (HMap1 (..))
@@ -581,6 +581,24 @@ mkTestTerms
     ( TestCases
         (const [((), pure ([|(,) <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))])
     )
+  . HInsert1
+    (Proxy @"EqualNatural")
+    (TestCases (const [((), pure ([|(,) <$> genNatural <*> genNatural|], [|show|]))]))
+  . HInsert1
+    (Proxy @"NotEqualNatural")
+    (TestCases (const [((), pure ([|(,) <$> genNatural <*> genNatural|], [|show|]))]))
+  . HInsert1
+    (Proxy @"GeNatural")
+    (TestCases (const [((), pure ([|(,) <$> genNatural <*> genNatural|], [|show|]))]))
+  . HInsert1
+    (Proxy @"GtNatural")
+    (TestCases (const [((), pure ([|(,) <$> genNatural <*> genNatural|], [|show|]))]))
+  . HInsert1
+    (Proxy @"LeNatural")
+    (TestCases (const [((), pure ([|(,) <$> genNatural <*> genNatural|], [|show|]))]))
+  . HInsert1
+    (Proxy @"LtNatural")
+    (TestCases (const [((), pure ([|(,) <$> genNatural <*> genNatural|], [|show|]))]))
   . HInsert1
     (Proxy @"EqualWord")
     ( TestCases
