@@ -70,6 +70,7 @@ import qualified GHC.Float
 import qualified GHC.Int
 import qualified GHC.List
 import qualified GHC.Num
+import qualified GHC.Num.Natural
 import qualified GHC.Real
 import qualified GHC.Types
 import qualified GHC.Word
@@ -101,6 +102,7 @@ baseSymbolLookup = do
   int64TyCon <- findTyCon ''GHC.Int.Int64
   int8TyCon <- findTyCon ''GHC.Int.Int8
   floatTyCon <- findTyCon ''GHC.Types.Float
+  naturalTyCon <- findTyCon ''GHC.Num.Natural.Natural
   word16TyCon <- findTyCon ''GHC.Word.Word16
   word32TyCon <- findTyCon ''GHC.Word.Word32
   word64TyCon <- findTyCon ''GHC.Word.Word64
@@ -112,6 +114,7 @@ baseSymbolLookup = do
             (''GHC.Int.Int64, int64TyCon),
             (''GHC.Int.Int8, int8TyCon),
             (''GHC.Types.Float, floatTyCon),
+            (''GHC.Num.Natural.Natural, naturalTyCon),
             (''GHC.Word.Word16, word16TyCon),
             (''GHC.Word.Word32, word32TyCon),
             (''GHC.Word.Word64, word64TyCon)
@@ -991,6 +994,36 @@ baseMakerMapFun
                 Plugins.Type a : _num : rest ->
                   pure $ maker2 rest =<\< mkSum (Plugins.mkTyConTy Plugins.listTyCon) a
                 _ -> Nothing
+            ),
+            ( 'GHC.Num.Natural.naturalGe,
+              \rest -> do
+                naturalTyCon <- Map.lookup ''GHC.Num.Natural.Natural (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkGE (Plugins.mkTyConTy naturalTyCon)
+            ),
+            ( 'GHC.Num.Natural.naturalGt,
+              \rest -> do
+                naturalTyCon <- Map.lookup ''GHC.Num.Natural.Natural (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkGT (Plugins.mkTyConTy naturalTyCon)
+            ),
+            ( 'GHC.Num.Natural.naturalLe,
+              \rest -> do
+                naturalTyCon <- Map.lookup ''GHC.Num.Natural.Natural (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkLE (Plugins.mkTyConTy naturalTyCon)
+            ),
+            ( 'GHC.Num.Natural.naturalLt,
+              \rest -> do
+                naturalTyCon <- Map.lookup ''GHC.Num.Natural.Natural (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkLT (Plugins.mkTyConTy naturalTyCon)
+            ),
+            ( 'GHC.Num.Natural.naturalNe,
+              \rest -> do
+                naturalTyCon <- Map.lookup ''GHC.Num.Natural.Natural (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkNotEqual (Plugins.mkTyConTy naturalTyCon)
+            ),
+            ( 'GHC.Num.Natural.naturalEq,
+              \rest -> do
+                naturalTyCon <- Map.lookup ''GHC.Num.Natural.Natural (tyConLookup symLookup)
+                pure $ maker2 rest =<\< mkEqual (Plugins.mkTyConTy naturalTyCon)
             ),
             ( '(GHC.Num.+),
               \case
