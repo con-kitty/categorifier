@@ -29,6 +29,7 @@ module Categorifier.Core.MakerMap
     applyEnrichedCat',
     handleAdditionalArgs,
     isHeadVarId,
+    makeLookupMap,
     makeMaker1,
     makeMaker2,
     makeTupleTyWithVar,
@@ -74,6 +75,7 @@ import qualified GHC.Real
 import qualified GHC.Types
 import qualified GHC.Word
 import qualified Language.Haskell.TH as TH
+import qualified Numeric.Natural
 import qualified Unsafe.Coerce
 
 -- For Unsafe.Coerce
@@ -92,32 +94,25 @@ instance Semigroup SymbolLookup where
 instance Monoid SymbolLookup where
   mempty = SymbolLookup mempty mempty
 
+makeLookupMap :: [TH.Name] -> Lookup SymbolLookup
+makeLookupMap =
+  fmap (flip SymbolLookup mempty . Map.fromList)
+    . traverse (\sym -> (sym,) <$> findTyCon sym)
+
 -- | While we do use a lot of symbols from @base@, they're generally provided via the GHC API
 --   already, so we don't need to enumerate too many of them here.
 baseSymbolLookup :: Lookup SymbolLookup
-baseSymbolLookup = do
-  int16TyCon <- findTyCon ''GHC.Int.Int16
-  int32TyCon <- findTyCon ''GHC.Int.Int32
-  int64TyCon <- findTyCon ''GHC.Int.Int64
-  int8TyCon <- findTyCon ''GHC.Int.Int8
-  floatTyCon <- findTyCon ''GHC.Types.Float
-  word16TyCon <- findTyCon ''GHC.Word.Word16
-  word32TyCon <- findTyCon ''GHC.Word.Word32
-  word64TyCon <- findTyCon ''GHC.Word.Word64
-  pure $
-    SymbolLookup
-      ( Map.fromList
-          [ (''GHC.Int.Int16, int16TyCon),
-            (''GHC.Int.Int32, int32TyCon),
-            (''GHC.Int.Int64, int64TyCon),
-            (''GHC.Int.Int8, int8TyCon),
-            (''GHC.Types.Float, floatTyCon),
-            (''GHC.Word.Word16, word16TyCon),
-            (''GHC.Word.Word32, word32TyCon),
-            (''GHC.Word.Word64, word64TyCon)
-          ]
-      )
-      mempty
+baseSymbolLookup =
+  makeLookupMap
+    [ ''GHC.Int.Int16,
+      ''GHC.Int.Int32,
+      ''GHC.Int.Int64,
+      ''GHC.Int.Int8,
+      ''GHC.Types.Float,
+      ''GHC.Word.Word16,
+      ''GHC.Word.Word32,
+      ''GHC.Word.Word64
+    ]
 
 -- | A map of functions for interpreting names.
 --

@@ -23,6 +23,7 @@ import Categorifier.Core.MakerMap
     curryCat,
     forkCat,
     handleAdditionalArgs,
+    makeLookupMap,
     makeMaker1,
     makeMaker2,
     makeTupleTyWithVar,
@@ -33,7 +34,6 @@ import Categorifier.Core.Types (Lookup)
 import Categorifier.Duoidal (joinD, (<*\>), (<=\<), (=<\<))
 import qualified Categorifier.GHC.Builtin as Plugins
 import qualified Categorifier.GHC.Core as Plugins
-import Categorifier.Hierarchy (findTyCon)
 import qualified Control.Functor.Linear
 import qualified Data.Array.Mutable.Linear
 import qualified Data.Array.Mutable.Unlifted.Linear
@@ -54,23 +54,14 @@ import qualified Streaming.Prelude.Linear
 import qualified Unsafe.Linear
 
 symbolLookup :: Lookup SymbolLookup
-symbolLookup = do
-  array <- findTyCon ''Data.Array.Mutable.Linear.Array
-  arrayUnlifted <- findTyCon ''Data.Array.Mutable.Unlifted.Linear.Array#
-  replicator <- findTyCon ''Data.Replicator.Linear.Replicator
-  v <- findTyCon ''Data.V.Linear.V
-  stream <- findTyCon ''Streaming.Prelude.Linear.Stream
-  pure $
-    SymbolLookup
-      ( Map.fromList
-          [ (''Data.Array.Mutable.Linear.Array, array),
-            (''Data.Array.Mutable.Unlifted.Linear.Array#, arrayUnlifted),
-            (''Data.Replicator.Linear.Replicator, replicator),
-            (''Data.V.Linear.V, v),
-            (''Streaming.Prelude.Linear.Stream, stream)
-          ]
-      )
-      mempty
+symbolLookup =
+  makeLookupMap
+    [ ''Data.Array.Mutable.Linear.Array,
+      ''Data.Array.Mutable.Unlifted.Linear.Array#,
+      ''Data.Replicator.Linear.Replicator,
+      ''Data.V.Linear.V,
+      ''Streaming.Prelude.Linear.Stream
+    ]
 
 makerMapFun :: MakerMapFun
 makerMapFun
