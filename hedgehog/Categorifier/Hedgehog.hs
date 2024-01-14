@@ -2,7 +2,10 @@
 module Categorifier.Hedgehog
   ( floatingEq,
     genFloating,
+    genInteger,
     genIntegralBounded,
+    genNatural,
+    genNaturalFrom,
   )
 where
 
@@ -11,6 +14,7 @@ import GHC.Stack (HasCallStack, withFrozenCallStack)
 import qualified Hedgehog
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
+import Numeric.Natural (Natural)
 
 -- | A variant on `Hedgehog.===` that identifies NaNs as equals. It still works for non-FP types.
 floatingEq :: (Hedgehog.MonadTest m, Eq a, Show a, HasCallStack) => a -> a -> m ()
@@ -57,7 +61,24 @@ genFloating =
     aroundPosNeg :: a -> a -> [Range.Range a]
     aroundPosNeg float size = [aroundFloat float size, aroundFloat (negate float) size]
 
+-- | Generate an arbitrary, potentially quite large, integer.
+genInteger :: (Hedgehog.MonadGen m) => m Integer
+genInteger = Gen.integral $ Range.linearFrom 0 (-maxUnbounded) maxUnbounded
+
 -- | Like `Gen.enumBounded`, but safe for integral types larger than `Int`
 --   (which can vary based on the platform).
 genIntegralBounded :: (Hedgehog.MonadGen m, Bounded a, Integral a) => m a
 genIntegralBounded = Gen.integral Range.linearBounded
+
+-- | Arbitrary large value for bounding unbounded integral types.
+maxUnbounded :: (Integral a) => a
+maxUnbounded = 10 ^ (100 :: Natural)
+
+-- | Like `genNatural`, but takes a lower bound. This is useful for eliminating invalid cases for
+--   things like subtraction.
+genNaturalFrom :: (Hedgehog.MonadGen m) => Natural -> m Natural
+genNaturalFrom lowerBound = Gen.integral $ Range.linear lowerBound maxUnbounded
+
+-- | Generate an arbitrary, potentially quite large, non-negative number.
+genNatural :: (Hedgehog.MonadGen m) => m Natural
+genNatural = genNaturalFrom 0

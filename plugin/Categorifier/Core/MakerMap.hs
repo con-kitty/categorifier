@@ -75,7 +75,6 @@ import qualified GHC.Real
 import qualified GHC.Types
 import qualified GHC.Word
 import qualified Language.Haskell.TH as TH
-import qualified Numeric.Natural
 import qualified Unsafe.Coerce
 
 -- For Unsafe.Coerce

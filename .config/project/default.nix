@@ -83,6 +83,8 @@
       #       `cabalPackages` for more information.
       "devShells.*.ghc8107"
       "packages.*.ghc8107_all"
+      "packages.*.ghc8107_categorifier-ghc-bignum-integration"
+      "packages.*.ghc8107_categorifier-ghc-bignum-integration-test"
       "packages.*.ghc8107_categorifier-linear-base-integration"
       "packages.*.ghc8107_categorifier-linear-base-integration-test"
     ];

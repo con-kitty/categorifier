@@ -64,5 +64,7 @@ packages:
   ./th/categorifier-th.cabal
 if impl(ghc >= 9.0.0)
   packages:
+    ./integrations/ghc-bignum/integration/categorifier-ghc-bignum-integration.cabal
+    ./integrations/ghc-bignum/integration-test/categorifier-ghc-bignum-integration-test.cabal
     ./integrations/linear-base/integration/categorifier-linear-base-integration.cabal
     ./integrations/linear-base/integration-test/categorifier-linear-base-integration-test.cabal
