@@ -17,6 +17,7 @@ import Categorifier.Core.MakerMap
   ( MakerMapFun,
     SymbolLookup (..),
     applyEnrichedCat',
+    makeLookupMap,
     makeMaker1,
     makeMaker2,
   )
@@ -25,15 +26,12 @@ import Categorifier.Core.Types (Lookup)
 import Categorifier.Duoidal (joinD, (<*\>), (=<\<))
 import qualified Categorifier.GHC.Builtin as Plugins
 import qualified Categorifier.GHC.Core as Plugins
-import Categorifier.Hierarchy (findTyCon)
 import qualified Data.Map as Map
 import qualified Data.Vec.Lazy
 import Prelude hiding (lookup)
 
 symbolLookup :: Lookup SymbolLookup
-symbolLookup = do
-  vec <- findTyCon ''Data.Vec.Lazy.Vec
-  pure $ SymbolLookup (Map.singleton ''Data.Vec.Lazy.Vec vec) mempty
+symbolLookup = makeLookupMap [''Data.Vec.Lazy.Vec]
 
 makerMapFun :: MakerMapFun
 makerMapFun

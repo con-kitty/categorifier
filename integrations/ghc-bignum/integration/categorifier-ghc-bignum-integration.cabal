@@ -1,12 +1,16 @@
 cabal-version:  2.4
 
-name:           categorifier-vec-integration
+name:           categorifier-ghc-bignum-integration
 version:        0.1
-description:    Extensions to Conal's ConCat to improve plugin coverage.
+summary:        Support for categorizing operations from `ghc-bignum`.
+description:    In GHC 9, bignum implementations were moved to a new package and changed to support
+                multiple backends. That move introduced new operations (rather than deriving
+                instances) that need to be handled for Categorifier. This package provides the
+                Categorifier support.
 homepage:       https://github.com/con-kitty/categorifier#readme
 bug-reports:    https://github.com/con-kitty/categorifier/issues
 build-type:     Simple
-tested-with:    GHC==8.10.1, GHC==8.10.7, GHC==9.0.1, GHC==9.2.1, GHC==9.2.2, GHC==9.2.8
+tested-with:    GHC==9.0.1, GHC==9.2.1, GHC==9.2.2, GHC==9.2.8
 
 source-repository head
   type: git
@@ -14,23 +18,21 @@ source-repository head
 
 library
   exposed-modules:
-      Categorifier.Vec.Client
-      Categorifier.Vec.Integration
+      Categorifier.GhcBignum.Integration
   other-modules:
-      Paths_categorifier_vec_integration
+      Paths_categorifier_ghc_bignum_integration
   autogen-modules:
-      Paths_categorifier_vec_integration
+      Paths_categorifier_ghc_bignum_integration
   ghc-options: -Wall
   build-depends:
-    , base >=4.11.0 && <4.17
+    , base >=4.13.0 && <4.17
     , categorifier-client
     , categorifier-duoids
     , categorifier-ghc
     , categorifier-plugin
     , containers >=0.6.2 && <0.7
+    , ghc-bignum >=1.0 && <1.4
     , template-haskell >=2.15.0 && <2.19
-    , transformers >=0.5.6 && <0.7
-    , vec >=0.3 && <0.6
   default-language: Haskell2010
   default-extensions:
       InstanceSigs
