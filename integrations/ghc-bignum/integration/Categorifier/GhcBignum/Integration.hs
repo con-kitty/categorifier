@@ -9,7 +9,8 @@
 {-# LANGUAGE ViewPatterns #-}
 
 module Categorifier.GhcBignum.Integration
-  ( makerMapFun,
+  ( boxers,
+    makerMapFun,
     symbolLookup,
   )
 where
@@ -22,13 +23,30 @@ import Categorifier.Core.MakerMap
     makeMaker2,
   )
 import Categorifier.Core.Makers (Makers (..))
+import qualified Categorifier.Core.PrimOp as PrimOp
 import Categorifier.Core.Types (Lookup)
 import Categorifier.Duoidal ((=<\<))
+import qualified Categorifier.GHC.Builtin as Plugins
 import qualified Categorifier.GHC.Core as Plugins
+import qualified Categorifier.GHC.Types as Plugins
+import Categorifier.Hierarchy (findTyCon)
 import qualified Data.Map as Map
 import qualified GHC.Num.BigNat
 import qualified GHC.Num.Integer
 import qualified GHC.Num.Natural
+
+boxers ::
+  Makers -> Lookup [(Plugins.CLabelString, (PrimOp.Boxer, [Plugins.Type], Plugins.Type))]
+boxers makers = do
+  naturalTy <- Plugins.mkTyConTy <$> findTyCon ''GHC.Num.Natural.Natural
+  pure
+    [ ( "naturalEq#",
+        ( PrimOp.Boxer "GHC.Classes" "==" $ mkEqual makers naturalTy,
+          [naturalTy, naturalTy],
+          Plugins.boolTy
+        )
+      )
+    ]
 
 symbolLookup :: Lookup SymbolLookup
 symbolLookup =

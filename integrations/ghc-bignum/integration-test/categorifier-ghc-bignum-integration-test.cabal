@@ -54,6 +54,7 @@ test-suite ghc-bignum-hierarchy
   ghc-options:
     -fplugin Categorifier
     -fplugin-opt Categorifier:defer-failures
+    -fplugin-opt Categorifier:additional-boxers:Categorifier.GhcBignum.Integration.boxers
     -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.ConCat.classHierarchy
     -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.ConCatExtensions.hierarchy
     -fplugin-opt Categorifier:lookup:Categorifier.GhcBignum.Integration.symbolLookup
@@ -89,6 +90,7 @@ test-suite ghc-bignum-hierarchy-optimized
   ghc-options:
     -fplugin Categorifier
     -fplugin-opt Categorifier:defer-failures
+    -fplugin-opt Categorifier:additional-boxers:Categorifier.GhcBignum.Integration.boxers
     -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.ConCat.classHierarchy
     -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.ConCatExtensions.hierarchy
     -fplugin-opt Categorifier:lookup:Categorifier.GhcBignum.Integration.symbolLookup

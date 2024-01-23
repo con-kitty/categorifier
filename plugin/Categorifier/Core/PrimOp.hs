@@ -35,7 +35,7 @@ where
 
 import Categorifier.Core.Makers (Makers (..), isFreeIn)
 import Categorifier.Core.Trace (addIdInfo, maybeTraceWith, renderSDoc)
-import Categorifier.Core.Types (CategoricalFailure (..), CategoryStack)
+import Categorifier.Core.Types (CategoricalFailure (..), CategoryStack, Lookup)
 import Categorifier.Duoidal (sequenceD, traverseD, (<*\>))
 import qualified Categorifier.GHC.Builtin as Plugins
 import qualified Categorifier.GHC.Core as Plugins
@@ -86,8 +86,8 @@ type PrimOpMap = OpMap Plugins.PrimOp
 --
 --  __TODO__: This should perhaps eventually become `baseBoxers`, and have none hardcoded
 noAdditionalBoxers ::
-  Makers -> [(Plugins.CLabelString, (Boxer, [Plugins.Type], Plugins.Type))]
-noAdditionalBoxers = const []
+  Makers -> Lookup [(Plugins.CLabelString, (Boxer, [Plugins.Type], Plugins.Type))]
+noAdditionalBoxers = const $ pure []
 
 constructPrimOpMap :: Makers -> [IntConstructor] -> PrimOpMap
 constructPrimOpMap makers intCons =
