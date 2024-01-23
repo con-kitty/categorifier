@@ -75,7 +75,6 @@ import PyF (fmt)
 data Boxer = Boxer
   { _modu :: String,
     _ident :: String,
-    _argDataCons :: [Plugins.DataCon],
     _maker :: CategoryStack Plugins.CoreExpr
   }
 
@@ -102,7 +101,6 @@ constructPrimOpMap makers intCons =
       )
         makers
         (intConstructorTyCon intCon)
-        (intConstructorDataCon intCon)
 
 type NoInlinePrimFunctionMap = OpMap Plugins.Name
 
@@ -114,7 +112,6 @@ constructNoInlinePrimFunctionMap makers =
       mkNoInlinePrimIntFunctions
         makers
         (intConstructorTyCon intCon)
-        (intConstructorDataCon intCon)
 
 type DeleteOpMap = Map Plugins.PrimOp Plugins.Type
 
@@ -718,7 +715,7 @@ replacePrimOps resultType replaceExpr = do
             (Plugins.Var f, arguments) <- Plugins.collectArgs sc,
             Just target <- extractCallSpecTarget $ Plugins.idDetails f,
             Plugins.StaticTarget _source functionName _cUnit True <- target,
-            Just (Boxer _mod _name _dcs boxedFun, ccallArgTypes, ccallResultType) <-
+            Just (Boxer _mod _name boxedFun, ccallArgTypes, ccallResultType) <-
               findCCallBoxer additionalBoxers makers dflags debug functionName ->
               fmap
                 (rpoLabel "3" caseExpr)
@@ -1170,7 +1167,7 @@ replaceFunCall deduceArg deduceResult chooseMap outerExpr mbResultTy fid argumen
       pure
       $ mbResultTy <|> (deduceResult opMap fid =<< listToMaybe realArgTypes)
   case findBoxedPrim (fid, realArgTypes, resultType) of
-    Just (Boxer _ _ _ boxedFun) -> lift boxedFun >>= flip apply realArgs
+    Just (Boxer _ _ boxedFun) -> lift boxedFun >>= flip apply realArgs
     Nothing ->
       lift . throwE . pure . UnsupportedPrimOpApplication fid realArgs $ pure resultType
 
@@ -1211,303 +1208,301 @@ mkFloatingPrimOps makers =
   Map.fromListWith
     const
     [ ( Plugins.DoubleAddOp,
-        pure (([dt, dt], dt), Boxer "GHC.Num" "+" [dd, dd] . mkPlus makers $ Plugins.mkTyConTy dt)
+        pure (([dt, dt], dt), Boxer "GHC.Num" "+" . mkPlus makers $ Plugins.mkTyConTy dt)
       ),
       ( Plugins.DoubleSubOp,
-        pure (([dt, dt], dt), Boxer "GHC.Num" "-" [dd, dd] . mkMinus makers $ Plugins.mkTyConTy dt)
+        pure (([dt, dt], dt), Boxer "GHC.Num" "-" . mkMinus makers $ Plugins.mkTyConTy dt)
       ),
       ( Plugins.DoubleMulOp,
-        pure (([dt, dt], dt), Boxer "GHC.Num" "*" [dd, dd] . mkTimes makers $ Plugins.mkTyConTy dt)
+        pure (([dt, dt], dt), Boxer "GHC.Num" "*" . mkTimes makers $ Plugins.mkTyConTy dt)
       ),
       ( Plugins.DoubleCosOp,
-        pure (([dt], dt), Boxer "GHC.Float" "cos" [dd] . mkCos makers $ Plugins.mkTyConTy dt)
+        pure (([dt], dt), Boxer "GHC.Float" "cos" . mkCos makers $ Plugins.mkTyConTy dt)
       ),
       ( Plugins.DoubleLogOp,
-        pure (([dt], dt), Boxer "GHC.Float" "log" [dd] . mkLog makers $ Plugins.mkTyConTy dt)
+        pure (([dt], dt), Boxer "GHC.Float" "log" . mkLog makers $ Plugins.mkTyConTy dt)
       ),
       ( Plugins.DoubleSinOp,
-        pure (([dt], dt), Boxer "GHC.Float" "sin" [dd] . mkSin makers $ Plugins.mkTyConTy dt)
+        pure (([dt], dt), Boxer "GHC.Float" "sin" . mkSin makers $ Plugins.mkTyConTy dt)
       ),
       ( Plugins.DoubleDivOp,
         pure
-          (([dt, dt], dt), Boxer "GHC.Real" "/" [dd, dd] . mkDivide makers $ Plugins.mkTyConTy dt)
+          (([dt, dt], dt), Boxer "GHC.Real" "/" . mkDivide makers $ Plugins.mkTyConTy dt)
       ),
       ( Plugins.DoubleExpOp,
-        pure (([dt], dt), Boxer "GHC.Real" "exp" [dd] . mkExp makers $ Plugins.mkTyConTy dt)
+        pure (([dt], dt), Boxer "GHC.Real" "exp" . mkExp makers $ Plugins.mkTyConTy dt)
       ),
       ( Plugins.DoubleSqrtOp,
-        pure (([dt], dt), Boxer "GHC.Float" "sqrt" [dd] . mkSqrt makers $ Plugins.mkTyConTy dt)
+        pure (([dt], dt), Boxer "GHC.Float" "sqrt" . mkSqrt makers $ Plugins.mkTyConTy dt)
       ),
       ( Plugins.DoubleNegOp,
-        pure (([dt], dt), Boxer "GHC.Num" "negate" [dd] . mkNegate makers $ Plugins.mkTyConTy dt)
+        pure (([dt], dt), Boxer "GHC.Num" "negate" . mkNegate makers $ Plugins.mkTyConTy dt)
       ),
       ( Plugins.DoubleFabsOp,
-        pure (([dt], dt), Boxer "GHC.Num" "abs" [dd] . mkAbs makers $ Plugins.mkTyConTy dt)
+        pure (([dt], dt), Boxer "GHC.Num" "abs" . mkAbs makers $ Plugins.mkTyConTy dt)
       ),
       ( Plugins.DoubleToFloatOp,
-        pure (([dt], ft), Boxer "GHC.Float" "double2float" [dd] $ mkDoubleToFloat makers)
+        pure (([dt], ft), Boxer "GHC.Float" "double2float" $ mkDoubleToFloat makers)
       ),
       ( Plugins.FloatToDoubleOp,
-        pure (([ft], dt), Boxer "GHC.Float" "float2Double" [fd] $ mkFloatToDouble makers)
+        pure (([ft], dt), Boxer "GHC.Float" "float2Double" $ mkFloatToDouble makers)
       ),
       ( Plugins.DoubleEqOp,
         pure
           ( ([dt, dt], Plugins.boolTyCon),
-            Boxer "GHC.Classes" "==" [dd] . mkEqual makers $ Plugins.mkTyConTy dt
+            Boxer "GHC.Classes" "==" . mkEqual makers $ Plugins.mkTyConTy dt
           )
       ),
       ( Plugins.DoubleLeOp,
         pure
           ( ([dt, dt], Plugins.boolTyCon),
-            Boxer "GHC.Classes" "<=" [dd] . mkLE makers $ Plugins.mkTyConTy dt
+            Boxer "GHC.Classes" "<=" . mkLE makers $ Plugins.mkTyConTy dt
           )
       ),
       ( Plugins.DoubleLtOp,
         pure
           ( ([dt, dt], Plugins.boolTyCon),
-            Boxer "GHC.Classes" "<" [dd] . mkLT makers $ Plugins.mkTyConTy dt
+            Boxer "GHC.Classes" "<" . mkLT makers $ Plugins.mkTyConTy dt
           )
       ),
       ( Plugins.DoubleGeOp,
         pure
           ( ([dt, dt], Plugins.boolTyCon),
-            Boxer "GHC.Classes" ">=" [dd] . mkGE makers $ Plugins.mkTyConTy dt
+            Boxer "GHC.Classes" ">=" . mkGE makers $ Plugins.mkTyConTy dt
           )
       ),
       ( Plugins.DoubleGtOp,
         pure
           ( ([dt, dt], Plugins.boolTyCon),
-            Boxer "GHC.Classes" ">" [dd] . mkGT makers $ Plugins.mkTyConTy dt
+            Boxer "GHC.Classes" ">" . mkGT makers $ Plugins.mkTyConTy dt
           )
       ),
       ( Plugins.DoubleNeOp,
         pure
           ( ([dt, dt], Plugins.boolTyCon),
-            Boxer "GHC.Classes" "/=" [dd] . mkNotEqual makers $ Plugins.mkTyConTy dt
+            Boxer "GHC.Classes" "/=" . mkNotEqual makers $ Plugins.mkTyConTy dt
           )
       ),
       ( Plugins.FloatAddOp,
         pure
-          (([ft, ft], ft), Boxer "GHC.Num" "+" [fd, fd] . mkPlus makers $ Plugins.mkTyConTy ft)
+          (([ft, ft], ft), Boxer "GHC.Num" "+" . mkPlus makers $ Plugins.mkTyConTy ft)
       ),
       ( Plugins.FloatSubOp,
         pure
-          (([ft, ft], ft), Boxer "GHC.Num" "-" [fd, fd] . mkMinus makers $ Plugins.mkTyConTy ft)
+          (([ft, ft], ft), Boxer "GHC.Num" "-" . mkMinus makers $ Plugins.mkTyConTy ft)
       ),
       ( Plugins.FloatMulOp,
         pure
-          (([ft, ft], ft), Boxer "GHC.Num" "*" [fd, fd] . mkTimes makers $ Plugins.mkTyConTy ft)
+          (([ft, ft], ft), Boxer "GHC.Num" "*" . mkTimes makers $ Plugins.mkTyConTy ft)
       ),
       ( Plugins.FloatCosOp,
-        pure (([ft], ft), Boxer "GHC.Float" "cos" [fd] . mkCos makers $ Plugins.mkTyConTy ft)
+        pure (([ft], ft), Boxer "GHC.Float" "cos" . mkCos makers $ Plugins.mkTyConTy ft)
       ),
       ( Plugins.FloatLogOp,
-        pure (([ft], ft), Boxer "GHC.Float" "log" [fd] . mkLog makers $ Plugins.mkTyConTy ft)
+        pure (([ft], ft), Boxer "GHC.Float" "log" . mkLog makers $ Plugins.mkTyConTy ft)
       ),
       ( Plugins.FloatSinOp,
-        pure (([ft], ft), Boxer "GHC.Float" "sin" [fd] . mkSin makers $ Plugins.mkTyConTy ft)
+        pure (([ft], ft), Boxer "GHC.Float" "sin" . mkSin makers $ Plugins.mkTyConTy ft)
       ),
       ( Plugins.FloatDivOp,
         pure
-          (([ft, ft], ft), Boxer "GHC.Real" "/" [fd, fd] . mkDivide makers $ Plugins.mkTyConTy ft)
+          (([ft, ft], ft), Boxer "GHC.Real" "/" . mkDivide makers $ Plugins.mkTyConTy ft)
       ),
       ( Plugins.FloatExpOp,
-        pure (([ft], ft), Boxer "GHC.Real" "exp" [fd] . mkExp makers $ Plugins.mkTyConTy ft)
+        pure (([ft], ft), Boxer "GHC.Real" "exp" . mkExp makers $ Plugins.mkTyConTy ft)
       ),
       ( Plugins.FloatSqrtOp,
-        pure (([ft], ft), Boxer "GHC.Float" "sqrt" [fd] . mkSqrt makers $ Plugins.mkTyConTy ft)
+        pure (([ft], ft), Boxer "GHC.Float" "sqrt" . mkSqrt makers $ Plugins.mkTyConTy ft)
       ),
       ( Plugins.FloatNegOp,
-        pure (([ft], ft), Boxer "GHC.Num" "negate" [fd] . mkNegate makers $ Plugins.mkTyConTy ft)
+        pure (([ft], ft), Boxer "GHC.Num" "negate" . mkNegate makers $ Plugins.mkTyConTy ft)
       ),
       ( Plugins.FloatFabsOp,
-        pure (([ft], ft), Boxer "GHC.Num" "abs" [fd] . mkAbs makers $ Plugins.mkTyConTy ft)
+        pure (([ft], ft), Boxer "GHC.Num" "abs" . mkAbs makers $ Plugins.mkTyConTy ft)
       ),
       ( Plugins.FloatEqOp,
         pure
           ( ([ft, ft], Plugins.boolTyCon),
-            Boxer "GHC.Classes" "==" [fd] . mkEqual makers $ Plugins.mkTyConTy ft
+            Boxer "GHC.Classes" "==" . mkEqual makers $ Plugins.mkTyConTy ft
           )
       ),
       ( Plugins.FloatLeOp,
         pure
           ( ([ft, ft], Plugins.boolTyCon),
-            Boxer "GHC.Classes" "<=" [fd] . mkLE makers $ Plugins.mkTyConTy ft
+            Boxer "GHC.Classes" "<=" . mkLE makers $ Plugins.mkTyConTy ft
           )
       ),
       ( Plugins.FloatLtOp,
         pure
           ( ([ft, ft], Plugins.boolTyCon),
-            Boxer "GHC.Classes" "<" [fd] . mkLT makers $ Plugins.mkTyConTy ft
+            Boxer "GHC.Classes" "<" . mkLT makers $ Plugins.mkTyConTy ft
           )
       ),
       ( Plugins.FloatGeOp,
         pure
           ( ([ft, ft], Plugins.boolTyCon),
-            Boxer "GHC.Classes" ">=" [fd] . mkGE makers $ Plugins.mkTyConTy ft
+            Boxer "GHC.Classes" ">=" . mkGE makers $ Plugins.mkTyConTy ft
           )
       ),
       ( Plugins.FloatGtOp,
         pure
           ( ([ft, ft], Plugins.boolTyCon),
-            Boxer "GHC.Classes" ">" [fd] . mkGT makers $ Plugins.mkTyConTy ft
+            Boxer "GHC.Classes" ">" . mkGT makers $ Plugins.mkTyConTy ft
           )
       ),
       ( Plugins.FloatNeOp,
         pure
           ( ([ft, ft], Plugins.boolTyCon),
-            Boxer "GHC.Classes" "/=" [fd] . mkNotEqual makers $ Plugins.mkTyConTy ft
+            Boxer "GHC.Classes" "/=" . mkNotEqual makers $ Plugins.mkTyConTy ft
           )
       )
     ]
   where
     dt = Plugins.doubleTyCon
     ft = Plugins.floatTyCon
-    dd = Plugins.doubleDataCon
-    fd = Plugins.floatDataCon
 
-mkWordPrimOps :: Makers -> Plugins.TyCon -> Plugins.DataCon -> PrimOpMap
-mkWordPrimOps makers tc dc =
+mkWordPrimOps :: Makers -> Plugins.TyCon -> PrimOpMap
+mkWordPrimOps makers tc =
   Map.fromListWith
     const
     [ ( Plugins.WordAddOp,
-        pure (([tc, tc], tc), Boxer "GHC.Num" "+" [dc, dc] . mkPlus makers $ Plugins.mkTyConTy tc)
+        pure (([tc, tc], tc), Boxer "GHC.Num" "+" . mkPlus makers $ Plugins.mkTyConTy tc)
       ),
       ( Plugins.WordSubOp,
-        pure (([tc, tc], tc), Boxer "GHC.Num" "-" [dc, dc] . mkMinus makers $ Plugins.mkTyConTy tc)
+        pure (([tc, tc], tc), Boxer "GHC.Num" "-" . mkMinus makers $ Plugins.mkTyConTy tc)
       ),
       ( Plugins.WordMulOp,
-        pure (([tc, tc], tc), Boxer "GHC.Num" "*" [dc, dc] . mkTimes makers $ Plugins.mkTyConTy tc)
+        pure (([tc, tc], tc), Boxer "GHC.Num" "*" . mkTimes makers $ Plugins.mkTyConTy tc)
       ),
       ( Plugins.WordQuotOp,
         pure
-          (([tc, tc], tc), Boxer "GHC.Real" "quot" [dc, dc] . mkQuot makers $ Plugins.mkTyConTy tc)
+          (([tc, tc], tc), Boxer "GHC.Real" "quot" . mkQuot makers $ Plugins.mkTyConTy tc)
       ),
       ( Plugins.WordRemOp,
-        pure (([tc, tc], tc), Boxer "GHC.Real" "rem" [dc, dc] . mkRem makers $ Plugins.mkTyConTy tc)
+        pure (([tc, tc], tc), Boxer "GHC.Real" "rem" . mkRem makers $ Plugins.mkTyConTy tc)
       ),
       ( Plugins.WordEqOp,
         pure
           ( ([tc, tc], Plugins.boolTyCon),
-            Boxer "GHC.Classes" "==" [dc] . mkEqual makers $ Plugins.mkTyConTy tc
+            Boxer "GHC.Classes" "==" . mkEqual makers $ Plugins.mkTyConTy tc
           )
       ),
       ( Plugins.WordLeOp,
         pure
           ( ([tc, tc], Plugins.boolTyCon),
-            Boxer "GHC.Classes" "<=" [dc] . mkLE makers $ Plugins.mkTyConTy tc
+            Boxer "GHC.Classes" "<=" . mkLE makers $ Plugins.mkTyConTy tc
           )
       ),
       ( Plugins.WordLtOp,
         pure
           ( ([tc, tc], Plugins.boolTyCon),
-            Boxer "GHC.Classes" "<" [dc] . mkLT makers $ Plugins.mkTyConTy tc
+            Boxer "GHC.Classes" "<" . mkLT makers $ Plugins.mkTyConTy tc
           )
       ),
       ( Plugins.WordGeOp,
         pure
           ( ([tc, tc], Plugins.boolTyCon),
-            Boxer "GHC.Classes" ">=" [dc] . mkGE makers $ Plugins.mkTyConTy tc
+            Boxer "GHC.Classes" ">=" . mkGE makers $ Plugins.mkTyConTy tc
           )
       ),
       ( Plugins.WordGtOp,
         pure
           ( ([tc, tc], Plugins.boolTyCon),
-            Boxer "GHC.Classes" ">" [dc] . mkGT makers $ Plugins.mkTyConTy tc
+            Boxer "GHC.Classes" ">" . mkGT makers $ Plugins.mkTyConTy tc
           )
       ),
       ( Plugins.WordNeOp,
         pure
           ( ([tc, tc], Plugins.boolTyCon),
-            Boxer "GHC.Classes" "/=" [dc] . mkNotEqual makers $ Plugins.mkTyConTy tc
+            Boxer "GHC.Classes" "/=" . mkNotEqual makers $ Plugins.mkTyConTy tc
           )
       ),
       ( Plugins.WordToDoubleOp,
         pure
           ( ([tc], Plugins.doubleTyCon),
-            Boxer "GHC.Classes" "fromIntegral" [dc] $
+            Boxer "GHC.Classes" "fromIntegral" $
               mkFromIntegral makers (Plugins.mkTyConTy tc) Plugins.doubleTy
           )
       ),
       ( Plugins.WordToFloatOp,
         pure
           ( ([tc], Plugins.floatTyCon),
-            Boxer "GHC.Classes" "fromIntegral" [dc] $
+            Boxer "GHC.Classes" "fromIntegral" $
               mkFromIntegral makers (Plugins.mkTyConTy tc) Plugins.floatTy
           )
       )
     ]
 
-mkIntPrimOps :: Makers -> Plugins.TyCon -> Plugins.DataCon -> PrimOpMap
-mkIntPrimOps makers tc dc =
+mkIntPrimOps :: Makers -> Plugins.TyCon -> PrimOpMap
+mkIntPrimOps makers tc =
   Map.fromListWith
     const
     [ ( Plugins.IntAddOp,
-        pure (([tc, tc], tc), Boxer "GHC.Num" "+" [dc, dc] . mkPlus makers $ Plugins.mkTyConTy tc)
+        pure (([tc, tc], tc), Boxer "GHC.Num" "+" . mkPlus makers $ Plugins.mkTyConTy tc)
       ),
       ( Plugins.IntSubOp,
-        pure (([tc, tc], tc), Boxer "GHC.Num" "-" [dc, dc] . mkMinus makers $ Plugins.mkTyConTy tc)
+        pure (([tc, tc], tc), Boxer "GHC.Num" "-" . mkMinus makers $ Plugins.mkTyConTy tc)
       ),
       ( Plugins.IntMulOp,
-        pure (([tc, tc], tc), Boxer "GHC.Num" "*" [dc, dc] . mkTimes makers $ Plugins.mkTyConTy tc)
+        pure (([tc, tc], tc), Boxer "GHC.Num" "*" . mkTimes makers $ Plugins.mkTyConTy tc)
       ),
       ( Plugins.IntQuotOp,
         pure
-          (([tc, tc], tc), Boxer "GHC.Real" "quot" [dc, dc] . mkQuot makers $ Plugins.mkTyConTy tc)
+          (([tc, tc], tc), Boxer "GHC.Real" "quot" . mkQuot makers $ Plugins.mkTyConTy tc)
       ),
       ( Plugins.IntRemOp,
-        pure (([tc, tc], tc), Boxer "GHC.Real" "rem" [dc, dc] . mkRem makers $ Plugins.mkTyConTy tc)
+        pure (([tc, tc], tc), Boxer "GHC.Real" "rem" . mkRem makers $ Plugins.mkTyConTy tc)
       ),
       ( Plugins.IntNegOp,
-        pure (([tc], tc), Boxer "GHC.Num" "negate" [dc] . mkNegate makers $ Plugins.mkTyConTy tc)
+        pure (([tc], tc), Boxer "GHC.Num" "negate" . mkNegate makers $ Plugins.mkTyConTy tc)
       ),
       ( Plugins.IntEqOp,
         pure
           ( ([tc, tc], Plugins.boolTyCon),
-            Boxer "GHC.Classes" "==" [dc] . mkEqual makers $ Plugins.mkTyConTy tc
+            Boxer "GHC.Classes" "==" . mkEqual makers $ Plugins.mkTyConTy tc
           )
       ),
       ( Plugins.IntLeOp,
         pure
           ( ([tc, tc], Plugins.boolTyCon),
-            Boxer "GHC.Classes" "<=" [dc] . mkLE makers $ Plugins.mkTyConTy tc
+            Boxer "GHC.Classes" "<=" . mkLE makers $ Plugins.mkTyConTy tc
           )
       ),
       ( Plugins.IntLtOp,
         pure
           ( ([tc, tc], Plugins.boolTyCon),
-            Boxer "GHC.Classes" "<" [dc] . mkLT makers $ Plugins.mkTyConTy tc
+            Boxer "GHC.Classes" "<" . mkLT makers $ Plugins.mkTyConTy tc
           )
       ),
       ( Plugins.IntGeOp,
         pure
           ( ([tc, tc], Plugins.boolTyCon),
-            Boxer "GHC.Classes" ">=" [dc] . mkGE makers $ Plugins.mkTyConTy tc
+            Boxer "GHC.Classes" ">=" . mkGE makers $ Plugins.mkTyConTy tc
           )
       ),
       ( Plugins.IntGtOp,
         pure
           ( ([tc, tc], Plugins.boolTyCon),
-            Boxer "GHC.Classes" ">" [dc] . mkGT makers $ Plugins.mkTyConTy tc
+            Boxer "GHC.Classes" ">" . mkGT makers $ Plugins.mkTyConTy tc
           )
       ),
       ( Plugins.IntNeOp,
         pure
           ( ([tc, tc], Plugins.boolTyCon),
-            Boxer "GHC.Classes" "/=" [dc] . mkNotEqual makers $ Plugins.mkTyConTy tc
+            Boxer "GHC.Classes" "/=" . mkNotEqual makers $ Plugins.mkTyConTy tc
           )
       ),
       ( Plugins.IntToDoubleOp,
         pure
           ( ([tc], Plugins.doubleTyCon),
-            Boxer "GHC.Classes" "fromIntegral" [dc] $
+            Boxer "GHC.Classes" "fromIntegral" $
               mkFromIntegral makers (Plugins.mkTyConTy tc) Plugins.doubleTy
           )
       ),
       ( Plugins.IntToFloatOp,
         pure
           ( ([tc], Plugins.floatTyCon),
-            Boxer "GHC.Classes" "fromIntegral" [dc] $
+            Boxer "GHC.Classes" "fromIntegral" $
               mkFromIntegral makers (Plugins.mkTyConTy tc) Plugins.floatTy
           )
       )
@@ -1515,33 +1510,33 @@ mkIntPrimOps makers tc dc =
 
 mkFpCCallBoxers ::
   Makers ->
-  (Plugins.TyCon, Plugins.DataCon, String) ->
+  (Plugins.TyCon, String) ->
   [(Plugins.CLabelString, (Boxer, [Plugins.Type], Plugins.Type))]
-mkFpCCallBoxers makers (tc, dc, suffix) =
+mkFpCCallBoxers makers (tc, suffix) =
   fmap
     (bimap (<> Plugins.mkFastString suffix) renameBoxer)
-    [ ("pow", (Boxer "GHC.Float" "**" [dc, dc] $ mkPow makers ty, [ty, ty], ty)),
-      ("exp", (Boxer "GHC.Real" "exp" [dc] $ mkExp makers ty, [ty], ty)),
-      ("log", (Boxer "GHC.Float" "log" [dc] $ mkLog makers ty, [ty], ty)),
-      ("sqrt", (Boxer "GHC.Float" "sqrt" [dc] $ mkSqrt makers ty, [ty], ty)),
-      ("atan2", (Boxer "GHC.Float" "atan2" [dc, dc] $ mkArcTan2 makers ty, [ty, ty], ty)),
-      ("sin", (Boxer "GHC.Real" "sin" [dc] $ mkSin makers ty, [ty], ty)),
-      ("cos", (Boxer "GHC.Real" "cos" [dc] $ mkCos makers ty, [ty], ty)),
-      ("tan", (Boxer "GHC.Real" "tan" [dc] $ mkTan makers ty, [ty], ty)),
-      ("asin", (Boxer "GHC.Real" "asin" [dc] $ mkASin makers ty, [ty], ty)),
-      ("acos", (Boxer "GHC.Real" "acos" [dc] $ mkACos makers ty, [ty], ty)),
-      ("atan", (Boxer "GHC.Real" "atan" [dc] $ mkATan makers ty, [ty], ty)),
-      ("sinh", (Boxer "GHC.Real" "sinh" [dc] $ mkSinh makers ty, [ty], ty)),
-      ("cosh", (Boxer "GHC.Real" "cosh" [dc] $ mkCosh makers ty, [ty], ty)),
-      ("tanh", (Boxer "GHC.Real" "tanh" [dc] $ mkTanh makers ty, [ty], ty)),
-      ("asinh", (Boxer "GHC.Real" "asinh" [dc] $ mkASinh makers ty, [ty], ty)),
-      ("acosh", (Boxer "GHC.Real" "acosh" [dc] $ mkACosh makers ty, [ty], ty)),
-      ("atanh", (Boxer "GHC.Real" "atanh" [dc] $ mkATanh makers ty, [ty], ty))
+    [ ("pow", (Boxer "GHC.Float" "**" $ mkPow makers ty, [ty, ty], ty)),
+      ("exp", (Boxer "GHC.Real" "exp" $ mkExp makers ty, [ty], ty)),
+      ("log", (Boxer "GHC.Float" "log" $ mkLog makers ty, [ty], ty)),
+      ("sqrt", (Boxer "GHC.Float" "sqrt" $ mkSqrt makers ty, [ty], ty)),
+      ("atan2", (Boxer "GHC.Float" "atan2" $ mkArcTan2 makers ty, [ty, ty], ty)),
+      ("sin", (Boxer "GHC.Real" "sin" $ mkSin makers ty, [ty], ty)),
+      ("cos", (Boxer "GHC.Real" "cos" $ mkCos makers ty, [ty], ty)),
+      ("tan", (Boxer "GHC.Real" "tan" $ mkTan makers ty, [ty], ty)),
+      ("asin", (Boxer "GHC.Real" "asin" $ mkASin makers ty, [ty], ty)),
+      ("acos", (Boxer "GHC.Real" "acos" $ mkACos makers ty, [ty], ty)),
+      ("atan", (Boxer "GHC.Real" "atan" $ mkATan makers ty, [ty], ty)),
+      ("sinh", (Boxer "GHC.Real" "sinh" $ mkSinh makers ty, [ty], ty)),
+      ("cosh", (Boxer "GHC.Real" "cosh" $ mkCosh makers ty, [ty], ty)),
+      ("tanh", (Boxer "GHC.Real" "tanh" $ mkTanh makers ty, [ty], ty)),
+      ("asinh", (Boxer "GHC.Real" "asinh" $ mkASinh makers ty, [ty], ty)),
+      ("acosh", (Boxer "GHC.Real" "acosh" $ mkACosh makers ty, [ty], ty)),
+      ("atanh", (Boxer "GHC.Real" "atanh" $ mkATanh makers ty, [ty], ty))
     ]
   where
     ty = Plugins.mkTyConTy tc
-    renameBoxer (Boxer m f d t, args, res) =
-      (Boxer m [fmt|{f}{suffix}|] d t, args, res)
+    renameBoxer (Boxer m f t, args, res) =
+      (Boxer m [fmt|{f}{suffix}|] t, args, res)
 
 findCCallBoxer ::
   [(Plugins.CLabelString, (Boxer, [Plugins.Type], Plugins.Type))] ->
@@ -1560,10 +1555,10 @@ findCCallBoxer additionalBoxers makers dflags debug x =
     dbg = renderSDoc dflags . Plugins.ppr
     table =
       additionalBoxers
-        <> mkFpCCallBoxers makers (Plugins.doubleTyCon, Plugins.doubleDataCon, mempty)
-        <> mkFpCCallBoxers makers (Plugins.floatTyCon, Plugins.floatDataCon, "f")
+        <> mkFpCCallBoxers makers (Plugins.doubleTyCon, mempty)
+        <> mkFpCCallBoxers makers (Plugins.floatTyCon, "f")
         <> [ ( "isDoubleNegativeZero",
-               ( Boxer "GHC.Float" "isDoubleNegativeZero" [Plugins.doubleDataCon]
+               ( Boxer "GHC.Float" "isDoubleNegativeZero"
                    . mkFPIsNegativeZero makers
                    $ Plugins.mkTyConTy Plugins.doubleTyCon,
                  [Plugins.doubleTy],
@@ -1571,7 +1566,7 @@ findCCallBoxer additionalBoxers makers dflags debug x =
                )
              ),
              ( "isDoubleInfinite",
-               ( Boxer "GHC.Float" "isDoubleInfinite" [Plugins.doubleDataCon]
+               ( Boxer "GHC.Float" "isDoubleInfinite"
                    . mkFPIsInfinite makers
                    $ Plugins.mkTyConTy Plugins.doubleTyCon,
                  [Plugins.doubleTy],
@@ -1579,21 +1574,21 @@ findCCallBoxer additionalBoxers makers dflags debug x =
                )
              ),
              ( "isDoubleFinite",
-               ( Boxer "GHC.Float" "isDoubleFinite" [Plugins.doubleDataCon] . mkFPIsFinite makers $
+               ( Boxer "GHC.Float" "isDoubleFinite" . mkFPIsFinite makers $
                    Plugins.mkTyConTy Plugins.doubleTyCon,
                  [Plugins.doubleTy],
                  Plugins.boolTy
                )
              ),
              ( "isDoubleNaN",
-               ( Boxer "GHC.Float" "isDoubleNaN" [Plugins.doubleDataCon] . mkFPIsNaN makers $
+               ( Boxer "GHC.Float" "isDoubleNaN" . mkFPIsNaN makers $
                    Plugins.mkTyConTy Plugins.doubleTyCon,
                  [Plugins.doubleTy],
                  Plugins.boolTy
                )
              ),
              ( "isDoubleDenormalized",
-               ( Boxer "GHC.Float" "isDoubleDenormalized" [Plugins.doubleDataCon]
+               ( Boxer "GHC.Float" "isDoubleDenormalized"
                    . mkFPIsDenormal makers
                    $ Plugins.mkTyConTy Plugins.doubleTyCon,
                  [Plugins.doubleTy],
@@ -1601,7 +1596,7 @@ findCCallBoxer additionalBoxers makers dflags debug x =
                )
              ),
              ( "isFloatNegativeZero",
-               ( Boxer "GHC.Float" "isFloatNegativeZero" [Plugins.floatDataCon]
+               ( Boxer "GHC.Float" "isFloatNegativeZero"
                    . mkFPIsNegativeZero makers
                    $ Plugins.mkTyConTy Plugins.floatTyCon,
                  [Plugins.floatTy],
@@ -1609,7 +1604,7 @@ findCCallBoxer additionalBoxers makers dflags debug x =
                )
              ),
              ( "isFloatInfinite",
-               ( Boxer "GHC.Float" "isFloatInfinite" [Plugins.floatDataCon]
+               ( Boxer "GHC.Float" "isFloatInfinite"
                    . mkFPIsInfinite makers
                    $ Plugins.mkTyConTy Plugins.floatTyCon,
                  [Plugins.floatTy],
@@ -1617,21 +1612,21 @@ findCCallBoxer additionalBoxers makers dflags debug x =
                )
              ),
              ( "isFloatFinite",
-               ( Boxer "GHC.Float" "isFloatFinite" [Plugins.floatDataCon] . mkFPIsFinite makers $
+               ( Boxer "GHC.Float" "isFloatFinite" . mkFPIsFinite makers $
                    Plugins.mkTyConTy Plugins.floatTyCon,
                  [Plugins.floatTy],
                  Plugins.boolTy
                )
              ),
              ( "isFloatNaN",
-               ( Boxer "GHC.Float" "isFloatNaN" [Plugins.floatDataCon] . mkFPIsNaN makers $
+               ( Boxer "GHC.Float" "isFloatNaN" . mkFPIsNaN makers $
                    Plugins.mkTyConTy Plugins.floatTyCon,
                  [Plugins.floatTy],
                  Plugins.boolTy
                )
              ),
              ( "isFloatDenormalized",
-               ( Boxer "GHC.Float" "isFloatDenormalized" [Plugins.floatDataCon]
+               ( Boxer "GHC.Float" "isFloatDenormalized"
                    . mkFPIsDenormal makers
                    $ Plugins.mkTyConTy Plugins.floatTyCon,
                  [Plugins.floatTy],
@@ -1640,17 +1635,17 @@ findCCallBoxer additionalBoxers makers dflags debug x =
              )
            ]
 
-mkNoInlinePrimIntFunctions :: Makers -> Plugins.TyCon -> Plugins.DataCon -> NoInlinePrimFunctionMap
-mkNoInlinePrimIntFunctions makers tc dc =
+mkNoInlinePrimIntFunctions :: Makers -> Plugins.TyCon -> NoInlinePrimFunctionMap
+mkNoInlinePrimIntFunctions makers tc =
   Map.fromListWith
     const
     -- TODO (#18): add `rem` and `quot`. There's unfortunately no `Plugins.remIntName` or
     -- `Plugins.quotIntName`, which makes it slightly more complicated.
     [ ( Plugins.modIntName,
-        pure (([tc, tc], tc), Boxer "GHC.Real" "mod" [dc, dc] . mkMod makers $ Plugins.mkTyConTy tc)
+        pure (([tc, tc], tc), Boxer "GHC.Real" "mod" . mkMod makers $ Plugins.mkTyConTy tc)
       ),
       ( Plugins.divIntName,
-        pure (([tc, tc], tc), Boxer "GHC.Real" "div" [dc, dc] . mkDiv makers $ Plugins.mkTyConTy tc)
+        pure (([tc, tc], tc), Boxer "GHC.Real" "div" . mkDiv makers $ Plugins.mkTyConTy tc)
       )
     ]
 
