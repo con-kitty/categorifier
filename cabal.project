@@ -2,34 +2,15 @@ source-repository-package
   type: git
   location: https://github.com/compiling-to-categories/concat.git
   tag: d95c79d23f2728f2ab50497760195fffaf4ba675
-  subdir: classes
-
-source-repository-package
-  type: git
-  location: https://github.com/compiling-to-categories/concat.git
-  tag: d95c79d23f2728f2ab50497760195fffaf4ba675
-  subdir: examples
-
--- dependency of concat-classes, concat-examples
-source-repository-package
-  type: git
-  location: https://github.com/compiling-to-categories/concat.git
-  tag: d95c79d23f2728f2ab50497760195fffaf4ba675
-  subdir: inline
-
--- dependency of concat-classes, concat-examples
-source-repository-package
-  type: git
-  location: https://github.com/compiling-to-categories/concat.git
-  tag: d95c79d23f2728f2ab50497760195fffaf4ba675
-  subdir: known
-
--- dependency of concat-classes
-source-repository-package
-  type: git
-  location: https://github.com/compiling-to-categories/concat.git
-  tag: d95c79d23f2728f2ab50497760195fffaf4ba675
-  subdir: satisfy
+  subdir:
+    classes
+    examples
+    -- dependency of concat-classes, concat-examples
+    inline
+    -- dependency of concat-classes, concat-examples
+    known
+    -- dependency of concat-classes
+    satisfy
 
 program-options
   ghc-options: -Werror
