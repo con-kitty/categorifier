@@ -306,7 +306,7 @@ without `-fplugin-opt Categorifier:defer-failures` to see what actually went wro
 -- |
 -- __TODO__: `Dynamic.getValueSafely` throws in many cases. Try to catch, accumulate, return in
 --           `Either` (not that we can drop the IO regardless).
-getDynamicValueSafely :: Plugins.HscEnv -> Plugins.Name -> Plugins.Type -> IO (Maybe a)
+getDynamicValueSafely :: Plugins.HscEnv -> Plugins.Name -> Plugins.Type -> IO (Either (Maybe Plugins.Type) a)
 getDynamicValueSafely = Runtime.getValueSafely
 
 additionalBoxersTy :: Lookup Plugins.Type
@@ -358,7 +358,7 @@ categorifyRules convert opts guts =
     let handleOptions ty =
           traverseD
             ( \opt ->
-                maybe (throwE . pure $ IncorrectType opt ty) getParallel
+                either (throwE . pure . const (IncorrectType opt ty)) getParallel
                   <=< Plugins.liftIO
                   $ getDynamicValueSafely hscEnv opt ty
             )
@@ -372,7 +372,7 @@ categorifyRules convert opts guts =
           fmap (foldr1 (\f g a -> f a <> g a))
             . traverseD
               ( \opt ->
-                  maybe (throwE . pure $ IncorrectType opt additionalBoxersTy') pure
+                  either (throwE . pure . const (IncorrectType opt additionalBoxersTy')) pure
                     <=< Plugins.liftIO
                     $ getDynamicValueSafely hscEnv opt additionalBoxersTy'
               )
@@ -391,7 +391,7 @@ categorifyRules convert opts guts =
           fmap (combineMakerMapFuns . toList)
             . traverseD
               ( \opt ->
-                  maybe (throwE . pure $ IncorrectType opt makerMapTy') pure
+                  either (throwE . pure . const (IncorrectType opt makerMapTy')) pure
                     <=< Plugins.liftIO
                     $ getDynamicValueSafely hscEnv opt makerMapTy'
               )
@@ -476,7 +476,7 @@ runStack hierarchyOptions defer dflags uniqS calls f =
       IO a
     printWarnings wt = do
       (val, _newState, warns) <- runRWST wt Map.empty (CategoryState uniqS 0 mempty)
-      unless (Plugins.isEmptyBag warns) . hPutStrLn stderr . Text.unpack $
+      unless (Plugins.isEmptyMessages warns) . hPutStrLn stderr . Text.unpack $
         Errors.showWarnings dflags warns
       pure val
     printFailure :: NonEmpty CategoricalFailure -> IO a

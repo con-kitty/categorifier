@@ -74,7 +74,7 @@ test-suite adjunctions-hierarchy
     , categorifier-hedgehog
     , categorifier-plugin
     , categorifier-plugin-test
-    , ghc-prim >=0.5.3 && <0.9
+    , ghc-prim >=0.5.3 && <0.10
     , hedgehog >=1.0.3 && <1.3
     , template-haskell >=2.15.0 && <2.20
 
@@ -106,6 +106,6 @@ test-suite adjunctions-hierarchy-optimized
     , categorifier-hedgehog
     , categorifier-plugin
     , categorifier-plugin-test
-    , ghc-prim >=0.5.3 && <0.9
+    , ghc-prim >=0.5.3 && <0.10
     , hedgehog >=1.0.3 && <1.3
     , template-haskell >=2.15.0 && <2.20

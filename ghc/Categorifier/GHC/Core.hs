@@ -59,6 +59,7 @@ import GHC.Core.Coercion as Coercion hiding (substCo, substCoVarBndr)
 import GHC.Core.DataCon as DataCon
 import GHC.Core.FamInstEnv as FamInstEnv
 import GHC.Core.FVs as CoreFVs
+import GHC.Core.InstEnv as FamInstEnv
 import GHC.Core.Make as MkCore
 import GHC.Core.Opt.Arity as CoreArity
 import GHC.Core.Opt.Monad as CoreMonad hiding (CaseOfCase)

@@ -182,6 +182,12 @@ compareTypes' (TH.AppKindT t k, TH.AppKindT t' k') =
 compareTypes' (TH.ImplicitParamT s t, TH.ImplicitParamT s' t') =
   bool Nothing (compareTypes t t') $ s == s'
 #endif
+#if MIN_VERSION_template_haskell(2, 19, 0)
+compareTypes' (TH.PromotedInfixT t n u, TH.PromotedInfixT t' n' u') =
+  bool Nothing (join $ (<<>) <$> compareTypes t t' <*> compareTypes u u') $ n == n'
+compareTypes' (TH.PromotedUInfixT t n u, TH.PromotedUInfixT t' n' u') =
+  bool Nothing (join $ (<<>) <$> compareTypes t t' <*> compareTypes u u') $ n == n'
+#endif
 compareTypes' ty = case ty of
   (TH.ForallT b c t, TH.ForallT b' c' t') ->
     -- __TODO__: Ensure that the kinds of @b@ match, and that those names are added to the map
@@ -243,6 +249,12 @@ alphaRename' m (TH.InfixT t n t') =
   TH.InfixT <$> alphaRename' m t <*\> pure n <*\> alphaRename' m t'
 alphaRename' m (TH.UInfixT t n t') =
   TH.UInfixT <$> alphaRename' m t <*\> pure n <*\> alphaRename' m t'
+#if MIN_VERSION_template_haskell(2, 19, 0)
+alphaRename' m (TH.PromotedInfixT t n t') =
+  TH.PromotedInfixT <$> alphaRename' m t <*\> pure n <*\> alphaRename' m t'
+alphaRename' m (TH.PromotedUInfixT t n t') =
+  TH.PromotedUInfixT <$> alphaRename' m t <*\> pure n <*\> alphaRename' m t'
+#endif
 alphaRename' m (TH.ParensT t) = TH.ParensT <$> alphaRename' m t
 alphaRename' _ (TH.TupleT i) = pure $ TH.TupleT i
 alphaRename' _ (TH.UnboxedTupleT i) = pure $ TH.UnboxedTupleT i
@@ -283,6 +295,12 @@ rewriteType' m (TH.InfixT t n t') =
   TH.InfixT <$> rewriteType' m t <*\> pure n <*\> rewriteType' m t'
 rewriteType' m (TH.UInfixT t n t') =
   TH.UInfixT <$> rewriteType' m t <*\> pure n <*\> rewriteType' m t'
+#if MIN_VERSION_template_haskell(2, 19, 0)
+rewriteType' m (TH.PromotedInfixT t n t') =
+  TH.PromotedInfixT <$> rewriteType' m t <*\> pure n <*\> rewriteType' m t'
+rewriteType' m (TH.PromotedUInfixT t n t') =
+  TH.PromotedUInfixT <$> rewriteType' m t <*\> pure n <*\> rewriteType' m t'
+#endif
 rewriteType' m (TH.ParensT t) = TH.ParensT <$> rewriteType' m t
 rewriteType' _ (TH.TupleT i) = pure $ TH.TupleT i
 rewriteType' _ (TH.UnboxedTupleT i) = pure $ TH.UnboxedTupleT i
@@ -361,6 +379,12 @@ specializeT' (TH.PromotedT n) = pure $ TH.ConT n
 specializeT' (TH.ImplicitParamT s t) = TH.ImplicitParamT s <$> specializeT' t
 specializeT' (TH.InfixT a n b) = TH.InfixT <$> specializeT' a <*> pure n <*> specializeT' b
 specializeT' (TH.UInfixT a n b) = TH.UInfixT <$> specializeT' a <*> pure n <*> specializeT' b
+#if MIN_VERSION_template_haskell(2, 19, 0)
+specializeT' (TH.PromotedInfixT a n b) =
+  TH.PromotedInfixT <$> specializeT' a <*> pure n <*> specializeT' b
+specializeT' (TH.PromotedUInfixT a n b) =
+  TH.PromotedUInfixT <$> specializeT' a <*> pure n <*> specializeT' b
+#endif
 specializeT' (TH.ParensT t) = TH.ParensT <$> specializeT' t
 specializeT' (TH.TupleT i) = pure $ TH.TupleT i
 specializeT' (TH.UnboxedTupleT i) = pure $ TH.UnboxedTupleT i
@@ -425,6 +449,10 @@ hasVarT (TH.PromotedT _) = False
 hasVarT (TH.ImplicitParamT _ t) = hasVarT t
 hasVarT (TH.InfixT a _ b) = hasVarT a || hasVarT b
 hasVarT (TH.UInfixT a _ b) = hasVarT a || hasVarT b
+#if MIN_VERSION_template_haskell(2, 19, 0)
+hasVarT (TH.PromotedInfixT a _ b) = hasVarT a || hasVarT b
+hasVarT (TH.PromotedUInfixT a _ b) = hasVarT a || hasVarT b
+#endif
 hasVarT (TH.ParensT t) = hasVarT t
 hasVarT (TH.TupleT _) = False
 hasVarT (TH.UnboxedTupleT _) = False

@@ -21,7 +21,7 @@ import qualified GHC.Utils.Logger as Logger
 #endif
 #if MIN_VERSION_ghc(9, 0, 0)
 #if MIN_VERSION_ghc(9, 2, 0)
-import GHC.Utils.Error as ErrUtils hiding (pprMsgEnvelopeBagWithLoc)
+import GHC.Utils.Error as ErrUtils hiding (isEmptyMessages, pprMsgEnvelopeBagWithLoc)
 import qualified GHC.Utils.Error as ErrUtils
 import GHC.Utils.Outputable as Outputable
 #else

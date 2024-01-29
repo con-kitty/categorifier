@@ -84,7 +84,7 @@ runTcRn env0 guts m = do
     handleResult errors =
       maybe
         (Left . pure $ TypecheckFailure errors)
-        (if Plugins.isEmptyBag errors then pure else Left . pure . ErroneousTypecheckSuccess errors)
+        (if Plugins.isEmptyMessages errors then pure else Left . pure . ErroneousTypecheckSuccess errors)
     imports0 = Plugins.ic_imports (Plugins.hsc_IC env0)
     env :: [Plugins.ModuleName] -> Plugins.HscEnv
     env extraModuleNames =

@@ -23,6 +23,7 @@ module Categorifier.GHC.Types
     pattern CCallSpec,
     pattern LitNumber,
     WithIdInfo (..),
+    isEmptyMessages,
     mkLocalVar,
     mkSysLocal,
     setLiteralType,
@@ -39,12 +40,19 @@ import qualified Categorifier.GHC.Utils as Utils
 import qualified GHC.Core.TyCo.Rep as Core
 #if MIN_VERSION_ghc(9, 4, 0)
 import GHC.Driver.Errors.Types as ErrUtils
+#else
+import qualified GHC.Data.Bag as Bag
 #endif
 import GHC.Types.Basic as BasicTypes hiding (Inline)
 import GHC.Types.ForeignCall as ForeignCall hiding (CCallSpec (..))
 import qualified GHC.Types.ForeignCall as ForeignCall
 #if MIN_VERSION_ghc(9, 2, 0)
+#if MIN_VERSION_ghc(9, 4, 0)
+import GHC.Types.Error as ErrUtils hiding (isEmptyMessages)
+import qualified GHC.Types.Error as ErrUtils
+#else
 import GHC.Types.Error as ErrUtils
+#endif
 import GHC.Types.TyThing as HscTypes
 #else
 import GHC.Driver.Types as HscTypes hiding
@@ -111,6 +119,14 @@ pattern LitNumber :: Integer -> Literal
 pattern LitNumber n <- Literal.LitNumber _ n
 #else
 pattern LitNumber n <- Literal.LitNumber _ n _
+#endif
+
+#if MIN_VERSION_ghc(9, 4, 0)
+isEmptyMessages :: Messages e -> Bool
+isEmptyMessages = ErrUtils.isEmptyMessages
+#else
+isEmptyMessages :: Bag.Bag a -> Bool
+isEmptyMessages = Bag.isEmptyBag
 #endif
 
 mkLocalVar :: IdDetails -> Name -> Core.Type -> IdInfo -> Id
