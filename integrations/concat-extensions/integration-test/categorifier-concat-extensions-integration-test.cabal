@@ -12,20 +12,11 @@ source-repository head
   type: git
   location: https://github.com/con-kitty/categorifier
 
-common options
+common defaults
   ghc-options:
-    -- make it possible to inline almost anything
-    -fexpose-all-unfoldings
-    -- ensure unfoldings are available
-    -fno-omit-interface-pragmas
     -Wall
-
-library
-  exposed-modules:
-      Categorifier.Test.ConCatExtensions.Instances
   build-depends:
     , base >=4.11.0 && <4.17
-    , categorifier-concat-integration-test
     , categorifier-concat-extensions-category
     , categorifier-plugin-test
     , concat-classes
@@ -48,61 +39,51 @@ library
     , DeriveTraversable
     , DerivingStrategies
 
-test-suite concat-extensions-hierarchy
-  import: options
-  type: exitcode-stdio-1.0
+library
+  import: defaults
+  exposed-modules:
+      Categorifier.Test.ConCatExtensions.Instances
+  build-depends:
+    , categorifier-concat-integration-test
+
+common hierarchy-tests
+  import: defaults
   hs-source-dirs: test
-  main-is: ConCatExtensions/Main.hs
   ghc-options:
+    -- make it possible to inline almost anything
+    -fexpose-all-unfoldings
+    -- ensure unfoldings are available
+    -fno-omit-interface-pragmas
     -fplugin Categorifier
     -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.ConCat.functionHierarchy
     -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.ConCatExtensions.hierarchy
-    -O0
   build-depends:
     , adjunctions >=4.4 && <4.5
-    , base >=4.13.0 && <4.17
     , categorifier-category
     , categorifier-client
     , categorifier-concat-integration
-    , categorifier-hedgehog
-    , categorifier-concat-extensions-category
     , categorifier-concat-extensions-integration
     , categorifier-concat-extensions-integration-test
+    , categorifier-hedgehog
     , categorifier-plugin
-    , categorifier-plugin-test
-    , concat-classes
     , concat-examples
     , either >=5.0.1 && <5.1
     , ghc-prim >=0.5.3 && <0.9
     , hedgehog >=1.0.3 && <1.3
     , template-haskell >=2.15.0 && <2.19
 
+test-suite concat-extensions-hierarchy
+  import: hierarchy-tests
+  type: exitcode-stdio-1.0
+  main-is: ConCatExtensions/Main.hs
+  ghc-options:
+    -O0
+
 test-suite concat-extensions-hierarchy-optimized
-  import: options
+  import: hierarchy-tests
   type: exitcode-stdio-1.0
   hs-source-dirs: test
   main-is: ConCatExtensions/Main.hs
   ghc-options:
-    -fplugin Categorifier
-    -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.ConCat.functionHierarchy
-    -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.ConCatExtensions.hierarchy
     -O2
     -fignore-interface-pragmas
-  build-depends:
-    , adjunctions >=4.4 && <4.5
-    , base >=4.13.0 && <4.17
-    , categorifier-category
-    , categorifier-client
-    , categorifier-concat-integration
-    , categorifier-hedgehog
-    , categorifier-concat-extensions-category
-    , categorifier-concat-extensions-integration
-    , categorifier-concat-extensions-integration-test
-    , categorifier-plugin
-    , categorifier-plugin-test
-    , concat-classes
-    , concat-examples
-    , either >=5.0.1 && <5.1
-    , ghc-prim >=0.5.3 && <0.9
-    , hedgehog >=1.0.3 && <1.3
-    , template-haskell >=2.15.0 && <2.19

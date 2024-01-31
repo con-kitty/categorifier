@@ -19,7 +19,6 @@ import Categorifier.Test.HList (HMap1 (..))
 import Categorifier.Test.TH (mkBinaryTestConfig, mkUnaryTestConfig)
 import Categorifier.Test.Tests (TestTerms, insertTest)
 import Data.Proxy (Proxy (..))
-import GHC.Num.Integer (Integer)
 import qualified GHC.Num.Integer
 import GHC.Num.Natural (Natural)
 import qualified GHC.Num.Natural

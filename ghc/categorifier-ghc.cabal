@@ -12,32 +12,11 @@ source-repository head
   type: git
   location: https://github.com/con-kitty/categorifier
 
-library
-  exposed-modules:
-      Categorifier.GHC.Builtin
-      Categorifier.GHC.Core
-      Categorifier.GHC.Data
-      Categorifier.GHC.Driver
-      Categorifier.GHC.HsToCore
-      Categorifier.GHC.Plugins
-      Categorifier.GHC.Runtime
-      Categorifier.GHC.Tc
-      Categorifier.GHC.Types
-      Categorifier.GHC.Unit
-      Categorifier.GHC.Utils
-      Paths_categorifier_ghc
-  autogen-modules:
-      Paths_categorifier_ghc
+common defaults
   ghc-options:
-    -O2
-    -fignore-interface-pragmas
     -Wall
   build-depends:
-    , PyF >=0.9.0 && <0.12
     , base >=4.13.0 && <4.17
-    , bytestring >=0.10.9 && <0.12
-    , containers >=0.6.2 && <0.7
-    , ghc >=8.8.1 && <9.4
   default-language: Haskell2010
   default-extensions:
       InstanceSigs
@@ -56,3 +35,29 @@ library
     , DeriveFoldable
     , DeriveTraversable
     , DerivingStrategies
+
+library
+  import: defaults
+  exposed-modules:
+      Categorifier.GHC.Builtin
+      Categorifier.GHC.Core
+      Categorifier.GHC.Data
+      Categorifier.GHC.Driver
+      Categorifier.GHC.HsToCore
+      Categorifier.GHC.Plugins
+      Categorifier.GHC.Runtime
+      Categorifier.GHC.Tc
+      Categorifier.GHC.Types
+      Categorifier.GHC.Unit
+      Categorifier.GHC.Utils
+      Paths_categorifier_ghc
+  autogen-modules:
+      Paths_categorifier_ghc
+  ghc-options:
+    -O2
+    -fignore-interface-pragmas
+  build-depends:
+    , PyF >=0.9.0 && <0.12
+    , bytestring >=0.10.9 && <0.12
+    , containers >=0.6.2 && <0.7
+    , ghc >=8.8.1 && <9.4

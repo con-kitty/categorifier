@@ -16,23 +16,11 @@ source-repository head
   type: git
   location: https://github.com/con-kitty/categorifier
 
-library
-  exposed-modules:
-      Categorifier.GhcBignum.Integration
-  other-modules:
-      Paths_categorifier_ghc_bignum_integration
-  autogen-modules:
-      Paths_categorifier_ghc_bignum_integration
-  ghc-options: -Wall
+common defaults
+  ghc-options:
+    -Wall
   build-depends:
-    , base >=4.13.0 && <4.17
-    , categorifier-client
-    , categorifier-duoids
-    , categorifier-ghc
-    , categorifier-plugin
-    , containers >=0.6.2 && <0.7
-    , ghc-bignum >=1.0 && <1.4
-    , template-haskell >=2.15.0 && <2.19
+    , base >=4.15.0 && <4.17
   default-language: Haskell2010
   default-extensions:
       InstanceSigs
@@ -51,3 +39,20 @@ library
     , DeriveFoldable
     , DeriveTraversable
     , DerivingStrategies
+
+library
+  import: defaults
+  exposed-modules:
+      Categorifier.GhcBignum.Integration
+  other-modules:
+      Paths_categorifier_ghc_bignum_integration
+  autogen-modules:
+      Paths_categorifier_ghc_bignum_integration
+  build-depends:
+    , categorifier-client
+    , categorifier-duoids
+    , categorifier-ghc
+    , categorifier-plugin
+    , containers >=0.6.2 && <0.7
+    , ghc-bignum >=1.0 && <1.4
+    , template-haskell >=2.15.0 && <2.19

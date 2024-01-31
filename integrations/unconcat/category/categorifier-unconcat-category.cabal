@@ -15,15 +15,8 @@ source-repository head
   type: git
   location: https://github.com/con-kitty/categorifier
 
-library
-  exposed-modules:
-      Categorifier.UnconCat
-  other-modules:
-      Paths_categorifier_unconcat_category
-  autogen-modules:
-      Paths_categorifier_unconcat_category
+common defaults
   ghc-options:
-    -O2
     -Wall
   build-depends:
     , base >=4.13.0 && <4.17
@@ -45,3 +38,14 @@ library
     , DeriveFoldable
     , DeriveTraversable
     , DerivingStrategies
+
+library
+  import: defaults
+  exposed-modules:
+      Categorifier.UnconCat
+  other-modules:
+      Paths_categorifier_unconcat_category
+  autogen-modules:
+      Paths_categorifier_unconcat_category
+  ghc-options:
+    -O2

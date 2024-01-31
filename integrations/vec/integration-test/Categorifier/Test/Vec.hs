@@ -11,7 +11,7 @@ module Categorifier.Test.Vec
 where
 
 import Categorifier.Test.HList (HMap1 (..))
-import Categorifier.Test.TH (mkBinaryTestConfig, mkExprTest, mkUnaryTestConfig)
+import Categorifier.Test.TH (mkBinaryTestConfig, mkUnaryTestConfig)
 import Categorifier.Test.Tests (TestTerms, insertTest)
 import Data.Fin (Fin)
 import Data.Proxy (Proxy (..))

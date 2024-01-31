@@ -12,23 +12,12 @@ source-repository head
   type: git
   location: https://github.com/con-kitty/categorifier
 
-library
-  exposed-modules:
-      Categorifier.Client
-  other-modules:
-      Categorifier.Client.Internal
-      Paths_categorifier_client
-  autogen-modules:
-      Paths_categorifier_client
-  ghc-options: -Wall
+common defaults
+  ghc-options:
+    -Wall
   build-depends:
-    , PyF >=0.9.0 && <0.12
     , base >=4.13.0 && <4.17
-    , categorifier-common
-    , categorifier-duoids
-    , categorifier-th
     , constraints >=0.12 && <0.14
-    , extra >=1.7.8 && <1.8
   default-language: Haskell2010
   default-extensions:
       InstanceSigs
@@ -48,31 +37,29 @@ library
     , DeriveTraversable
     , DerivingStrategies
 
+library
+  import: defaults
+  exposed-modules:
+      Categorifier.Client
+  other-modules:
+      Categorifier.Client.Internal
+      Paths_categorifier_client
+  autogen-modules:
+      Paths_categorifier_client
+  build-depends:
+    , PyF >=0.9.0 && <0.12
+    , categorifier-common
+    , categorifier-duoids
+    , categorifier-th
+    , extra >=1.7.8 && <1.8
+
 test-suite client-instances
+  import: defaults
   type: exitcode-stdio-1.0
   hs-source-dirs: test
   main-is: Main.hs
   build-depends:
-    , base >=4.13.0 && <4.17
     , categorifier-client
     , categorifier-hedgehog
-    , constraints >=0.12 && <0.14
     , fin >=0.1.1 && <0.4
     , hedgehog >=1.0.3 && <1.3
-  default-extensions:
-      InstanceSigs
-    , ScopedTypeVariables
-    , TypeApplications
-    , FlexibleContexts
-    , FlexibleInstances
-    , FunctionalDependencies
-    , LambdaCase
-    , TypeOperators
-    , BangPatterns
-    , StandaloneDeriving
-    , DeriveGeneric
-    , DeriveDataTypeable
-    , DeriveFunctor
-    , DeriveFoldable
-    , DeriveTraversable
-    , DerivingStrategies

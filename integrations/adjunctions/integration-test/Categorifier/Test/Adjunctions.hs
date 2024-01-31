@@ -12,7 +12,7 @@ module Categorifier.Test.Adjunctions
 where
 
 import Categorifier.Test.HList (HMap1 (..))
-import Categorifier.Test.TH (mkBinaryTestConfig, mkExprTest, mkUnaryTestConfig)
+import Categorifier.Test.TH (mkBinaryTestConfig, mkUnaryTestConfig)
 import Categorifier.Test.Tests (TestTerms, insertTest)
 import Data.Functor.Identity (Identity (..))
 import qualified Data.Functor.Rep as Representable

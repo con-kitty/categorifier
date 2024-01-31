@@ -12,19 +12,11 @@ source-repository head
   type: git
   location: https://github.com/con-kitty/categorifier
 
-library
-  exposed-modules:
-      Categorifier.ConCatExtensions
-  other-modules:
-      Paths_categorifier_concat_extensions_category
-  autogen-modules:
-      Paths_categorifier_concat_extensions_category
+common defaults
   ghc-options:
-    -O2
     -Wall
   build-depends:
-    , base >=4.11.0 && <4.17
-    , concat-classes
+    , base >=4.13.0 && <4.17
   default-language: Haskell2010
   default-extensions:
       InstanceSigs
@@ -43,3 +35,16 @@ library
     , DeriveFoldable
     , DeriveTraversable
     , DerivingStrategies
+
+library
+  import: defaults
+  exposed-modules:
+      Categorifier.ConCatExtensions
+  other-modules:
+      Paths_categorifier_concat_extensions_category
+  autogen-modules:
+      Paths_categorifier_concat_extensions_category
+  ghc-options:
+    -O2
+  build-depends:
+    , concat-classes
