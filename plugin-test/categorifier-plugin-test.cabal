@@ -28,22 +28,22 @@ common defaults
     , template-haskell ^>=2.15.0 || ^>=2.16.0 || ^>=2.17.0 || ^>=2.18.0
   default-language: Haskell2010
   default-extensions:
-      InstanceSigs
-    , ScopedTypeVariables
-    , TypeApplications
-    , FlexibleContexts
-    , FlexibleInstances
-    , FunctionalDependencies
-    , LambdaCase
-    , TypeOperators
-    , BangPatterns
-    , StandaloneDeriving
-    , DeriveGeneric
-    , DeriveDataTypeable
-    , DeriveFunctor
-    , DeriveFoldable
-    , DeriveTraversable
-    , DerivingStrategies
+    BangPatterns
+    DeriveDataTypeable
+    DeriveFoldable
+    DeriveFunctor
+    DeriveGeneric
+    DeriveTraversable
+    DerivingStrategies
+    FlexibleContexts
+    FlexibleInstances
+    FunctionalDependencies
+    InstanceSigs
+    LambdaCase
+    ScopedTypeVariables
+    StandaloneDeriving
+    TypeApplications
+    TypeOperators
 
 library
   import: defaults
