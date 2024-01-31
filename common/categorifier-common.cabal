@@ -16,7 +16,7 @@ common defaults
   ghc-options:
     -Wall
   build-depends:
-    , base >=4.13.0 && <4.17
+    , base ^>=4.13.0 || ^>=4.14.0 || ^>=4.15.0 || ^>=4.16.0
   default-language: Haskell2010
   default-extensions:
       InstanceSigs
@@ -45,5 +45,5 @@ library
   autogen-modules:
       Paths_categorifier_common
   build-depends:
-    , PyF >=0.9.0 && <0.12
-    , unliftio >=0.2.13 && <0.3
+    , PyF ^>=0.9.0 || ^>=0.10.0 || ^>=0.11.0
+    , unliftio ^>=0.2.13

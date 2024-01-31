@@ -16,8 +16,8 @@ common defaults
   ghc-options:
     -Wall
   build-depends:
-    , base >=4.13.0 && <4.17
-    , constraints >=0.12 && <0.14
+    , base ^>=4.13.0 || ^>=4.14.0 || ^>=4.15.0 || ^>=4.16.0
+    , constraints ^>=0.12.0 || ^>=0.13.0
   default-language: Haskell2010
   default-extensions:
       InstanceSigs
@@ -47,11 +47,11 @@ library
   autogen-modules:
       Paths_categorifier_client
   build-depends:
-    , PyF >=0.9.0 && <0.12
+    , PyF ^>=0.9.0 || ^>=0.10.0 || ^>=0.11.0
     , categorifier-common
     , categorifier-duoids
     , categorifier-th
-    , extra >=1.7.8 && <1.8
+    , extra ^>=1.7.8
 
 test-suite client-instances
   import: defaults
@@ -61,5 +61,5 @@ test-suite client-instances
   build-depends:
     , categorifier-client
     , categorifier-hedgehog
-    , fin >=0.1.1 && <0.4
-    , hedgehog >=1.0.3 && <1.3
+    , fin ^>=0.1.1 || ^>=0.2 || ^>=0.3
+    , hedgehog ^>=1.0.3 || ^>=1.1 || ^>=1.2
