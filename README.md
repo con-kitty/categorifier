@@ -1,7 +1,7 @@
 # Categorifier
 
-![Build status](https://github.com/con-kitty/categorifier/actions/workflows/ci.yml/badge.svg?branch=master)
-[![built with garnix](https://img.shields.io/endpoint?url=https%3A%2F%2Fgarnix.io%2Fapi%2Fbadges%2Fsellout%2Fcategorifier)](https://garnix.io)
+![Build status](https://github.com/con-kitty/categorifier/actions/workflows/build.yml/badge.svg)
+[![built with garnix](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fgarnix.io%2Fapi%2Fbadges%2Fcon-kitty%2Fcategorifier)](https://garnix.io)
 [![Packaging status](https://repology.org/badge/tiny-repos/haskell:categorifier.svg)](https://repology.org/project/haskell:categorifier/versions)
 [![latest packaged version(s)](https://repology.org/badge/latest-versions/haskell:categorifier.svg)](https://repology.org/project/haskell:categorifier/versions)
 
