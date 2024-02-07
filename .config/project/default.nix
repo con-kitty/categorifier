@@ -2,6 +2,8 @@
   project = {
     name = "categorifier";
     summary = "Defining novel interpretations of Haskell programs";
+
+    devPackages = [pkgs.cabal-install];
   };
 
   imports = [
