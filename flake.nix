@@ -190,10 +190,7 @@
             self.lib.testedGhcVersions
             cabalPackages
             (hpkgs:
-              [
-                self.projectConfigurations.${system}.packages.path
-                pkgs.cabal-install
-              ]
+              [self.projectConfigurations.${system}.packages.path]
               ## NB: Haskell Language Server no longer supports GHC <9.
               ++ nixpkgs.lib.optional
               (nixpkgs.lib.versionAtLeast hpkgs.ghc.version "9")
