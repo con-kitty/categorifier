@@ -12,38 +12,43 @@ source-repository head
   type: git
   location: https://github.com/con-kitty/categorifier
 
+common defaults
+  ghc-options:
+    -Wall
+  build-depends:
+    , base ^>=4.13.0 || ^>=4.14.0 || ^>=4.15.0 || ^>=4.16.0
+  default-language: Haskell2010
+  default-extensions:
+    BangPatterns
+    DeriveDataTypeable
+    DeriveFoldable
+    DeriveFunctor
+    DeriveGeneric
+    DeriveTraversable
+    DerivingStrategies
+    FlexibleContexts
+    FlexibleInstances
+    FunctionalDependencies
+    InstanceSigs
+    LambdaCase
+    ScopedTypeVariables
+    StandaloneDeriving
+    TypeApplications
+    TypeOperators
+
 library
+  import: defaults
   exposed-modules:
       Categorifier.Hierarchy.UnconCat
   other-modules:
       Paths_categorifier_unconcat_integration
   autogen-modules:
       Paths_categorifier_unconcat_integration
-  ghc-options: -Wall
   build-depends:
-    , base >=4.13.0 && <4.17
-    , bytestring >=0.10.9 && <0.12
+    , bytestring ^>=0.10.9 || ^>=0.11.0
     , categorifier-duoids
     , categorifier-plugin
     , categorifier-unconcat-category
-    , ghc >=8.8.1 && <9.4
-    , ghc-prim >=0.5.3 && <0.9
-    , transformers >=0.5.6 && <0.7
-  default-language: Haskell2010
-  default-extensions:
-      InstanceSigs
-    , ScopedTypeVariables
-    , TypeApplications
-    , FlexibleContexts
-    , FlexibleInstances
-    , FunctionalDependencies
-    , LambdaCase
-    , TypeOperators
-    , BangPatterns
-    , StandaloneDeriving
-    , DeriveGeneric
-    , DeriveDataTypeable
-    , DeriveFunctor
-    , DeriveFoldable
-    , DeriveTraversable
-    , DerivingStrategies
+    , ghc ^>=8.8.1 || ^>=8.10.1 || ^>=9.0.1 || ^>=9.2.1
+    , ghc-prim ^>=0.5.3 || ^>=0.6.0 || ^>=0.7.0 || ^>=0.8.0
+    , transformers ^>=0.5.6 || ^>=0.6.0

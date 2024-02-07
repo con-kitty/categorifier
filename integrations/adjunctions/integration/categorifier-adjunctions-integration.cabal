@@ -12,38 +12,43 @@ source-repository head
   type: git
   location: https://github.com/con-kitty/categorifier
 
+common defaults
+  ghc-options:
+    -Wall
+  build-depends:
+    , base ^>=4.13.0 || ^>=4.14.0 || ^>=4.15.0 || ^>=4.16.0
+  default-language: Haskell2010
+  default-extensions:
+    BangPatterns
+    DeriveDataTypeable
+    DeriveFoldable
+    DeriveFunctor
+    DeriveGeneric
+    DeriveTraversable
+    DerivingStrategies
+    FlexibleContexts
+    FlexibleInstances
+    FunctionalDependencies
+    InstanceSigs
+    LambdaCase
+    ScopedTypeVariables
+    StandaloneDeriving
+    TypeApplications
+    TypeOperators
+
 library
+  import: defaults
   exposed-modules:
       Categorifier.Adjunctions.Integration
   other-modules:
       Paths_categorifier_adjunctions_integration
   autogen-modules:
       Paths_categorifier_adjunctions_integration
-  ghc-options: -Wall
   build-depends:
-    , adjunctions >=4.4 && <4.5
-    , base >=4.13.0 && <4.17
+    , adjunctions ^>=4.4
     , categorifier-duoids
     , categorifier-ghc
     , categorifier-plugin
-    , containers >=0.6.2 && <0.7
-    , template-haskell >=2.15.0 && <2.19
-    , transformers >=0.5.6 && <0.7
-  default-language: Haskell2010
-  default-extensions:
-      InstanceSigs
-    , ScopedTypeVariables
-    , TypeApplications
-    , FlexibleContexts
-    , FlexibleInstances
-    , FunctionalDependencies
-    , LambdaCase
-    , TypeOperators
-    , BangPatterns
-    , StandaloneDeriving
-    , DeriveGeneric
-    , DeriveDataTypeable
-    , DeriveFunctor
-    , DeriveFoldable
-    , DeriveTraversable
-    , DerivingStrategies
+    , containers ^>=0.6.2
+    , template-haskell ^>=2.15.0 || ^>=2.16.0 || ^>=2.17.0 || ^>=2.18.0
+    , transformers ^>=0.5.6 || ^>=0.6.0

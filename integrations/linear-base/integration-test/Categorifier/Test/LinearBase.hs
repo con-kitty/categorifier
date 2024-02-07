@@ -15,9 +15,8 @@ module Categorifier.Test.LinearBase
   )
 where
 
-import Categorifier.Test.Data (Pair (..))
 import Categorifier.Test.HList (HMap1 (..))
-import Categorifier.Test.TH (mkBinaryTestConfig, mkExprTest, mkUnaryTestConfig)
+import Categorifier.Test.TH (mkBinaryTestConfig, mkUnaryTestConfig)
 import Categorifier.Test.Tests (TestTerms, insertTest)
 import qualified Control.Functor.Linear
 import qualified Data.Array.Mutable.Linear
@@ -32,16 +31,9 @@ import qualified Data.Num.Linear
 import qualified Data.Ord.Linear
 import Data.Proxy (Proxy (..))
 import qualified Data.Replicator.Linear
-import qualified Data.Replicator.Linear.Internal
-import qualified Data.Replicator.Linear.Internal.ReplicationStream
 import Data.Semigroup (Sum (..))
 import qualified Data.Tuple.Linear
 import qualified Data.V.Linear
-import qualified Data.V.Linear.Internal
-import qualified Data.Vector as Vector
-import GHC.Int (Int16, Int32, Int64, Int8)
-import GHC.TypeLits (KnownNat)
-import GHC.Word (Word16, Word32, Word64, Word8)
 import qualified Prelude.Linear
 import qualified Unsafe.Linear
 

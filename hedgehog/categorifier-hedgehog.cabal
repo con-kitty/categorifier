@@ -12,32 +12,37 @@ source-repository head
   type: git
   location: https://github.com/con-kitty/categorifier
 
+common defaults
+  ghc-options:
+    -Wall
+  build-depends:
+    , base ^>=4.13.0 || ^>=4.14.0 || ^>=4.15.0 || ^>=4.16.0
+  default-language: Haskell2010
+  default-extensions:
+    BangPatterns
+    DeriveDataTypeable
+    DeriveFoldable
+    DeriveFunctor
+    DeriveGeneric
+    DeriveTraversable
+    DerivingStrategies
+    FlexibleContexts
+    FlexibleInstances
+    FunctionalDependencies
+    InstanceSigs
+    LambdaCase
+    ScopedTypeVariables
+    StandaloneDeriving
+    TypeApplications
+    TypeOperators
+
 library
+  import: defaults
   exposed-modules:
       Categorifier.Hedgehog
   other-modules:
       Paths_categorifier_hedgehog
   autogen-modules:
       Paths_categorifier_hedgehog
-  ghc-options: -Wall
   build-depends:
-    , base >=4.13.0 && <4.17
-    , hedgehog >=1.0.3 && <1.3
-  default-language: Haskell2010
-  default-extensions:
-      InstanceSigs
-    , ScopedTypeVariables
-    , TypeApplications
-    , FlexibleContexts
-    , FlexibleInstances
-    , FunctionalDependencies
-    , LambdaCase
-    , TypeOperators
-    , BangPatterns
-    , StandaloneDeriving
-    , DeriveGeneric
-    , DeriveDataTypeable
-    , DeriveFunctor
-    , DeriveFoldable
-    , DeriveTraversable
-    , DerivingStrategies
+    , hedgehog ^>=1.0.3 || ^>=1.1 || ^>=1.2
