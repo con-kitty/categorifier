@@ -32,6 +32,7 @@ packages:
   ./integrations/concat/integration/categorifier-concat-integration.cabal
   ./integrations/concat/integration-test/categorifier-concat-integration-test.cabal
   ./integrations/concat-extensions/category/categorifier-concat-extensions-category.cabal
+  ./integrations/concat-extensions/examples/categorifier-concat-extensions-examples.cabal
   ./integrations/concat-extensions/integration/categorifier-concat-extensions-integration.cabal
   ./integrations/concat-extensions/integration-test/categorifier-concat-extensions-integration-test.cabal
   ./integrations/fin/integration/categorifier-fin-integration.cabal
