@@ -39,6 +39,7 @@ common defaults
 library
   import: defaults
   exposed-modules:
+      Categorifier.ConCat.Examples.Circuit
       Categorifier.ConCat.Examples.Syntactic
   other-modules:
       Paths_categorifier_concat_examples
@@ -48,6 +49,7 @@ library
     , bytestring ^>=0.10.9 || ^>=0.11.0
     , categorifier-category
     , categorifier-client
+    , concat-classes
     , concat-examples
     , ghc ^>=8.8.1 || ^>=8.10.1 || ^>=9.0.1 || ^>=9.2.1
     , ghc-prim ^>=0.5.3 || ^>=0.6.0 || ^>=0.7.0 || ^>=0.8.0

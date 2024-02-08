@@ -19,7 +19,6 @@ common defaults
     , categorifier-client
     , categorifier-plugin-test
     , concat-classes
-    , concat-examples
   ghc-options:
     -Wall
   default-language: Haskell2010
@@ -67,6 +66,7 @@ common hierarchy-tests
     , adjunctions ^>=4.4
     , categorifier-adjunctions-integration
     , categorifier-adjunctions-integration-test
+    , categorifier-concat-examples
     , categorifier-concat-integration
     , categorifier-concat-integration-test
     , categorifier-hedgehog
