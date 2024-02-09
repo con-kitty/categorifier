@@ -11,8 +11,9 @@ directly, as well as ones that are depended on (transitively) by the ones that u
 
 ### targets you want to use `categorify` in
 
-- enable the plugin with `-fplugin=Categorifier`,
-- ensure inlining is available with `-fno-ignore-interface-pragmas` (implied by `-O` or `-O2`), and
+- enable the plugin with `-fplugin=Categorifier`;
+- if you are using a version of GHC older than 8.10.1, use the flags described in
+  [Categorifier.DynFlags](./Categorifier/DynFlags.hs); and
 - import `Categorifier.Categorify` to make `categorify` available (you must import the _entire_ module,
   but it may be qualified).
 
@@ -31,26 +32,6 @@ directly, as well as ones that are depended on (transitively) by the ones that u
   is `base`)
 - define `Categorifier.HasRep` instances for any types that you use in a converted function (the plugin
   will tell you if you are missing any when you try to convert)
-
-### fine-tuning inlining sizes
-
-It can be difficult to find a reasonable setting for the various inlining thresholds. This attempts
-to lay out an approach for identifying one.
-
-There are two significant GHC flags for adjusting inlining, `-funfolding-creation-threshold` and
-`-funfolding-use-threshold`. They allow you to set an upper bound on the "size" of unfoldings that
-will be considered for inlining.
-
-1. set the `creation` (globally) threshold high, say `10000`;
-2. test to see if the inlining issue goes away (if so, skip to step 5);
-3. set the `use` (in `categorify` modules) threshold to match the `creation` threshold;
-4. do a binary search on the `use` thresholds to minimize them as much as possible;
-5. do a binary search on the `creation` thresholds to minimize them as much as possible (the lower
-   bound here is probably the minimum of 750 (the default) and the `use` threshold).
-
-If either if these values is too small, you'll end up with errors complaining that some definition
-couldn't be inlined. If they're too big, you'll get errors about "simplifier ticks exhausted" (in
-which case, you can bump `-fsimpl-tick-factor`) and things will take a lot longer to compile.
 
 ### defining `HasRep` instances
 
@@ -146,9 +127,10 @@ This is ostensibly a more correct approach, given the way GHC is structured, but
 
 There are a bunch of modules, this calls out the most important ones when diving in.
 
-- [`Categorifier`](./Categorifier.hs) - this is the entrypoint of the plugin, everything that hooks into
-  GHC starts from here;
-- [`Categorifier.Core.Categorify`](./Categorifier/Core/Categorify.hs) - the high-level logic of the
+- [Categorifier](./Categorifier.hs) - this is the entrypoint of the plugin, everything that hooks into
+  GHC starts from here, with there being three immediate subcomponents: command-line option
+  handling, `DynFlags` settings, and the Core pass;
+- [Categorifier.Core.Categorify](./Categorifier/Core/Categorify.hs) - the high-level logic of the
   categorical transformation as described in Conal's paper, it tries to define as clearly as
   possible the mapping from **Hask** to abstract categories;
 - [`Categorifier.Hierarchy`](./Categorifier/Hierarchy.hs) - the mappings from abstract

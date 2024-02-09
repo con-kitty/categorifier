@@ -89,4 +89,3 @@ test-suite ghc-bignum-hierarchy-optimized
   main-is: GhcBignum/Main.hs
   ghc-options:
     -O2
-    -fignore-interface-pragmas

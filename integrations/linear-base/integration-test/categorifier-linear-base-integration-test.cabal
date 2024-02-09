@@ -91,4 +91,3 @@ test-suite linear-base-hierarchy-optimized
   main-is: LinearBase/Main.hs
   ghc-options:
     -O2
-    -fignore-interface-pragmas

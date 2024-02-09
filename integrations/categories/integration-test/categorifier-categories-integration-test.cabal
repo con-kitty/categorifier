@@ -78,4 +78,3 @@ test-suite categories-hierarchy-optimized
   main-is: Categories/Main.hs
   ghc-options:
     -O2
-    -fignore-interface-pragmas

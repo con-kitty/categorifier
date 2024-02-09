@@ -89,7 +89,6 @@ test-suite concat-class-hierarchy-optimized
   main-is: ConCat/Main.hs
   ghc-options:
     -O2
-    -fignore-interface-pragmas
 
 test-suite concat-function-hierarchy
   import: hierarchy-tests
@@ -104,4 +103,3 @@ test-suite concat-function-hierarchy-optimized
   main-is: ConCat/Main.hs
   ghc-options:
     -O2
-    -fignore-interface-pragmas

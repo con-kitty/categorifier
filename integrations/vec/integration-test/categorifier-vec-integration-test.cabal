@@ -93,4 +93,3 @@ test-suite vec-hierarchy-optimized
   main-is: Vec/Main.hs
   ghc-options:
     -O2
-    -fignore-interface-pragmas

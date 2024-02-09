@@ -14,6 +14,7 @@ where
 import Categorifier.CommandLineOptions (OptionGroup, partitionOptions)
 import Categorifier.Common.IO.Exception (throwIOAsException)
 import qualified Categorifier.Core
+import qualified Categorifier.DynFlags
 import qualified Categorifier.GHC.Core as GhcPlugins
 import qualified Categorifier.GHC.Driver as GhcPlugins
 import Control.Applicative (liftA2)
@@ -30,15 +31,14 @@ import PyF (fmt)
 --   for more information.
 plugin :: GhcPlugins.Plugin
 plugin =
-  GhcPlugins.defaultPlugin
-    { GhcPlugins.installCoreToDos =
-        \opts ->
-          join
-            . GhcPlugins.liftIO
-            . liftA2 Categorifier.Core.install (partitionOptions' opts)
-            . pure,
-      GhcPlugins.pluginRecompile = GhcPlugins.flagRecompile
-    }
+  GhcPlugins.pureDynflagsAndCorePlugin
+    (\_opts -> pure . Categorifier.DynFlags.plugin)
+    ( \opts ->
+        join
+          . GhcPlugins.liftIO
+          . liftA2 Categorifier.Core.install (partitionOptions' opts)
+          . pure
+    )
 
 partitionOptions' :: [GhcPlugins.CommandLineOption] -> IO (Map OptionGroup [Text])
 partitionOptions' opts =
