@@ -1,8 +1,9 @@
 cabal-version:  2.4
 
-name:           categorifier-concat-examples
+name:           categorifier-unconcat-examples
 version:        0.1
-description:    Extra instances to use concat-examples with Categorifier.
+description:    Extends categories from `concat-examples` to support classes from
+                `categorifier-unconcat-category`
 homepage:       https://github.com/con-kitty/categorifier#readme
 bug-reports:    https://github.com/con-kitty/categorifier/issues
 build-type:     Simple
@@ -39,18 +40,17 @@ common defaults
 library
   import: defaults
   exposed-modules:
-      Categorifier.ConCat.Examples.Circuit
-      Categorifier.ConCat.Examples.Syntactic
+      Categorifier.UnconCat.Examples.Syntactic
   other-modules:
-      Paths_categorifier_concat_examples
+      Paths_categorifier_unconcat_examples
   autogen-modules:
-      Paths_categorifier_concat_examples
+      Paths_categorifier_unconcat_examples
   build-depends:
     , bytestring ^>=0.10.9 || ^>=0.11.0
-    , categorifier-category
+    , categorifier-unconcat-category
+    , categorifier-concat-examples
     , categorifier-client
     , concat-classes
-    , concat-examples
     , ghc ^>=8.8.1 || ^>=8.10.1 || ^>=9.0.1 || ^>=9.2.1
     , ghc-prim ^>=0.5.3 || ^>=0.6.0 || ^>=0.7.0 || ^>=0.8.0
     , transformers ^>=0.5.6 || ^>=0.6.0
