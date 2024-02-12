@@ -183,13 +183,17 @@ useful in tests so that we can collect all failures, rather than exiting on the 
 non-testing situations, we _want_ compilation to fail.
 
 To test a single property, replace
+
 ```haskell
-main = bool exitFailure exitSuccess . and =<< allTestTerms
+main = Hedgehog.defaultMain allTestTerms
 ```
+
 with
+
 ```haskell
-main = bool exitFailure exitSuccess =<< Hedgehog.check hprop_<<test name>>
+main = Hedgehog.defaultMain . pure $ Hedgehog.check hprop_<<test name>>
 ```
+
 in the `Main.hs` for the relevant `test-suite`, where `<<test name>>` is the name printed in the test output. E.g., in `  ✓ plainArrowTimes0 passed 100 tests.` the name is `plainArrowTimes0`.
 
 #### catching missed identifier conversions

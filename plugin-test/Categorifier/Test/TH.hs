@@ -201,7 +201,7 @@ newtype TestCases a = TestCases {getTestCases :: Name -> [(a, Either String (Q E
 newtype ExprTest a = ExprTest
   {getExprTest :: TestCases a -> TestCategory -> Maybe [(String, Name, Q [Dec])]}
 
--- | Provides @allTestTerms :: `IO` [`Bool`]@ to comprehensively test various categories.
+-- | Provides @allTestTerms :: [`IO` `Bool`]@ to comprehensively test various categories.
 mkTestTerms ::
   -- | The expressions to test. If you are using the plugin without extension, then
   --  `Test.Tests.defaultTestTerms` should cover all possible expressions.
@@ -224,9 +224,9 @@ mkTestTerms testTerms arrows testCases =
         ( \labels ->
             let emptyList = [|[]|]
              in [d|
-                  allTestTerms :: IO [Bool]
+                  allTestTerms :: [IO Bool]
                   allTestTerms =
-                    sequenceA $(foldr (TH.appE . TH.appE (TH.conE '(:)) . TH.varE) emptyList labels)
+                    $(foldr (TH.appE . TH.appE (TH.conE '(:)) . TH.varE) emptyList labels)
                   |]
         )
         (pure . join)

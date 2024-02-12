@@ -45,9 +45,9 @@ import GHC.Word (Word8)
 -- To allow testing of individual properties (see plugin/README.md#dealing_with_failed_tests)
 import qualified Hedgehog
 import qualified Hedgehog.Gen as Gen
+import qualified Hedgehog.Main as Hedgehog (defaultMain)
 import qualified Hedgehog.Range as Range
 import qualified Prelude.Linear
-import System.Exit (exitFailure, exitSuccess)
 
 -- For @NoRebindableSyntax@
 {-# ANN module ("HLint: ignore Avoid restricted integration" :: String) #-}
@@ -609,4 +609,4 @@ mkTestTerms
   $ HEmpty1
 
 main :: IO ()
-main = bool exitFailure exitSuccess . and =<< allTestTerms
+main = Hedgehog.defaultMain allTestTerms
