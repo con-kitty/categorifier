@@ -8,6 +8,8 @@
 -- To avoid turning @if then else@ into `ifThenElse`.
 {-# LANGUAGE NoRebindableSyntax #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
+-- To allow testing of individual properties (see plugin/README.md#dealing_with_failed_tests)
+{-# OPTIONS_GHC -Wno-unused-imports -Wno-unused-top-binds #-}
 
 -- | See @Test/Cat/ConCat/Main.hs@ for copious notes on the testing situation here.
 module Main
@@ -26,7 +28,6 @@ import Categorifier.Test.Tests
   ( TestCases (..),
     TestCategory (..),
     TestStrategy (..),
-    builtinTestCategories,
     mkTestTerms,
   )
 import qualified Control.Functor.Linear
@@ -41,10 +42,12 @@ import qualified Data.V.Linear
 import GHC.Int (Int64)
 import GHC.TypeNats (KnownNat)
 import GHC.Word (Word8)
+-- To allow testing of individual properties (see plugin/README.md#dealing_with_failed_tests)
+import qualified Hedgehog
 import qualified Hedgehog.Gen as Gen
+import qualified Hedgehog.Main as Hedgehog (defaultMain)
 import qualified Hedgehog.Range as Range
 import qualified Prelude.Linear
-import System.Exit (exitFailure, exitSuccess)
 
 -- For @NoRebindableSyntax@
 {-# ANN module ("HLint: ignore Avoid restricted integration" :: String) #-}
@@ -57,12 +60,11 @@ instance (KnownNat n) => Pointed (Data.V.Linear.V n) where
 
 mkTestTerms
   LinearBase.testTerms
-  --               name   type      prefix       strategy
-  ( [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
-      TestCategory ''Hask [t|Hask|] "hask" $ ComputeFromInput [|runHask|]
-    ]
-      <> builtinTestCategories
-  )
+  --             name   type      prefix       strategy
+  [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
+    TestCategory ''Hask [t|Hask|] "hask" $ ComputeFromInput [|runHask|],
+    TestCategory ''(->) [t|(->)|] "plainArrow" $ ComputeFromInput [|id|]
+  ]
   -- linear-base
   . HInsert1
     (Proxy @"LinearAbs")
@@ -607,4 +609,4 @@ mkTestTerms
   $ HEmpty1
 
 main :: IO ()
-main = bool exitFailure exitSuccess . and =<< allTestTerms
+main = Hedgehog.defaultMain allTestTerms

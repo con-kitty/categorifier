@@ -16,7 +16,6 @@
 -- handles exactly what's written.
 module Categorifier.Test.Tests
   ( TestTerms,
-    builtinTestCategories,
     insertTest,
     defaultTestTerms,
     coreTestTerms,
@@ -24,6 +23,8 @@ module Categorifier.Test.Tests
     baseTestTerms,
     mkTestTerms,
     zerosafeUnsignedPrimitiveCases,
+    noCategoricalRepresentation,
+    unableToInline,
     TestCases (..),
     TestCategory (..),
     TestStrategy (..),
@@ -72,11 +73,19 @@ import Unsafe.Coerce (unsafeCoerce)
 -- For `Unsafe.Coerce`
 {-# ANN module "HLint: ignore Avoid restricted module" #-}
 
+noCategoricalRepresentation :: String -> Either String (Q Exp, Q Exp)
+noCategoricalRepresentation operation =
+  Left $
+    "There is no categorical representation defined for `" <> operation <> "` when using the"
+
+unableToInline :: String -> Either String (Q Exp, Q Exp)
+unableToInline operation = Left $ "The Categorifier plugin was unable to inline " <> operation
+
 -- * property sets
 
 --   Combinations of property generators that are commonly desired when dealing with `C.Cat`.
 
-zerosafeUnsignedPrimitiveCases :: [(Q Type, Maybe (Q Exp, Q Exp))]
+zerosafeUnsignedPrimitiveCases :: [(Q Type, Either String (Q Exp, Q Exp))]
 zerosafeUnsignedPrimitiveCases =
   [ ( [t|Word16|],
       pure ([|(,) <$> genIntegralBounded <*> Gen.integral (Range.linear 1 maxBound)|], [|show|])
@@ -94,11 +103,6 @@ zerosafeUnsignedPrimitiveCases =
       pure ([|(,) <$> genIntegralBounded <*> Gen.integral (Range.linear 1 maxBound)|], [|show|])
     )
   ]
-
--- | Before GHC 8.6, `->` is an illegal type constructor and can't be TH-quoted, so we do it
---   conditionally here to avoid needing to use CPP everywhere.
-builtinTestCategories :: [TestCategory]
-builtinTestCategories = [TestCategory ''(->) [t|(->)|] "plainArrow" $ ComputeFromInput [|id|]]
 
 -- | A helper to avoid duplicating the key when inserting a new test.
 insertTest ::

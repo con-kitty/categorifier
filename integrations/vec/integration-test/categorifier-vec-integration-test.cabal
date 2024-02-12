@@ -56,6 +56,7 @@ common hierarchy-tests
     -- ensure unfoldings are available
     -fno-omit-interface-pragmas
     -fplugin Categorifier
+    -fplugin-opt Categorifier:defer-failures
     -- Using the ConCat hierarchy, because it's the only one that supports `traverse` (and probably
     -- other things)
     -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.ConCat.functionHierarchy

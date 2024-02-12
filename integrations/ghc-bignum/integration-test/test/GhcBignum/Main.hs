@@ -7,7 +7,8 @@
 {-# LANGUAGE TypeApplications #-}
 -- To avoid turning @if then else@ into `ifThenElse`.
 {-# LANGUAGE NoRebindableSyntax #-}
-{-# OPTIONS_GHC -Wno-orphans #-}
+-- To allow testing of individual properties (see plugin/README.md#dealing_with_failed_tests)
+{-# OPTIONS_GHC -Wno-unused-imports -Wno-unused-top-binds #-}
 
 -- | See @Test/Cat/ConCat/Main.hs@ for copious notes on the testing situation here.
 module Main
@@ -26,25 +27,25 @@ import Categorifier.Test.Tests
   ( TestCases (..),
     TestCategory (..),
     TestStrategy (..),
-    builtinTestCategories,
     mkTestTerms,
   )
 import Data.Bool (bool)
 import Data.Proxy (Proxy (..))
+-- To allow testing of individual properties (see plugin/README.md#dealing_with_failed_tests)
+import qualified Hedgehog
 import qualified Hedgehog.Gen as Gen
-import System.Exit (exitFailure, exitSuccess)
+import qualified Hedgehog.Main as Hedgehog (defaultMain)
 
 -- For @NoRebindableSyntax@
 {-# ANN module ("HLint: ignore Avoid restricted integration" :: String) #-}
 
 mkTestTerms
   GhcBignum.testTerms
-  --               name   type      prefix       strategy
-  ( [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
-      TestCategory ''Hask [t|Hask|] "hask" $ ComputeFromInput [|runHask|]
-    ]
-      <> builtinTestCategories
-  )
+  --             name   type      prefix       strategy
+  [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
+    TestCategory ''Hask [t|Hask|] "hask" $ ComputeFromInput [|runHask|],
+    TestCategory ''(->) [t|(->)|] "plainArrow" $ ComputeFromInput [|id|]
+  ]
   -- ghc-bignum
   . HInsert1
     (Proxy @"EqualInteger")
@@ -163,4 +164,4 @@ mkTestTerms
   $ HEmpty1
 
 main :: IO ()
-main = bool exitFailure exitSuccess . and =<< allTestTerms
+main = Hedgehog.defaultMain allTestTerms

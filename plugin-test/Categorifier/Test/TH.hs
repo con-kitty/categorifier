@@ -29,7 +29,7 @@ module Categorifier.Test.TH
 where
 
 import qualified Categorifier.Categorify as Categorify
-import Categorifier.Common.IO.Exception (SomeException, evaluate, try)
+import Categorifier.Common.IO.Exception (SomeException, displayException, evaluate, try)
 import Categorifier.Hedgehog (floatingEq)
 import Categorifier.Test.HList (HMap1 (..), zipMapLowerWith)
 import Control.Applicative (liftA2)
@@ -37,6 +37,7 @@ import Control.Monad (join, (<=<))
 import Data.Bifunctor (Bifunctor (..))
 import Data.Char (toLower)
 import Data.Foldable (toList)
+import Data.List (isInfixOf)
 import Data.Maybe (mapMaybe)
 import Data.Tuple.Extra (uncurry3)
 import qualified Hedgehog
@@ -112,7 +113,7 @@ mkPropLabel i = (<> show i) . TH.nameBase
 -- | Create a TH splice defining a Hedgehog property test of the given function.  This should be
 -- automatically found and run by tasty.
 expectMatch :: Q Exp -> Q Exp -> Q Exp -> Int -> TestConfig -> Q Type -> (String, Name, Q [Dec])
-expectMatch display gen calcExpected i (TestConfig arrowTy funName' post) testTy =
+expectMatch gen display calcExpected i (TestConfig arrowTy funName' post) testTy =
   ( mkPropLabel i funName,
     propName,
     (:) <$> typeSig <*> [d|$(TH.varP propName) = Hedgehog.property $(propBody $ strategy arrowTy)|]
@@ -136,10 +137,11 @@ expectMatch display gen calcExpected i (TestConfig arrowTy funName' post) testTy
           Hedgehog.success
         |]
 
--- | Right now this simply indicates that the test failed to build in _some_ way. In future, we
---   should check the specific failure that occurred, so changes in failure cases also break tests.
-expectBuildFailure :: Q Exp -> Int -> TestConfig -> Q Type -> (String, Name, Q [Dec])
-expectBuildFailure calcExpected i (TestConfig arrowTy funName' _) testTy =
+-- | Create a TH splice defining a Hedgehog property test of the given function. The property test
+--   will succeed only if there was a build failure with a message that contains the provided
+--  `String`.
+expectBuildFailure :: String -> Q Exp -> Int -> TestConfig -> Q Type -> (String, Name, Q [Dec])
+expectBuildFailure partialMessage calcExpected i (TestConfig arrowTy funName' _) testTy =
   ( mkPropLabel i funName,
     propName,
     (:)
@@ -148,7 +150,7 @@ expectBuildFailure calcExpected i (TestConfig arrowTy funName' _) testTy =
         $(TH.varP propName) =
           Hedgehog.property
             ( either
-                (const Hedgehog.success :: SomeException -> Hedgehog.PropertyT IO ())
+                (Hedgehog.diff partialMessage isInfixOf . displayException @SomeException)
                 (const Hedgehog.failure)
                 <=< Hedgehog.evalIO . try
                 $ evaluate (Categorify.expression $calcExpected :: $testTy)
@@ -164,7 +166,7 @@ mkTopLevelPair :: TestCategory -> [(String, Name)] -> (Name, Q Exp)
 mkTopLevelPair arrowTy names =
   ( arrowLabel,
     [e|
-      Hedgehog.checkSequential $
+      Hedgehog.checkParallel $
         Hedgehog.Group
           $(nameBaseLiteral $ arrName arrowTy)
           $(TH.listE namePairs)
@@ -188,9 +190,9 @@ mkTestType arr input output = [t|$arr $input $output|]
 
 -- | Given an arrow `Name`, return a list of properties to construct. Each consists of the specific
 --   types for specializing the parametric type above, followed by an optional pair of generator and
---   display function. If it's `Nothing`, that means only check that it compiles. If the list is
---   empty don't run the test at all on that arrow.
-newtype TestCases a = TestCases {getTestCases :: Name -> [(a, Maybe (Q Exp, Q Exp))]}
+--   display function. If it's `Left`, it takes a `String` that must a substring of the error
+--   message. If the list is empty don't run the test at all on that arrow.
+newtype TestCases a = TestCases {getTestCases :: Name -> [(a, Either String (Q Exp, Q Exp))]}
 
 -- | This is a function that eventually returns "named definitions" (a named definition is a pair of
 --   a `Name` and a @`Q` [`Dec`]@ containing a definition with that name. The result is a pair of a
@@ -199,7 +201,7 @@ newtype TestCases a = TestCases {getTestCases :: Name -> [(a, Maybe (Q Exp, Q Ex
 newtype ExprTest a = ExprTest
   {getExprTest :: TestCases a -> TestCategory -> Maybe [(String, Name, Q [Dec])]}
 
--- | Provides @allTestTerms :: `IO` [`Bool`]@ to comprehensively test various categories.
+-- | Provides @allTestTerms :: [`IO` `Bool`]@ to comprehensively test various categories.
 mkTestTerms ::
   -- | The expressions to test. If you are using the plugin without extension, then
   --  `Test.Tests.defaultTestTerms` should cover all possible expressions.
@@ -222,9 +224,9 @@ mkTestTerms testTerms arrows testCases =
         ( \labels ->
             let emptyList = [|[]|]
              in [d|
-                  allTestTerms :: IO [Bool]
+                  allTestTerms :: [IO Bool]
                   allTestTerms =
-                    sequenceA $(foldr (TH.appE . TH.appE (TH.conE '(:)) . TH.varE) emptyList labels)
+                    $(foldr (TH.appE . TH.appE (TH.conE '(:)) . TH.varE) emptyList labels)
                   |]
         )
         (pure . join)
@@ -264,9 +266,9 @@ mkExprTest testName idxTy calcExpected = ExprTest $ \props arrowTy ->
    in pure
         . zipWith
           ( \i (testTys, testGen) ->
-              maybe
+              either
                 expectBuildFailure
-                (\(gen, showExp) -> expectMatch showExp gen)
+                (uncurry expectMatch)
                 testGen
                 calcExpected
                 i

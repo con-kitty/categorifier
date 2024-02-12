@@ -8,6 +8,8 @@
 -- To avoid turning @if then else@ into `ifThenElse`.
 {-# LANGUAGE NoRebindableSyntax #-}
 {-# OPTIONS_GHC -Wno-redundant-constraints #-}
+-- To allow testing of individual properties (see plugin/README.md#dealing_with_failed_tests)
+{-# OPTIONS_GHC -Wno-unused-imports -Wno-unused-top-binds #-}
 
 -- |
 -- Template Haskell is used to automate the generation of the same test cases for each category we
@@ -62,9 +64,11 @@ import Data.Proxy (Proxy (..))
 import Data.Semigroup (Product (..), Sum (..))
 import GHC.Int (Int16, Int32, Int64, Int8)
 import GHC.Word (Word16, Word32, Word64, Word8)
+-- To allow testing of individual properties (see plugin/README.md#dealing_with_failed_tests)
+import qualified Hedgehog
 import qualified Hedgehog.Gen as Gen
+import qualified Hedgehog.Main as Hedgehog (defaultMain)
 import qualified Hedgehog.Range as Range
-import System.Exit (exitFailure, exitSuccess)
 
 -- For @NoRebindableSyntax@
 {-# ANN module ("HLint: ignore Avoid restricted integration" :: String) #-}
@@ -1569,4 +1573,4 @@ mkTestTerms
   $ HEmpty1
 
 main :: IO ()
-main = bool exitFailure exitSuccess . and =<< allTestTerms
+main = Hedgehog.defaultMain allTestTerms

@@ -6,6 +6,8 @@
 {-# LANGUAGE TypeApplications #-}
 -- To avoid turning @if then else@ into `ifThenElse`.
 {-# LANGUAGE NoRebindableSyntax #-}
+-- To allow testing of individual properties (see plugin/README.md#dealing_with_failed_tests)
+{-# OPTIONS_GHC -Wno-unused-imports -Wno-unused-top-binds #-}
 
 -- | See @Test/Cat/ConCat/Main.hs@ for copious notes on the testing situation here.
 module Main
@@ -31,7 +33,9 @@ import qualified Data.Type.Nat as Nat
 import Data.Vec.Lazy (Vec (..))
 import qualified Data.Vec.Lazy as Vec
 import GHC.Word (Word8)
-import System.Exit (exitFailure, exitSuccess)
+-- To allow testing of individual properties (see plugin/README.md#dealing_with_failed_tests)
+import qualified Hedgehog
+import qualified Hedgehog.Main as Hedgehog (defaultMain)
 
 -- For @NoRebindableSyntax@
 {-# ANN module ("HLint: ignore Avoid restricted integration" :: String) #-}
@@ -101,4 +105,4 @@ mkTestTerms
   $ HEmpty1
 
 main :: IO ()
-main = bool exitFailure exitSuccess . and =<< allTestTerms
+main = Hedgehog.defaultMain allTestTerms

@@ -16,11 +16,22 @@ where
 
 import qualified Categorifier.Categorify
 import Categorifier.CommandLineOptions (OptionGroup (..))
-import Categorifier.Common.IO.Exception (SomeException, handle, throwIOAsException)
+import Categorifier.Common.IO.Exception
+  ( SomeException,
+    displayException,
+    handle,
+    throwIOAsException,
+  )
 import qualified Categorifier.Core.BuildDictionary as BuildDictionary
 import Categorifier.Core.Categorify (categorify)
 import qualified Categorifier.Core.ErrorHandling as Errors
-import Categorifier.Core.MakerMap (MakerMapFun, SymbolLookup, baseMakerMapFun, baseSymbolLookup, combineMakerMapFuns)
+import Categorifier.Core.MakerMap
+  ( MakerMapFun,
+    SymbolLookup,
+    baseMakerMapFun,
+    baseSymbolLookup,
+    combineMakerMapFuns,
+  )
 import Categorifier.Core.Makers (Makers, haskMakers)
 import qualified Categorifier.Core.PrimOp as PrimOp
 import Categorifier.Core.Types
@@ -284,24 +295,21 @@ deferFailures ::
   Plugins.Type ->
   -- | `GHC.Stack.CallStack`
   Plugins.CoreExpr ->
+  -- | the error message
+  String ->
   Plugins.CoreExpr
 deferFailures throw str cat a b calls =
-  let convertFn = 'Categorifier.Categorify.expression
-   in Plugins.App
-        ( Plugins.App
-            ( Plugins.mkTyApps
-                (Plugins.Var throw)
-                [Plugins.liftedRepTy, Plugins.mkAppTys cat [a, b]]
-            )
-            calls
+  Plugins.App
+    ( Plugins.App
+        ( Plugins.mkTyApps
+            (Plugins.Var throw)
+            [Plugins.liftedRepTy, Plugins.mkAppTys cat [a, b]]
         )
-        . Plugins.App (Plugins.Var str)
-        . Plugins.Lit
-        $ Plugins.mkLitString
-          [fmt|A call to `{TH.nameQualified convertFn}` failed to be eliminated by
-the "Categorifier" plugin. But errors from the plugin have been deferred to runtime,
-so you see this message instead of the actual compile-time failure. Compile
-without `-fplugin-opt Categorifier:defer-failures` to see what actually went wrong.|]
+        calls
+    )
+    . Plugins.App (Plugins.Var str)
+    . Plugins.Lit
+    . Plugins.mkLitString
 
 -- |
 -- __TODO__: `Dynamic.getValueSafely` throws in many cases. Try to catch, accumulate, return in
@@ -451,7 +459,7 @@ categorifyRules convert opts guts =
 --   part of that, so all that's left is to perform the `IO` as late as possible.
 runStack ::
   NonEmpty Plugins.Name ->
-  Maybe Plugins.CoreExpr ->
+  Maybe (String -> Plugins.CoreExpr) ->
   Plugins.DynFlags ->
   Plugins.UniqSupply ->
   Plugins.CoreExpr ->
@@ -465,10 +473,10 @@ runStack hierarchyOptions defer dflags uniqS calls f =
     deferException =
       maybe
         id
-        (handle . (const . pure :: Plugins.CoreExpr -> SomeException -> IO Plugins.CoreExpr))
+        (handle . (\def -> pure . def . displayException :: SomeException -> IO Plugins.CoreExpr))
         defer
     deferLeft :: Either (NonEmpty CategoricalFailure) Plugins.CoreExpr -> IO Plugins.CoreExpr
-    deferLeft = either (maybe printFailure (const . pure) defer) pure
+    deferLeft = either (maybe throwIOAsException (\def showF -> pure . def . showF) defer showFailure) pure
     handlePanic :: IO b -> IO b
     handlePanic = handle (throwIOAsException (Text.unpack . Errors.displayPanic dflags calls))
     printWarnings ::
@@ -479,8 +487,8 @@ runStack hierarchyOptions defer dflags uniqS calls f =
       unless (Plugins.isEmptyBag warns) . hPutStrLn stderr . Text.unpack $
         Errors.showWarnings dflags warns
       pure val
-    printFailure :: NonEmpty CategoricalFailure -> IO a
-    printFailure = throwIOAsException (Text.unpack . Errors.showFailures dflags hierarchyOptions f)
+    showFailure :: NonEmpty CategoricalFailure -> String
+    showFailure = Text.unpack . Errors.showFailures dflags hierarchyOptions f
 
 -- | __HIC SUNT DRACONES__
 --
@@ -495,7 +503,7 @@ runStack hierarchyOptions defer dflags uniqS calls f =
 applyCategorify ::
   Plugins.Id ->
   NonEmpty Plugins.Name ->
-  Maybe (Plugins.Type -> Plugins.Type -> Plugins.Type -> Plugins.CoreExpr -> Plugins.CoreExpr) ->
+  Maybe (Plugins.Type -> Plugins.Type -> Plugins.Type -> Plugins.CoreExpr -> String -> Plugins.CoreExpr) ->
   Plugins.DynFlags ->
   Plugins.UniqSupply ->
   (Plugins.Type -> Plugins.CoreExpr -> CategoryStack Plugins.CoreExpr) ->
