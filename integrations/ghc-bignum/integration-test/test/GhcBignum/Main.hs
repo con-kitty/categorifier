@@ -7,7 +7,8 @@
 {-# LANGUAGE TypeApplications #-}
 -- To avoid turning @if then else@ into `ifThenElse`.
 {-# LANGUAGE NoRebindableSyntax #-}
-{-# OPTIONS_GHC -Wno-orphans #-}
+-- To allow testing of individual properties (see plugin/README.md#dealing_with_failed_tests)
+{-# OPTIONS_GHC -Wno-unused-imports -Wno-unused-top-binds #-}
 
 -- | See @Test/Cat/ConCat/Main.hs@ for copious notes on the testing situation here.
 module Main
@@ -31,6 +32,8 @@ import Categorifier.Test.Tests
   )
 import Data.Bool (bool)
 import Data.Proxy (Proxy (..))
+-- To allow testing of individual properties (see plugin/README.md#dealing_with_failed_tests)
+import qualified Hedgehog
 import qualified Hedgehog.Gen as Gen
 import System.Exit (exitFailure, exitSuccess)
 

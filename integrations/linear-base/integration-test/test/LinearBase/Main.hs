@@ -8,6 +8,8 @@
 -- To avoid turning @if then else@ into `ifThenElse`.
 {-# LANGUAGE NoRebindableSyntax #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
+-- To allow testing of individual properties (see plugin/README.md#dealing_with_failed_tests)
+{-# OPTIONS_GHC -Wno-unused-imports -Wno-unused-top-binds #-}
 
 -- | See @Test/Cat/ConCat/Main.hs@ for copious notes on the testing situation here.
 module Main
@@ -41,6 +43,8 @@ import qualified Data.V.Linear
 import GHC.Int (Int64)
 import GHC.TypeNats (KnownNat)
 import GHC.Word (Word8)
+-- To allow testing of individual properties (see plugin/README.md#dealing_with_failed_tests)
+import qualified Hedgehog
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
 import qualified Prelude.Linear
