@@ -27,7 +27,6 @@ import Categorifier.Test.Tests
   ( TestCases (..),
     TestCategory (..),
     TestStrategy (..),
-    builtinTestCategories,
     mkTestTerms,
   )
 import Data.Bool (bool)
@@ -42,12 +41,11 @@ import System.Exit (exitFailure, exitSuccess)
 
 mkTestTerms
   GhcBignum.testTerms
-  --               name   type      prefix       strategy
-  ( [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
-      TestCategory ''Hask [t|Hask|] "hask" $ ComputeFromInput [|runHask|]
-    ]
-      <> builtinTestCategories
-  )
+  --             name   type      prefix       strategy
+  [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
+    TestCategory ''Hask [t|Hask|] "hask" $ ComputeFromInput [|runHask|],
+    TestCategory ''(->) [t|(->)|] "plainArrow" $ ComputeFromInput [|id|]
+  ]
   -- ghc-bignum
   . HInsert1
     (Proxy @"EqualInteger")

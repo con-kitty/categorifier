@@ -16,7 +16,6 @@
 -- handles exactly what's written.
 module Categorifier.Test.Tests
   ( TestTerms,
-    builtinTestCategories,
     insertTest,
     defaultTestTerms,
     coreTestTerms,
@@ -104,11 +103,6 @@ zerosafeUnsignedPrimitiveCases =
       pure ([|(,) <$> genIntegralBounded <*> Gen.integral (Range.linear 1 maxBound)|], [|show|])
     )
   ]
-
--- | Before GHC 8.6, `->` is an illegal type constructor and can't be TH-quoted, so we do it
---   conditionally here to avoid needing to use CPP everywhere.
-builtinTestCategories :: [TestCategory]
-builtinTestCategories = [TestCategory ''(->) [t|(->)|] "plainArrow" $ ComputeFromInput [|id|]]
 
 -- | A helper to avoid duplicating the key when inserting a new test.
 insertTest ::

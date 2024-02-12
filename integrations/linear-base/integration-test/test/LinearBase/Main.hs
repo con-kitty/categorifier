@@ -28,7 +28,6 @@ import Categorifier.Test.Tests
   ( TestCases (..),
     TestCategory (..),
     TestStrategy (..),
-    builtinTestCategories,
     mkTestTerms,
   )
 import qualified Control.Functor.Linear
@@ -61,12 +60,11 @@ instance (KnownNat n) => Pointed (Data.V.Linear.V n) where
 
 mkTestTerms
   LinearBase.testTerms
-  --               name   type      prefix       strategy
-  ( [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
-      TestCategory ''Hask [t|Hask|] "hask" $ ComputeFromInput [|runHask|]
-    ]
-      <> builtinTestCategories
-  )
+  --             name   type      prefix       strategy
+  [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
+    TestCategory ''Hask [t|Hask|] "hask" $ ComputeFromInput [|runHask|],
+    TestCategory ''(->) [t|(->)|] "plainArrow" $ ComputeFromInput [|id|]
+  ]
   -- linear-base
   . HInsert1
     (Proxy @"LinearAbs")

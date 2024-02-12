@@ -25,7 +25,6 @@ import Categorifier.Test.Tests
   ( TestCases (..),
     TestCategory (..),
     TestStrategy (..),
-    builtinTestCategories,
     defaultTestTerms,
     mkTestTerms,
     noCategoricalRepresentation,
@@ -50,12 +49,11 @@ import System.Exit (exitFailure, exitSuccess)
 
 mkTestTerms
   defaultTestTerms
-  --               name   type      prefix       strategy
-  ( [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
-      TestCategory ''Hask [t|Hask|] "hask" (ComputeFromInput [|runHask|])
-    ]
-      <> builtinTestCategories
-  )
+  --             name   type      prefix       strategy
+  [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
+    TestCategory ''Hask [t|Hask|] "hask" $ ComputeFromInput [|runHask|],
+    TestCategory ''(->) [t|(->)|] "plainArrow" $ ComputeFromInput [|id|]
+  ]
   -- core
   . HInsert1 (Proxy @"LamId") (TestCases (const [([t|Word8|], pure ([|genIntegralBounded|], [|show|]))]))
   . HInsert1 (Proxy @"ComposeLam") (TestCases (const [([t|Word8|], pure ([|genIntegralBounded|], [|show|]))]))
