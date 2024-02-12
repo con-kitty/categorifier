@@ -166,7 +166,7 @@ mkTopLevelPair :: TestCategory -> [(String, Name)] -> (Name, Q Exp)
 mkTopLevelPair arrowTy names =
   ( arrowLabel,
     [e|
-      Hedgehog.checkSequential $
+      Hedgehog.checkParallel $
         Hedgehog.Group
           $(nameBaseLiteral $ arrName arrowTy)
           $(TH.listE namePairs)
