@@ -8,34 +8,11 @@ module Categorifier.Test.ConCat.Instances
   )
 where
 
-import Categorifier.Category (RepCat (..))
-import qualified Categorifier.Client as Client
 import Categorifier.Test.Hask (Hask (..))
 import Categorifier.Test.Term (Term (..), binaryZero, unaryZero)
 import qualified ConCat.Category as ConCat
-import ConCat.Circuit ((:>))
-import qualified ConCat.Rep as ConCat
-import ConCat.Syntactic (Syn, app0')
 import qualified Control.Arrow as Base
 import Data.Constraint (Dict (..), (:-) (..))
-
-instance
-  ( Client.HasRep a,
-    r ~ Client.Rep a,
-    ConCat.Ok (:>) a,
-    ConCat.Ok (:>) r,
-    -- __NB__: This constraint is only because "ConCat.Circuit" doesn't export enough for us to
-    --         define this instance directly.
-    r ~ ConCat.Rep a
-  ) =>
-  RepCat (:>) a r
-  where
-  reprC = ConCat.reprC
-  abstC = ConCat.abstC
-
-instance (Client.HasRep a, r ~ Client.Rep a) => RepCat Syn a r where
-  reprC = app0' "repr"
-  abstC = app0' "abst"
 
 -- Term
 

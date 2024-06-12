@@ -13,6 +13,7 @@ module Main
   )
 where
 
+import Categorifier.ConCatExtensions.Examples.Syntactic (Syn)
 import Categorifier.Hedgehog (genFloating, genIntegralBounded)
 import Categorifier.Test.ConCatExtensions.Instances (Hask (..), Term)
 import Categorifier.Test.HList (HMap1 (..))
@@ -41,7 +42,8 @@ mkTestTerms
   --             name   type      prefix  strategy
   [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
     TestCategory ''(->) [t|(->)|] "plainArrow" $ ComputeFromInput [|id|],
-    TestCategory ''Hask [t|Hask|] "hask" (ComputeFromInput [|runHask|])
+    TestCategory ''Hask [t|Hask|] "hask" (ComputeFromInput [|runHask|]),
+    TestCategory ''Syn [t|Syn|] "syn" CheckCompileOnly
   ]
   . HInsert1
     (Proxy @"BindVec")

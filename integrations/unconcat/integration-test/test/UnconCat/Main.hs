@@ -21,6 +21,7 @@ import Categorifier.Test.Tests
     mkTestTerms,
   )
 import Categorifier.Test.UnconCat.Instances (Hask (..), Term)
+import Categorifier.UnconCat.Examples.Syntactic (Syn)
 import Control.Arrow (Arrow (..), ArrowChoice (..))
 import Data.Bool (bool)
 import Data.Proxy (Proxy (..))
@@ -36,7 +37,8 @@ mkTestTerms
   --             name   type      prefix  strategy
   [ TestCategory ''Term [t|Term|] "term" CheckCompileOnly,
     TestCategory ''(->) [t|(->)|] "plainArrow" $ ComputeFromInput [|id|],
-    TestCategory ''Hask [t|Hask|] "hask" (ComputeFromInput [|runHask|])
+    TestCategory ''Hask [t|Hask|] "hask" (ComputeFromInput [|runHask|]),
+    TestCategory ''Syn [t|Syn|] "syn" CheckCompileOnly
   ]
   -- core
   . HInsert1 (Proxy @"LamId") (TestCases (const [([t|Word8|], pure ([|genIntegralBounded|], [|show|]))]))

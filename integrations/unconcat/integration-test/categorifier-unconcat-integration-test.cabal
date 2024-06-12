@@ -63,9 +63,9 @@ common hierarchy-tests
     , categorifier-concat-integration
     , categorifier-hedgehog
     , categorifier-plugin
+    , categorifier-unconcat-examples
     , categorifier-unconcat-integration
     , categorifier-unconcat-integration-test
-    , concat-examples
     , either ^>=5.0.1
     , ghc-prim ^>=0.5.3 || ^>=0.6.0 || ^>=0.7.0 || ^>=0.8.0
     , hedgehog ^>=1.0.3 || ^>=1.1 || ^>=1.2
