@@ -110,4 +110,3 @@ test-suite base-hierarchy-optimized
   main-is: Base/Main.hs
   ghc-options:
     -O2
-    -fignore-interface-pragmas
