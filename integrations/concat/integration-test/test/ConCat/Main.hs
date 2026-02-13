@@ -39,6 +39,8 @@ module Main
   )
 where
 
+import Categorifier.ConCat.Examples.Circuit ((:>))
+import Categorifier.ConCat.Examples.Syntactic (Syn)
 import Categorifier.Hedgehog (genFloating, genIntegralBounded)
 import qualified Categorifier.Test.Adjunctions as Adjunctions
 import Categorifier.Test.ConCat.Instances (Hask (..), Term)
@@ -53,8 +55,6 @@ import Categorifier.Test.Tests
     mkTestTerms,
   )
 import Categorifier.Test.TotOrd (TotOrd, runTotOrd)
-import ConCat.Circuit ((:>))
-import ConCat.Syntactic (Syn)
 import Control.Arrow (Arrow (..), ArrowChoice (..))
 import Data.Bool (bool)
 import Data.Functor.Identity (Identity (..))
@@ -85,10 +85,7 @@ mkTestTerms
     (Proxy @"FmapRep")
     ( TestCases
         ( \arrow ->
-            if arrow
-              `elem` [ ''Syn, -- no Strong
-                       ''TotOrd -- #19
-                     ]
+            if arrow == ''TotOrd -- #19
               then []
               else [([t|Word8|], pure ([|genIntegralBounded|], [|show|]))]
         )
@@ -1433,10 +1430,7 @@ mkTestTerms
     (Proxy @"BareFMap")
     ( TestCases
         ( \arrow ->
-            if arrow
-              `elem` [ ''Syn, -- no Strong
-                       ''TotOrd -- no ClosedCat
-                     ]
+            if arrow == ''TotOrd -- no ClosedCat
               then []
               else
                 [ ( [t|Word8|],
@@ -1456,10 +1450,7 @@ mkTestTerms
     (Proxy @"PartialFmap")
     ( TestCases
         ( \arrow ->
-            if arrow
-              `elem` [ ''Syn, -- no Strong
-                       ''TotOrd -- #19
-                     ]
+            if arrow == ''TotOrd -- #19
               then []
               else [([t|Word8|], pure ([|Pair <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
@@ -1468,10 +1459,7 @@ mkTestTerms
     (Proxy @"Fmap")
     ( TestCases
         ( \arrow ->
-            if arrow
-              `elem` [ ''Syn, -- no Strong
-                       ''TotOrd -- #19
-                     ]
+            if arrow == ''TotOrd -- #19
               then []
               else
                 [ ( ([t|Pair|], [t|Word8|]),
@@ -1484,10 +1472,7 @@ mkTestTerms
     (Proxy @"Fmap'")
     ( TestCases
         ( \arrow ->
-            if arrow
-              `elem` [ ''Syn, -- no Strong
-                       ''TotOrd -- #19
-                     ]
+            if arrow == ''TotOrd -- #19
               then []
               else [([t|Word8|], pure ([|Pair <$> genIntegralBounded <*> genIntegralBounded|], [|show|]))]
         )
@@ -1505,10 +1490,7 @@ mkTestTerms
     (Proxy @"MapList")
     ( TestCases
         ( \arrow ->
-            if arrow
-              `elem` [ ''Syn, -- no Strong
-                       ''TotOrd -- #19
-                     ]
+            if arrow == ''TotOrd -- #19
               then []
               else
                 [ ( [t|Word8|],

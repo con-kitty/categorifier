@@ -62,11 +62,11 @@ common hierarchy-tests
     , categorifier-category
     , categorifier-client
     , categorifier-concat-integration
+    , categorifier-concat-extensions-examples
     , categorifier-concat-extensions-integration
     , categorifier-concat-extensions-integration-test
     , categorifier-hedgehog
     , categorifier-plugin
-    , concat-examples
     , either ^>=5.0.1
     , ghc-prim ^>=0.5.3 || ^>=0.6.0 || ^>=0.7.0 || ^>=0.8.0
     , hedgehog ^>=1.0.3 || ^>=1.1 || ^>=1.2
