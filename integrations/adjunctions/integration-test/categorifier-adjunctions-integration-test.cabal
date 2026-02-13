@@ -86,4 +86,3 @@ test-suite adjunctions-hierarchy-optimized
   main-is: Adjunctions/Main.hs
   ghc-options:
     -O2
-    -fignore-interface-pragmas

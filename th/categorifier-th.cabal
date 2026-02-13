@@ -45,7 +45,6 @@ library
       Paths_categorifier_th
   ghc-options:
     -O2
-    -fignore-interface-pragmas
   build-depends:
     , PyF ^>=0.9.0 || ^>=0.10.0 || ^>=0.11.0
     , categorifier-common

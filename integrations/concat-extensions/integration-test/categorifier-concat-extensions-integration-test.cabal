@@ -86,4 +86,3 @@ test-suite concat-extensions-hierarchy-optimized
   main-is: ConCatExtensions/Main.hs
   ghc-options:
     -O2
-    -fignore-interface-pragmas
