@@ -178,22 +178,23 @@ expected to churn a bit, as new approaches are added and old ones are obsolesced
 
 #### dealing with failed tests
 
-We use a flag, `Categorifier:defer-failures`, to keep conversion failures from crashing GHC. However,
-for the time being, all deferred failures are identical ([SW-]()) -- they don't carry any
-information about what failed. This makes them harder to debug. What you should do is constrain your
-testing to _exactly_ the failed test. That means
+We use a flag, `Categorifier:defer-failures`, to keep conversion failures from crashing GHC. This is
+useful in tests so that we can collect all failures, rather than exiting on the first one. But in
+non-testing situations, we _want_ compilation to fail.
 
-1. comment out the line in plugins.bzl that mentions `Categorifier:defer-failures`,
-2. in TH.hs, comment out all the `testTerms` other than the failing one,
-3. in the Main.hs for the appropriate hierarchy, comment out the other `*TopLevel` entries in the
-   list, then
-4. run a specific hierarchy test, for example, `concat-class-hierarchy`.
+To test a single property, replace
 
-Not all these steps are always necessary, but it can be hard to know when you can omit one.
+```haskell
+main = Hedgehog.defaultMain allTestTerms
+```
 
-This is a bit tedious, for sure. But it does often make the loop faster, and it ensures no other
-errors confuse issues. In future, we should preserve the actual failure for the test so it's easier
-to inspect what's happening less invasively.
+with
+
+```haskell
+main = Hedgehog.defaultMain . pure $ Hedgehog.check hprop_<<test name>>
+```
+
+in the `Main.hs` for the relevant `test-suite`, where `<<test name>>` is the name printed in the test output. E.g., in `  ✓ plainArrowTimes0 passed 100 tests.` the name is `plainArrowTimes0`.
 
 #### catching missed identifier conversions
 

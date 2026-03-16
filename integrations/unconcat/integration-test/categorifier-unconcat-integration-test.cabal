@@ -54,6 +54,7 @@ common hierarchy-tests
     -- ensure unfoldings are available
     -fno-omit-interface-pragmas
     -fplugin Categorifier
+    -fplugin-opt Categorifier:defer-failures
     -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.UnconCat.hierarchy
     -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.ConCat.functionHierarchy
   build-depends:

@@ -13,9 +13,9 @@ import Data.Functor.Identity (Identity (..))
 import Data.Semigroup (Sum (..))
 import Data.String (String)
 import qualified Hedgehog.Gen as Gen
+import qualified Hedgehog.Main as Hedgehog (defaultMain)
 import qualified Hedgehog.Range as Range
 import P
-import System.Exit (exitFailure, exitSuccess)
 import System.IO (IO)
 import Test.Data (One (..), Pair (..))
 import Test.HList (HList1 (..))
@@ -465,4 +465,4 @@ mkTestTerms defaultTestTerms [TestCategory ''Term [t|Term|] "term" CheckCompileO
   $ HNil1
 
 main :: IO ()
-main = bool exitFailure exitSuccess . and =<< allTestTerms
+main = Hedgehog.defaultMain allTestTerms

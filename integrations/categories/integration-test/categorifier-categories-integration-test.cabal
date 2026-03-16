@@ -48,7 +48,7 @@ common hierarchy-tests
   hs-source-dirs: test
   ghc-options:
     -fplugin Categorifier
-    -- -fplugin-opt Categorifier:defer-failures
+    -fplugin-opt Categorifier:defer-failures
     -fplugin-opt Categorifier:hierarchy:Categorifier.Hierarchy.Categories.hierarchy
   build-depends:
     , adjunctions ^>=4.4
